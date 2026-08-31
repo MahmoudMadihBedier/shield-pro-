@@ -1,10 +1,7 @@
-import { AppLayout } from '@/presentation/layout/AppLayout'
-import { HomePage } from '@/presentation/pages/HomePage'
+import { RouterProvider } from 'react-router-dom'
+
+import { router } from '@/app/router'
 
 export function App() {
-  return (
-    <AppLayout>
-      <HomePage />
-    </AppLayout>
-  )
+  return <RouterProvider router={router} />
 }

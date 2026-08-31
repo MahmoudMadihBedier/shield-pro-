@@ -13,6 +13,10 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  build: {
+    // Route chunks are split via React.lazy; vendor-chunk tuning is a later task.
+    chunkSizeWarningLimit: 700,
+  },
   test: {
     globals: true,
     environment: 'jsdom',

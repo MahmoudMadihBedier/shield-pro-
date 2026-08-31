@@ -271,11 +271,23 @@ Commands: `pnpm typecheck` · `pnpm lint` · `pnpm test` · `pnpm build`.
 
 ## 10. Status
 
-**Done (this scaffold):** Vite + TS + Appwrite SPA; validated env config;
-`client.ping()` at startup + live connection indicator; Clean Architecture
-skeleton (`core / infrastructure / application / presentation / shared` +
-`modules/*`); `core` primitives (`Result`, `AppError`, `doc-status`,
-`reference-id`, `rbac`, `formatters`); error mapping; 16 passing tests;
-`vercel.json`; this plan + `APPWRITE_SETUP.md`; `claude.md` updated to Appwrite.
+**Scaffold:** Vite + TS + Appwrite SPA; validated env config; `client.ping()` at
+startup + live connection indicator; Clean Architecture skeleton
+(`core / infrastructure / application / presentation / shared` + `modules/*`);
+`core` primitives (`Result`, `AppError`, `doc-status`, `reference-id`, `rbac`,
+`principal`, `formatters`); error mapping; `vercel.json`; docs; `claude.md` on
+Appwrite.
 
-**Next:** Phase 1, Story 1.0 — `scripts/appwrite/provision.ts`.
+**Story 1.0 — done.** `scripts/appwrite/schema.ts` (33 tables, declarative) +
+`scripts/appwrite/provision.ts` (idempotent runner: teams → database →
+tables/columns/indexes → naming counters). `pnpm provision:dry` verified.
+
+**Story 1.1 — in progress.** Auth data layer (`infrastructure/appwrite/auth.ts`:
+login/logout/loadPrincipal → `Result`), `core/principal` (team ids → `Principal`),
+`AuthProvider` + `useAuth` (TanStack Query session), `LoginPage` (RHF + Zod),
+`RequireAuth` / `RequireRole` guards, `react-router` with lazy routes.
+Remaining: run against a provisioned backend; role-aware nav; `branchId` set via
+admin UI. 20 passing tests.
+
+**Next:** finish 1.1 end-to-end once the backend is provisioned, then Story 1.2
+(`allocate-reference-id` / `submit-document` / `cancel-document` Functions).
