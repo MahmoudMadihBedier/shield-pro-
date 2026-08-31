@@ -9,11 +9,13 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "oxlint",
-    "typecheck": "tsc -b --noEmit",
+    "typecheck": "tsc -b --noEmit && tsc --noEmit -p scripts/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "provision": "tsx scripts/appwrite/provision.ts",
+    "provision:dry": "tsx scripts/appwrite/provision.ts --dry-run"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -37,9 +39,11 @@
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
     "jsdom": "^30.0.1",
+    "node-appwrite": "^28.0.0",
     "oxlint": "^1.79.0",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.13",
     "typescript": "~6.0.2",
     "vite": "^8.2.2",
     "vitest": "^4.1.11"
