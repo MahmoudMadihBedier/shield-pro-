@@ -12,6 +12,7 @@
 import { ExecutionMethod } from 'appwrite'
 
 import { appError, type AppError, type AppErrorCode } from '@/core/errors'
+import type { GlLine } from '@/core/ledger'
 import type { ReferenceEntity } from '@/core/reference-id'
 import { err, ok, type Result } from '@/core/result'
 
@@ -24,6 +25,8 @@ export const ServerRoute = {
   allocateReferenceId: '/allocate-reference-id',
   submitDocument: '/submit-document',
   cancelDocument: '/cancel-document',
+  postStockLedger: '/post-stock-ledger',
+  postGl: '/post-gl',
 } as const
 
 export interface AllocatedReference {
@@ -39,6 +42,40 @@ export interface DocumentTransition {
   referenceId: string
   docStatus: number
   postingDatetime?: string
+}
+
+export interface StockMoveInput {
+  productId: string
+  warehouseId: string
+  lotNumber?: string | null
+  qtyChange: number
+  valuationRate?: number
+}
+
+export interface PostStockLedgerPayload {
+  voucherType: string
+  voucherNo: string
+  postingDatetime: string
+  moves: StockMoveInput[]
+}
+
+export interface PostStockLedgerResult {
+  voucherNo: string
+  entries: number
+  balances: Array<{ productId: string; warehouseId: string; qtyAfter: number }>
+}
+
+export interface PostGlPayload {
+  voucherType: string
+  voucherNo: string
+  postingDatetime: string
+  branchId?: string | null
+  lines: GlLine[]
+}
+
+export interface PostGlResult {
+  voucherNo: string
+  entries: number
 }
 
 const KNOWN_CODES: ReadonlySet<AppErrorCode> = new Set<AppErrorCode>([
@@ -121,6 +158,24 @@ export function cancelDocument(
   reason: string,
 ): Promise<Result<DocumentTransition>> {
   return invoke<DocumentTransition>(ServerRoute.cancelDocument, { table, rowId, reason })
+}
+
+/**
+ * Post an immutable batch of stock-ledger entries for one voucher and refresh the
+ * affected `bin_balances`. The server rejects a voucher that was already posted.
+ */
+export function postStockLedger(
+  payload: PostStockLedgerPayload,
+): Promise<Result<PostStockLedgerResult>> {
+  return invoke<PostStockLedgerResult>(ServerRoute.postStockLedger, payload)
+}
+
+/**
+ * Post a balanced double-entry batch of GL rows for one voucher. The server
+ * re-checks `Σ debit === Σ credit` and rejects a voucher that was already posted.
+ */
+export function postGl(payload: PostGlPayload): Promise<Result<PostGlResult>> {
+  return invoke<PostGlResult>(ServerRoute.postGl, payload)
 }
 
 export type { AppError }

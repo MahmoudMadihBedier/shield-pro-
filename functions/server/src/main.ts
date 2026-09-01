@@ -8,6 +8,8 @@
  *   POST /allocate-reference-id  { entity }                  → { referenceId, prefix, year, sequence }
  *   POST /submit-document        { table, rowId }            → { table, rowId, referenceId, docStatus, postingDatetime }
  *   POST /cancel-document        { table, rowId, reason }    → { table, rowId, referenceId, docStatus }
+ *   POST /post-stock-ledger      { voucherType, voucherNo, postingDatetime, moves } → { voucherNo, entries, balances }
+ *   POST /post-gl                { voucherType, voucherNo, postingDatetime, branchId?, lines } → { voucherNo, entries }
  *
  * Business logic lives in `functions/routes/*` as pure, unit-tested functions
  * that take a `TablesDB` — this file only wires the request to them.
@@ -16,6 +18,8 @@ import { tablesDbFromRequest } from '../../common/appwrite'
 import { jsonHandler, type FnContext } from '../../common/handler'
 import { allocateReferenceId, type AllocateInput } from '../../routes/allocate-reference-id'
 import { cancelDocument, type CancelInput } from '../../routes/cancel-document'
+import { postGl, type PostGlInput } from '../../routes/post-gl'
+import { postStockLedger, type PostStockLedgerInput } from '../../routes/post-stock-ledger'
 import { submitDocument, type SubmitInput } from '../../routes/submit-document'
 
 type Route = (context: FnContext) => Promise<unknown>
@@ -29,6 +33,12 @@ const routes: Record<string, Route> = {
   ),
   '/cancel-document': jsonHandler<CancelInput>(async ({ body, req, caller }) =>
     cancelDocument(tablesDbFromRequest(req), body, caller),
+  ),
+  '/post-stock-ledger': jsonHandler<PostStockLedgerInput>(async ({ body, req, caller }) =>
+    postStockLedger(tablesDbFromRequest(req), body, caller),
+  ),
+  '/post-gl': jsonHandler<PostGlInput>(async ({ body, req, caller }) =>
+    postGl(tablesDbFromRequest(req), body, caller),
   ),
 }
 
