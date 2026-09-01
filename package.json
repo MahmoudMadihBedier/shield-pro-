@@ -17,7 +17,7 @@
     "provision": "tsx scripts/appwrite/provision.ts",
     "provision:dry": "tsx scripts/appwrite/provision.ts --dry-run",
     "fn:build": "node functions/build.mjs",
-    "fn:deploy": "npx --yes appwrite@latest push function"
+    "fn:deploy": "node functions/build.mjs && npx --yes appwrite-cli@latest functions create-deployment --function-id shield-server --entrypoint dist/main.js --commands 'npm install' --code functions/server --activate true"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
