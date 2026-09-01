@@ -16,6 +16,7 @@
  */
 import { tablesDbFromRequest } from '../../common/appwrite'
 import { jsonHandler, type FnContext } from '../../common/handler'
+import { runInTransaction } from '../../common/transaction'
 import { allocateReferenceId, type AllocateInput } from '../../routes/allocate-reference-id'
 import { cancelDocument, type CancelInput } from '../../routes/cancel-document'
 import { postGl, type PostGlInput } from '../../routes/post-gl'
@@ -25,20 +26,23 @@ import { submitDocument, type SubmitInput } from '../../routes/submit-document'
 type Route = (context: FnContext) => Promise<unknown>
 
 const routes: Record<string, Route> = {
+  // A single atomic `incrementRowColumn` — no transaction needed.
   '/allocate-reference-id': jsonHandler<AllocateInput>(async ({ body, req }) =>
     allocateReferenceId(tablesDbFromRequest(req), body),
   ),
+  // Read-check-write + audit: wrapped so the transition and its audit row
+  // commit together, and concurrent writers of the same row conflict.
   '/submit-document': jsonHandler<SubmitInput>(async ({ body, req, caller }) =>
-    submitDocument(tablesDbFromRequest(req), body, caller),
+    runInTransaction(tablesDbFromRequest(req), (db) => submitDocument(db, body, caller)),
   ),
   '/cancel-document': jsonHandler<CancelInput>(async ({ body, req, caller }) =>
-    cancelDocument(tablesDbFromRequest(req), body, caller),
+    runInTransaction(tablesDbFromRequest(req), (db) => cancelDocument(db, body, caller)),
   ),
   '/post-stock-ledger': jsonHandler<PostStockLedgerInput>(async ({ body, req, caller }) =>
-    postStockLedger(tablesDbFromRequest(req), body, caller),
+    runInTransaction(tablesDbFromRequest(req), (db) => postStockLedger(db, body, caller)),
   ),
   '/post-gl': jsonHandler<PostGlInput>(async ({ body, req, caller }) =>
-    postGl(tablesDbFromRequest(req), body, caller),
+    runInTransaction(tablesDbFromRequest(req), (db) => postGl(db, body, caller)),
   ),
 }
 
