@@ -1,0 +1,94 @@
+import type { TablesDB } from 'node-appwrite'
+import { describe, expect, it, vi } from 'vitest'
+
+import { FnError } from '../../common/handler'
+import { cancelDocument } from '../cancel-document'
+
+function fakeDb(over: Partial<Record<keyof TablesDB, unknown>>): TablesDB {
+  return over as unknown as TablesDB
+}
+
+function row(overrides: Record<string, unknown> = {}) {
+  return {
+    $id: 'row-1',
+    reference_id: 'INV-2026-00042',
+    doc_status: 1,
+    created_by: 'user-1',
+    posting_datetime: '2026-09-01T00:00:00.000Z',
+    remarks: null,
+    ...overrides,
+  }
+}
+
+describe('cancelDocument', () => {
+  it('requires a reason', async () => {
+    const getRow = vi.fn().mockResolvedValue(row())
+    await expect(
+      cancelDocument(fakeDb({ getRow }), { table: 'sales_invoices', rowId: 'row-1', reason: '  ' }, 'u1'),
+    ).rejects.toMatchObject({ code: 'validation' })
+    expect(getRow).not.toHaveBeenCalled()
+  })
+
+  it('will not cancel a draft', async () => {
+    const getRow = vi.fn().mockResolvedValue(row({ doc_status: 0 }))
+    const updateRow = vi.fn()
+    await expect(
+      cancelDocument(
+        fakeDb({ getRow, updateRow }),
+        { table: 'sales_invoices', rowId: 'row-1', reason: 'oops' },
+        'u1',
+      ),
+    ).rejects.toMatchObject({ code: 'conflict' })
+    expect(updateRow).not.toHaveBeenCalled()
+  })
+
+  it('will not cancel an already-cancelled document', async () => {
+    const getRow = vi.fn().mockResolvedValue(row({ doc_status: 2 }))
+    await expect(
+      cancelDocument(
+        fakeDb({ getRow }),
+        { table: 'sales_invoices', rowId: 'row-1', reason: 'again' },
+        'u1',
+      ),
+    ).rejects.toBeInstanceOf(FnError)
+  })
+
+  it('cancels a submitted document, appends the reason to remarks, and audits it', async () => {
+    const getRow = vi.fn().mockResolvedValue(row({ remarks: 'original note' }))
+    const updateRow = vi.fn().mockResolvedValue({})
+    const createRow = vi.fn().mockResolvedValue({})
+
+    const out = await cancelDocument(
+      fakeDb({ getRow, updateRow, createRow }),
+      { table: 'sales_invoices', rowId: 'row-1', reason: 'duplicate of INV-2026-00041' },
+      'user-9',
+    )
+
+    expect(out).toEqual({
+      table: 'sales_invoices',
+      rowId: 'row-1',
+      referenceId: 'INV-2026-00042',
+      docStatus: 2,
+    })
+    expect(updateRow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tableId: 'sales_invoices',
+        rowId: 'row-1',
+        data: {
+          doc_status: 2,
+          remarks: 'original note\nCancelled by user-9: duplicate of INV-2026-00041',
+        },
+      }),
+    )
+    expect(createRow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tableId: 'audit_log',
+        data: expect.objectContaining({
+          action: 'cancel',
+          actor_id: 'user-9',
+          entity_ref: 'INV-2026-00042',
+        }),
+      }),
+    )
+  })
+})

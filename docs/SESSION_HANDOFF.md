@@ -1,83 +1,69 @@
-# Session handoff — 2026-08-31
+# Session handoff — 2026-08-31 (updated)
 
-Pick up here after restarting Claude Code (needed to load the Appwrite MCP).
+Backend is now provisioned and staff login is verified end-to-end.
 
 ## Where things are
 
-- **Branch:** `feat/appwrite-scaffold` (not pushed). Working tree clean.
-- **Commits:**
-  1. `55728c0` — scaffold: Vite + React 19 + TS SPA, Appwrite client + `client.ping()`,
-     Clean Architecture skeleton, `core` primitives, docs, `vercel.json`.
-  2. `af03463` — Phase 1 Story 1.0: `scripts/appwrite/schema.ts` (33 tables,
-     declarative) + `scripts/appwrite/provision.ts` (idempotent runner).
-  3. `b58029f` — Phase 1 Story 1.1: staff auth (data layer + `core/principal` +
-     `AuthProvider`/`useAuth` + `LoginPage` + `RequireAuth`/`RequireRole` +
-     `react-router` lazy routes).
-- **Green:** `pnpm typecheck` (app + scripts), `pnpm lint`, `pnpm test` (20),
-  `pnpm build`. `pnpm provision:dry` runs clean (452 objects planned).
+- **Branch:** `feat/appwrite-scaffold` (not pushed).
+- **Committed (4):** `55728c0` scaffold · `af03463` Story 1.0 provisioner ·
+  `b58029f` Story 1.1 staff auth · `4da5263` prior handoff.
+- **Uncommitted:** `scripts/appwrite/provision.ts` — bumped
+  `waitForColumnsAvailable` from 30×1s to 150×2s (free-tier column workers take
+  60–120s/table) and added a `failed`-status check. Lint + typecheck green.
+  Not yet committed — fold into the Story 1.0 commit or a `fix:` follow-up.
 
-## Decisions locked in (see docs/IMPLEMENTATION_PLAN.md §2)
+## Live Appwrite state (project `6a95b631003d4163dc97`, `shield-pro`)
 
-- Appwrite **fully replaces** Supabase. `claude.md` Section C rewritten.
-- **Vite SPA**, not Next.js — RSC rules in `claude.md` don't apply.
-- **Offline-first dropped for v1** (online-only against Appwrite).
-- Domain modelled on **ERPNext** patterns: naming series, `docstatus`
-  (Draft/Submitted/Cancelled → amend, never edit), immutable Stock/GL ledgers,
-  Bin projection, Workflow states, Role + branch scoping.
-- Enforcement (SoD, approvals, sequence allocation, ledger posting, RBAC scope)
-  lives in **Appwrite Functions**, never client code. Ledgers + submitted docs:
-  no client write permission.
-- `.env` (non-secret Appwrite client config) is **committed**; secrets go in
-  `.env.local` (git-ignored).
+Provisioned via `pnpm provision` (real run, then re-run clean:
+`0 created, 452 already present`):
 
-## BLOCKED on live Appwrite access
+- **11 RBAC teams** — one per `src/core/rbac.ts` role (`system_admin`, …).
+- **Database `shield_pro`** — 33 tables, all columns + indexes `available`,
+  `naming_series_counters` seeded (16 rows, `*-2026`).
+- **Web platforms:** `*.vercel.app` (pre-existing) + `localhost` (id
+  `weblocaldev`) — CORS OK for local dev.
+- **API key `provisioner`** (no expiry) — in `.env.local` (git-ignored) as
+  `APPWRITE_API_KEY`. Scopes: databases/tables/columns/indexes/rows +
+  collections/attributes/documents (legacy) + teams + users + platforms +
+  functions/executions. Reuse for Functions deploy + CI.
+- **Staff user:** `admin@shieldpro.local` (id `6a95ca5444f38898d6cc`), member of
+  team `system_admin` (role `owner`), no `branchId` pref (SystemAdmin has global
+  scope). Password is in Claude auto-memory (not committed here); reset it in the
+  Appwrite console → Auth if needed.
 
-Everything above is written but not exercised against a real backend. Two ways
-to unblock (pick one):
+## Story 1.1 — verified
 
-1. **Appwrite MCP** — after restart, confirm `mcp__appwrite__*` tools exist, then
-   list databases/buckets/users for project `shield-pro`
-   (`6a95b631003d4163dc97`), and apply `scripts/appwrite/schema.ts` through the
-   MCP (or just run the script — option 2).
-2. **API key** — put a server key in `.env.local` (scopes in
-   `.env.local.example`), then `pnpm provision`.
+A throwaway script drove the real web-SDK login path over REST (cookie auth,
+same as the browser): `sessions/email` → `GET /account` 200 → `GET /teams` →
+`['system_admin']` → `getPrefs` `{}`. `buildPrincipal` ⇒
+`{ userId: '6a95ca54…', roles: ['system_admin'], branchId: null }`.
+`pnpm dev` + browser login through `LoginPage` still worth a manual smoke.
 
 ## Next steps, in order
 
-1. **Provision the backend** (schema.ts → Appwrite): 11 role teams, `shield_pro`
-   database, 33 tables + columns + indexes, seed `naming_series_counters`.
-2. **Finish Story 1.1 end-to-end:** create one staff user in Appwrite, add them
-   to a role team, set their `branchId` account pref, then verify login through
-   `LoginPage` → `Principal` resolves with the right roles/branch.
-   - Add the dev origin (`localhost`) + any Vercel domain as a **Web platform**
-     in the Appwrite console or CORS blocks the SDK.
-3. **Role-aware nav** in `AppLayout` (menu items gated by `RequireRole`).
-4. **`branchId` admin flow** — right now it's read from an account pref that
-   nothing writes yet; the admin module (Story: master data) will set it.
-5. **Story 1.2:** `functions/` — `allocate-reference-id` (atomic counter),
-   `submit-document`, `cancel-document`. Wire `core/doc-status` +
-   `core/reference-id` to them.
-6. **Story 1.3:** `post-stock-ledger` + `post-gl` Functions + `bin_balances`
+1. **Commit** the `provision.ts` timeout fix.
+2. **Role-aware nav** in `AppLayout` — menu items gated by role (`RequireRole`).
+3. **`branchId` admin flow** — nothing writes the account pref yet; the admin
+   master-data module will (System Admin only).
+4. **Story 1.2 — `functions/`:** `allocate-reference-id` (atomic counter on
+   `naming_series_counters`), `submit-document`, `cancel-document`. Wire
+   `core/doc-status` + `core/reference-id`. Deploy with `npx appwrite deploy
+   function` using the `provisioner` key. Needs a plan before coding.
+5. **Story 1.3:** `post-stock-ledger` + `post-gl` Functions + `bin_balances`
    projection with cache invalidation.
-7. **Story 1.4:** `traceability` module — reference-ID chain walker + `audit_log`
+6. **Story 1.4:** `traceability` module — reference-ID chain walker + `audit_log`
    viewer.
 
 ## Watch out for
 
-- A local hook keeps rewriting `pnpm-workspace.yaml` with an invalid
-  `allowBuilds:` block. It was deleted; `.npmrc` has
-  `verify-deps-before-run=false` so `pnpm run <script>` works despite the
-  ignored `esbuild` build script. If `pnpm` commands start failing on
-  `ERR_PNPM_IGNORED_BUILDS`, run `pnpm approve-builds` once (interactive) or
-  invoke tools via `./node_modules/.bin/<tool>` directly.
-- `main.tsx` fires `pingAppwrite()` once on boot — console shows
-  `[appwrite] ping ok …`. The home screen has the live indicator + "Ping now".
-- Reference material (not in the repo): a shallow ERPNext checkout sits in this
-  session's scratchpad; re-clone with
-  `git clone --depth 1 --filter=blob:none --sparse https://github.com/frappe/erpnext`
-  if needed.
+- Free-tier column builds are slow; the provisioner now waits ~5 min/table.
+- `pnpm-workspace.yaml` hook rewrite issue — see git log `4da5263` notes; if
+  `pnpm` fails on `ERR_PNPM_IGNORED_BUILDS`, run `pnpm approve-builds` once.
+- `main.tsx` fires `pingAppwrite()` on boot — console `[appwrite] ping ok`.
+- Endpoint in `.env` is `https://fra.cloud.appwrite.io/v1`; MCP/console shows
+  the non-region `https://cloud.appwrite.io/v1` — both fine, `fra` is the data
+  region.
 
 ## Vercel
 
-`vercel.json` is in place (Vite preset + SPA rewrites). The user is setting up
-Vercel themselves — do not run `vercel` commands.
+`vercel.json` in place. User owns Vercel setup — don't run `vercel`.

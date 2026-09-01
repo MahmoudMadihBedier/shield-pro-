@@ -101,17 +101,42 @@ One database, `shield_pro`. Table ids are registered in
 
 ### Functions (server-side enforcement — the real controls)
 
-| Function                | Responsibility                                                        |
-| ----------------------- | -------------------------------------------------------------------- |
-| `allocate-reference-id` | Atomic gap-free sequence from `naming_series_counters`               |
-| `submit-document`       | Draft→Submitted: runs SoD guard + approval engine, posts ledgers, writes `audit_log` |
-| `cancel-document`       | Submitted→Cancelled: posts reversing ledger entries                 |
-| `segregation-guard`     | `requestedBy !== approvedBy`, `sentBy !== confirmedBy`, etc.         |
-| `approval-engine`       | Tiered auto-approve vs. escalate; logs every decision               |
-| `post-stock-ledger`     | The only writer of `stock_ledger_entries` + `bin_balances`          |
-| `post-gl`               | The only writer of `general_ledger_entries`                         |
-| `rep-closeout`          | Reconciles `rep_stock_ledger` + `rep_cash_ledger`, flags variance   |
-| `fraud-scan`            | Round-tripping / repeated-movement heuristics → `fraud_flags`       |
+**One deployed Function, `shield-server`, with path-based routes.** Appwrite's
+free tier caps a project at 2 Functions, so every server operation is a route on
+a single deployment rather than its own Function. Business logic stays split by
+concern in `functions/routes/*` (pure, `TablesDB`-injected, unit-tested); the
+router in `functions/server/src/main.ts` only wires request → handler. Auth is
+the per-execution **dynamic API key** (`x-appwrite-key` header) — no stored
+secret. Scopes: `rows.read`, `rows.write`. `execute` = `users`.
+
+| Route (`xpath`)          | Responsibility                                                       | Status |
+| ------------------------ | ------------------------------------------------------------------- | ------ |
+| `/allocate-reference-id` | Atomic gap-free sequence from `naming_series_counters` (`incrementRowColumn`) | ✅ Story 1.2 |
+| `/submit-document`       | Draft→Submitted + `posting_datetime` + `audit_log`                  | ✅ Story 1.2 |
+| `/cancel-document`       | Submitted→Cancelled + reason on `remarks` + `audit_log`             | ✅ Story 1.2 |
+| `/segregation-guard`     | `requestedBy !== approvedBy`, `sentBy !== confirmedBy`, …           | Story 2.1 |
+| `/approve`               | Tiered auto-approve vs. escalate; logs every decision              | Story 2.2 |
+| `/post-stock-ledger`     | The only writer of `stock_ledger_entries` + `bin_balances`          | Story 1.3 |
+| `/post-gl`               | The only writer of `general_ledger_entries`                         | Story 1.3 |
+| `/rep-closeout`          | Reconciles `rep_stock_ledger` + `rep_cash_ledger`, flags variance   | Story 2.4 |
+| `/fraud-scan`            | Round-tripping / repeated-movement heuristics → `fraud_flags`       | Story 2.3 |
+
+SoD guard, approval engine and ledger posting hook into `/submit-document`
+before its `updateRow` as those stories land.
+
+**Build & deploy:**
+
+```bash
+pnpm fn:build     # esbuild → functions/server/dist/main.js  (node-appwrite + zod external)
+pnpm fn:deploy    # npx appwrite push function   (after `npx appwrite login`)
+```
+
+`appwrite.json` at the repo root is the deploy manifest. `functions/server/dist`
+is git-ignored — always `pnpm fn:build` before deploying.
+
+The client calls routes through `src/infrastructure/appwrite/functions.ts`
+(`allocateReferenceId` / `submitDocument` / `cancelDocument`), each returning
+`Result<T, AppError>`.
 
 ### Realtime
 

@@ -248,19 +248,31 @@ async function ensureColumns(def: TableDef): Promise<void> {
   }
 }
 
+/**
+ * Poll until every column on the table reports `available`. Appwrite builds
+ * columns on an async worker; on the free tier a table's worth of columns can
+ * take 60–120s, so we wait generously (up to ~5 min) rather than racing it.
+ */
 async function waitForColumnsAvailable(tableId: string): Promise<void> {
   if (DRY_RUN) return
-  for (let attempt = 0; attempt < 30; attempt += 1) {
+  for (let attempt = 0; attempt < 150; attempt += 1) {
     const res = await tablesDB.listColumns({
       databaseId: DATABASE.id,
       tableId,
       queries: [Query.limit(500)],
     })
-    const pending = (res.columns as Array<{ key: string; status: string }>).filter(
-      (c) => c.status !== 'available',
-    )
+    const cols = res.columns as Array<{ key: string; status: string; error?: string }>
+    const failed = cols.filter((c) => c.status === 'failed')
+    if (failed.length > 0) {
+      throw new Error(
+        `columns failed to build on ${tableId}: ${failed
+          .map((c) => `${c.key}${c.error ? ` (${c.error})` : ''}`)
+          .join(', ')}`,
+      )
+    }
+    const pending = cols.filter((c) => c.status !== 'available')
     if (pending.length === 0) return
-    await sleep(1000)
+    await sleep(2000)
   }
   throw new Error(`columns for ${tableId} never became available`)
 }
