@@ -69,4 +69,25 @@ describe('allocateReferenceId', () => {
       allocateReferenceId(fakeDb({ incrementRowColumn }), { entity: 'SalesInvoice' }, AUG_2026),
     ).rejects.toBe(boom)
   })
+
+  it('recovers when a concurrent call created the new-year counter first', async () => {
+    const notFound = Object.assign(new Error('missing'), { code: 404 })
+    const conflict = Object.assign(new Error('exists'), { code: 409 })
+    // 1st increment: 404 (no counter) → create: 409 (lost the race) → 2nd increment: ok
+    const incrementRowColumn = vi
+      .fn()
+      .mockRejectedValueOnce(notFound)
+      .mockResolvedValueOnce({ next_value: 8 })
+    const createRow = vi.fn().mockRejectedValue(conflict)
+
+    const out = await allocateReferenceId(
+      fakeDb({ incrementRowColumn, createRow }),
+      { entity: 'PurchaseOrder' },
+      new Date('2027-01-02T00:00:00.000Z'),
+    )
+
+    expect(out.referenceId).toBe('PO-2027-00007')
+    expect(out.sequence).toBe(7)
+    expect(incrementRowColumn).toHaveBeenCalledTimes(2)
+  })
 })

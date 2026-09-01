@@ -76,7 +76,7 @@ describe('cancelDocument', () => {
         rowId: 'row-1',
         data: {
           doc_status: 2,
-          remarks: 'original note\nCancelled by user-9: duplicate of INV-2026-00041',
+          remarks: 'Cancelled by user-9: duplicate of INV-2026-00041\noriginal note',
         },
       }),
     )

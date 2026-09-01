@@ -36,8 +36,22 @@ function isReferenceEntity(value: string): value is ReferenceEntity {
   return Object.prototype.hasOwnProperty.call(REFERENCE_PREFIXES, value)
 }
 
-function isNotFound(e: unknown): boolean {
-  return typeof e === 'object' && e !== null && 'code' in e && (e as { code: number }).code === 404
+function hasCode(e: unknown, code: number): boolean {
+  return typeof e === 'object' && e !== null && 'code' in e && (e as { code: number }).code === code
+}
+const isNotFound = (e: unknown): boolean => hasCode(e, 404)
+const isConflict = (e: unknown): boolean => hasCode(e, 409)
+
+async function bumpCounter(tablesDB: TablesDB, rowId: string): Promise<number> {
+  const updated = (await tablesDB.incrementRowColumn({
+    databaseId: DATABASE_ID,
+    tableId: COUNTERS,
+    rowId,
+    column: 'next_value',
+    value: 1,
+  })) as unknown as { next_value: number }
+  // `next_value` now points at the *following* sequence; we consumed the prior.
+  return Number(updated.next_value) - 1
 }
 
 export async function allocateReferenceId(
@@ -56,25 +70,24 @@ export async function allocateReferenceId(
 
   let sequence: number
   try {
-    const updated = (await tablesDB.incrementRowColumn({
-      databaseId: DATABASE_ID,
-      tableId: COUNTERS,
-      rowId,
-      column: 'next_value',
-      value: 1,
-    })) as unknown as { next_value: number }
-    // `next_value` now points at the *following* sequence; we consumed the prior.
-    sequence = Number(updated.next_value) - 1
+    sequence = await bumpCounter(tablesDB, rowId)
   } catch (e) {
     if (!isNotFound(e)) throw e
     // First document of a new year — create the counter starting past sequence 1.
-    await tablesDB.createRow({
-      databaseId: DATABASE_ID,
-      tableId: COUNTERS,
-      rowId,
-      data: { prefix, year, next_value: 2 },
-    })
-    sequence = 1
+    try {
+      await tablesDB.createRow({
+        databaseId: DATABASE_ID,
+        tableId: COUNTERS,
+        rowId,
+        data: { prefix, year, next_value: 2 },
+      })
+      sequence = 1
+    } catch (createErr) {
+      // A concurrent first-of-year call created the counter first; the atomic
+      // increment is now valid again.
+      if (!isConflict(createErr)) throw createErr
+      sequence = await bumpCounter(tablesDB, rowId)
+    }
   }
 
   if (!Number.isInteger(sequence) || sequence < 1) {

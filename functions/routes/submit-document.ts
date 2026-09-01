@@ -61,11 +61,13 @@ export async function submitDocument(
   }
 
   const from = envelope.data.doc_status
-  if (from !== DocStatus.Draft) {
-    throw new FnError('conflict', `document is ${from === DocStatus.Submitted ? 'already submitted' : 'cancelled'}`)
-  }
+  // `canTransition` is the domain rule; the branch below only picks a clearer
+  // message for the two ways it can fail.
   if (!canTransition(from, DocStatus.Submitted)) {
-    throw new FnError('conflict', 'this document cannot be submitted')
+    throw new FnError(
+      'conflict',
+      `document is ${from === DocStatus.Submitted ? 'already submitted' : 'cancelled'}`,
+    )
   }
 
   const postingDatetime = now.toISOString()

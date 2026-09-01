@@ -22,5 +22,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    // `.claude/worktrees/*` holds full checkouts used by parallel agents — never
+    // scan them or the same test files get collected many times over.
+    exclude: ['**/node_modules/**', '**/dist/**', '.claude/**'],
   },
 })

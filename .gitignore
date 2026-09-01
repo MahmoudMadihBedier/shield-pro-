@@ -31,3 +31,6 @@ coverage
 
 # Vercel
 .vercel
+
+# Claude Code worktrees for parallel agents — transient checkouts
+.claude/worktrees/

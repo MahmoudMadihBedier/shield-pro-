@@ -65,7 +65,9 @@ export async function cancelDocument(
   }
 
   const from = envelope.data.doc_status
-  if (from !== DocStatus.Submitted) {
+  // `canTransition` is the domain rule; the branch below only picks a clearer
+  // message for the two ways it can fail.
+  if (!canTransition(from, DocStatus.Cancelled)) {
     throw new FnError(
       'conflict',
       from === DocStatus.Draft
@@ -73,12 +75,11 @@ export async function cancelDocument(
         : 'document is already cancelled',
     )
   }
-  if (!canTransition(from, DocStatus.Cancelled)) {
-    throw new FnError('conflict', 'this document cannot be cancelled')
-  }
 
+  // Stamp first so the reason always survives the 2000-char cap even when the
+  // document already carries long remarks.
   const stamp = `Cancelled by ${caller ?? 'system'}: ${reason}`
-  const remarks = [envelope.data.remarks, stamp].filter(Boolean).join('\n').slice(0, REMARKS_MAX)
+  const remarks = [stamp, envelope.data.remarks].filter(Boolean).join('\n').slice(0, REMARKS_MAX)
 
   await tablesDB.updateRow({
     databaseId: DATABASE_ID,
