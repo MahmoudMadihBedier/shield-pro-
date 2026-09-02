@@ -41,11 +41,13 @@ export async function cancelDocument(
   const table = String(input?.table ?? '')
   const rowId = String(input?.rowId ?? '')
   const reason = String(input?.reason ?? '').trim()
+  if (!caller) throw new FnError('unauthorized', 'a signed-in caller is required to cancel')
   if (!isSubmittableDocTable(table)) {
     throw new FnError('validation', `"${table}" is not a submittable document table`)
   }
   if (!rowId) throw new FnError('validation', 'rowId is required')
   if (!reason) throw new FnError('validation', 'a cancellation reason is required')
+  // TODO(story 2.1): assert the caller's role + branch may cancel this document.
 
   let row: Record<string, unknown>
   try {

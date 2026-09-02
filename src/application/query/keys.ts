@@ -23,4 +23,10 @@ export const queryKeys = {
     detail: (entity: string, id: string) => ['admin', 'detail', entity, id] as const,
     counts: () => ['admin', 'counts'] as const,
   },
+  documents: {
+    /** Invalidation root for one submittable-document table. */
+    root: (table: string) => ['documents', table] as const,
+    list: (table: string, params: unknown) => ['documents', table, 'list', params] as const,
+    detail: (table: string, id: string) => ['documents', table, 'detail', id] as const,
+  },
 } as const

@@ -21,6 +21,12 @@ function row(overrides: Record<string, unknown> = {}) {
 }
 
 describe('cancelDocument', () => {
+  it('rejects an anonymous caller', async () => {
+    await expect(
+      cancelDocument(fakeDb({}), { table: 'sales_invoices', rowId: 'r', reason: 'x' }, null),
+    ).rejects.toMatchObject({ code: 'unauthorized' })
+  })
+
   it('requires a reason', async () => {
     const getRow = vi.fn().mockResolvedValue(row())
     await expect(

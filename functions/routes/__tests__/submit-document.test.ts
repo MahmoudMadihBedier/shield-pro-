@@ -34,6 +34,12 @@ describe('submitDocument', () => {
     ).rejects.toMatchObject({ code: 'validation' })
   })
 
+  it('rejects an anonymous caller', async () => {
+    await expect(
+      submitDocument(fakeDb({}), { table: 'sales_invoices', rowId: 'row-1' }, null, NOW),
+    ).rejects.toMatchObject({ code: 'unauthorized' })
+  })
+
   it('maps a missing row to not_found', async () => {
     const getRow = vi.fn().mockRejectedValue(Object.assign(new Error('nope'), { code: 404 }))
     await expect(
@@ -86,6 +92,7 @@ describe('submitDocument', () => {
       tableId: 'sales_invoices',
       rowId: 'row-1',
       data: { doc_status: 1, posting_datetime: NOW.toISOString() },
+      permissions: ['read("users")'],
     })
     expect(createRow).toHaveBeenCalledTimes(1)
     expect(createRow).toHaveBeenCalledWith(
