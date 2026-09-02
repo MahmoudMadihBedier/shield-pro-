@@ -5,8 +5,6 @@
  * - `AuditLogPage` — filterable `audit_log` viewer.
  * - `traceabilityNavItems` — nav entries for the app shell to pick up (Phase 1.5).
  */
-import { Role } from '@/core/rbac'
-
 export { TraceabilityPage } from './presentation/pages/TraceabilityPage'
 export { AuditLogPage } from './presentation/pages/AuditLogPage'
 
@@ -16,19 +14,5 @@ export { resolveNode, getAuditTrail } from './data/traceability-repo'
 export type { AuditRow } from './data/traceability-repo'
 export { entityLabel, ENTITY_LABELS } from './domain/entity-labels'
 
-export interface TraceabilityNavItem {
-  to: string
-  labelAr: string
-  labelEn: string
-  roles?: readonly Role[]
-}
-
-export const traceabilityNavItems: readonly TraceabilityNavItem[] = [
-  { to: '/traceability', labelAr: 'تتبع المستندات', labelEn: 'Traceability' },
-  {
-    to: '/audit-log',
-    labelAr: 'سجل التدقيق',
-    labelEn: 'Audit log',
-    roles: [Role.SystemAdmin, Role.ChiefAccountant],
-  },
-]
+// Re-exported from the dependency-light `./nav` (keeps route chunks split).
+export { traceabilityNavItems, type TraceabilityNavItem } from './nav'

@@ -1,4 +1,6 @@
 import type { Role } from '@/core/rbac'
+import { adminNavItems } from '@/modules/admin/nav'
+import { traceabilityNavItems } from '@/modules/traceability/nav'
 
 /**
  * A single primary-navigation entry. Modules append their own items here as
@@ -17,7 +19,17 @@ export interface NavItem {
   end?: boolean
 }
 
-/** Primary nav. Only the dashboard route exists today (Phase 1). */
+/** Primary nav — the dashboard plus each module's own entries. */
 export const NAV_ITEMS: readonly NavItem[] = [
   { to: '/', label: 'الرئيسية', labelEn: 'Home', end: true },
+  ...traceabilityNavItems.map(
+    (item): NavItem => ({
+      to: item.to,
+      label: item.labelAr,
+      labelEn: item.labelEn,
+      roles: item.roles,
+      end: true,
+    }),
+  ),
+  ...adminNavItems,
 ]
