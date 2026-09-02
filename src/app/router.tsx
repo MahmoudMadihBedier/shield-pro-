@@ -19,6 +19,48 @@ const AuditLogPage = lazy(() =>
   import('@/modules/traceability').then((m) => ({ default: m.AuditLogPage })),
 )
 
+const AdminHomePage = lazy(() =>
+  import('@/modules/admin').then((m) => ({ default: m.AdminHomePage })),
+)
+const BranchesListPage = lazy(() =>
+  import('@/modules/admin').then((m) => ({ default: m.BranchesListPage })),
+)
+const WarehousesListPage = lazy(() =>
+  import('@/modules/admin').then((m) => ({ default: m.WarehousesListPage })),
+)
+const UsersListPage = lazy(() =>
+  import('@/modules/admin').then((m) => ({ default: m.UsersListPage })),
+)
+const ProductsListPage = lazy(() =>
+  import('@/modules/admin').then((m) => ({ default: m.ProductsListPage })),
+)
+const ProductDetailPage = lazy(() =>
+  import('@/modules/admin').then((m) => ({ default: m.ProductDetailPage })),
+)
+const RawMaterialsListPage = lazy(() =>
+  import('@/modules/admin').then((m) => ({ default: m.RawMaterialsListPage })),
+)
+const SuppliersListPage = lazy(() =>
+  import('@/modules/admin').then((m) => ({ default: m.SuppliersListPage })),
+)
+const CustomersListPage = lazy(() =>
+  import('@/modules/admin').then((m) => ({ default: m.CustomersListPage })),
+)
+
+const NO_ADMIN_ACCESS = (
+  <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+    هذه الصفحة مخصّصة لمسؤول النظام فقط.
+  </div>
+)
+
+function AdminRoute({ children }: { children: ReactNode }) {
+  return (
+    <RequireRole anyOf={[Role.SystemAdmin]} fallback={NO_ADMIN_ACCESS}>
+      <Lazy>{children}</Lazy>
+    </RequireRole>
+  )
+}
+
 function Lazy({ children }: { children: ReactNode }) {
   return (
     <Suspense
@@ -83,6 +125,15 @@ export const router = createBrowserRouter([
           </RequireRole>
         ),
       },
+      { path: 'admin', element: <AdminRoute><AdminHomePage /></AdminRoute> },
+      { path: 'admin/branches', element: <AdminRoute><BranchesListPage /></AdminRoute> },
+      { path: 'admin/warehouses', element: <AdminRoute><WarehousesListPage /></AdminRoute> },
+      { path: 'admin/users', element: <AdminRoute><UsersListPage /></AdminRoute> },
+      { path: 'admin/products', element: <AdminRoute><ProductsListPage /></AdminRoute> },
+      { path: 'admin/products/:id', element: <AdminRoute><ProductDetailPage /></AdminRoute> },
+      { path: 'admin/raw-materials', element: <AdminRoute><RawMaterialsListPage /></AdminRoute> },
+      { path: 'admin/suppliers', element: <AdminRoute><SuppliersListPage /></AdminRoute> },
+      { path: 'admin/customers', element: <AdminRoute><CustomersListPage /></AdminRoute> },
     ],
   },
 ])

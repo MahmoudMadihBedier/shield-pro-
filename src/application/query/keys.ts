@@ -17,4 +17,10 @@ export const queryKeys = {
     trail: (filters: { entityRef?: string; actorId?: string } = {}) =>
       ['audit', 'trail', filters.entityRef ?? null, filters.actorId ?? null] as const,
   },
+  admin: {
+    root: () => ['admin'] as const,
+    list: (entity: string, params: unknown) => ['admin', 'list', entity, params] as const,
+    detail: (entity: string, id: string) => ['admin', 'detail', entity, id] as const,
+    counts: () => ['admin', 'counts'] as const,
+  },
 } as const
