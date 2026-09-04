@@ -16,7 +16,10 @@
             "events": [],
             "scopes": [
                 "rows.read",
-                "rows.write"
+                "rows.write",
+                "users.read",
+                "users.write",
+                "sessions.write"
             ],
             "schedule": "",
             "timeout": 15,

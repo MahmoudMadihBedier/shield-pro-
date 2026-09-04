@@ -19,7 +19,7 @@ describe('SUBMITTABLE_DOC_TABLES', () => {
 
   it('matches exactly the set of submittable document tables', () => {
     // The submittable docs are every movement/transaction table between
-    // `purchaseOrders` and `repCloseouts` in the registry.
+    // `purchaseOrders` and `payrollRuns` in the registry.
     const expected = [
       Tables.purchaseOrders,
       Tables.stockReceipts,
@@ -34,6 +34,7 @@ describe('SUBMITTABLE_DOC_TABLES', () => {
       Tables.writeOffs,
       Tables.stockCountSessions,
       Tables.repCloseouts,
+      Tables.payrollRuns,
     ].sort()
     expect([...SUBMITTABLE_DOC_TABLES].sort()).toEqual(expected)
   })

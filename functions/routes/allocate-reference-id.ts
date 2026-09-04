@@ -11,6 +11,7 @@
 import type { TablesDB } from 'node-appwrite'
 
 import { DATABASE_ID } from '../common/appwrite'
+import { requireStaffCaller } from '../common/caller'
 import { FnError } from '../common/handler'
 import {
   REFERENCE_PREFIXES,
@@ -57,8 +58,12 @@ async function bumpCounter(tablesDB: TablesDB, rowId: string): Promise<number> {
 export async function allocateReferenceId(
   tablesDB: TablesDB,
   input: AllocateInput,
+  caller: string | null,
   now: Date = new Date(),
 ): Promise<AllocateOutput> {
+  if (!caller) throw new FnError('unauthorized', 'a signed-in caller is required')
+  await requireStaffCaller(tablesDB, caller)
+
   const entity = String(input?.entity ?? '')
   if (!isReferenceEntity(entity)) {
     throw new FnError('validation', `unknown reference entity "${entity}"`)

@@ -9,6 +9,7 @@
 import type { TablesDB } from 'node-appwrite'
 
 import { DATABASE_ID } from '../common/appwrite'
+import { requireStaffCaller } from '../common/caller'
 import { FnError } from '../common/handler'
 import { checkSegregation } from '@/core/segregation'
 import { isSubmittableDocTable } from '@/core/document'
@@ -35,6 +36,7 @@ export async function segregationGuard(
   const table = String(input?.table ?? '')
   const rowId = String(input?.rowId ?? '')
   if (!caller) throw new FnError('unauthorized', 'a signed-in caller is required')
+  await requireStaffCaller(tablesDB, caller)
   if (!isSubmittableDocTable(table)) {
     throw new FnError('validation', `"${table}" is not a submittable document table`)
   }

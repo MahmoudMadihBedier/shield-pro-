@@ -8,9 +8,9 @@
  *
  * Read budget per node (`resolveNode`):
  *   1 `listRows` to fetch the row by `reference_id`
- * + 1 `listRows` per distinct reverse-lookup table (13 submittable doc tables;
+ * + 1 `listRows` per distinct reverse-lookup table (14 submittable doc tables;
  *   columns on the same table are OR-ed into a single query)
- * = 14 reads per node worst case — O(nodes), never N+1 per field.
+ * = 15 reads per node worst case — O(nodes), never N+1 per field.
  */
 import { z } from 'zod'
 

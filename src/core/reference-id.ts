@@ -30,6 +30,7 @@ export const REFERENCE_PREFIXES = {
   GeneralLedgerEntry: 'GLE',
   StockCountSession: 'CNT',
   RepCloseout: 'CLZ',
+  PayrollRun: 'PAY',
 } as const
 
 export type ReferenceEntity = keyof typeof REFERENCE_PREFIXES

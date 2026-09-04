@@ -75,6 +75,8 @@ export interface TextFieldProps extends BaseFieldProps {
   type?: 'text' | 'email' | 'password' | 'tel' | 'url' | 'search'
   placeholder?: string
   autoComplete?: string
+  /** Force text direction — e.g. `'ltr'` for a code/PIN typed inside an RTL form. */
+  dir?: 'ltr' | 'rtl'
 }
 
 export function TextField({
@@ -87,17 +89,19 @@ export function TextField({
   type = 'text',
   placeholder,
   autoComplete,
+  dir,
 }: TextFieldProps) {
   const { register } = useFormContext()
   return (
     <Field name={name} label={label} labelEn={labelEn} hint={hint}>
       <input
         type={type}
+        dir={dir}
         placeholder={placeholder}
         autoComplete={autoComplete}
         disabled={disabled}
         aria-required={required}
-        className={CONTROL_CLASS}
+        className={dir ? `${CONTROL_CLASS} text-start` : CONTROL_CLASS}
         {...register(name)}
       />
     </Field>

@@ -141,6 +141,17 @@ const ledger = (id: string, name: string, columns: Column[], indexes: Index[] = 
   indexes,
 })
 
+/** An append-only staff log (e.g. attendance): client may create, never edit
+ *  or delete — a correction is a new entry, per the no-deletion rule. */
+const log = (id: string, name: string, columns: Column[], indexes: Index[] = []): TableDef => ({
+  id,
+  name,
+  permissions: documentPerms,
+  rowSecurity: true,
+  columns,
+  indexes,
+})
+
 const control = (id: string, name: string, columns: Column[], indexes: Index[] = []): TableDef => ({
   id,
   name,
@@ -199,6 +210,7 @@ export const TABLES: TableDef[] = [
       str('sub_warehouse_id', 36),
       str('job_grade', 64),
       { key: 'is_active', type: 'boolean', default: true },
+      { key: 'base_salary', type: 'float', default: 0, min: 0 },
     ],
     [
       { key: 'users_auth_uq', type: 'unique', columns: ['auth_user_id'] },
@@ -273,6 +285,12 @@ export const TABLES: TableDef[] = [
         default: 'pending_approval',
       },
       str('created_by', 36),
+      // CRM client portal (Phase 3): the customer's own Appwrite Auth account.
+      // Its password IS the portal PIN — Appwrite owns hashing, rate-limiting
+      // and session management, so no custom credential store is needed. Never
+      // set by the client; only the portal-account Function (System Admin /
+      // Branch Accountant triggered) creates or resets it.
+      str('portal_user_id', 36),
     ],
     [
       { key: 'customers_code_uq', type: 'unique', columns: ['code'] },
@@ -499,6 +517,62 @@ export const TABLES: TableDef[] = [
       str('confirmed_by', 36),
     ],
     [{ key: 'closeouts_rep_date_uq', type: 'unique', columns: ['rep_user_id', 'business_date'] }],
+  ),
+
+  doc(
+    Tables.payrollRuns,
+    'Payroll runs',
+    [
+      str('pay_period_start', 16, true), // "YYYY-MM-DD"
+      str('pay_period_end', 16, true),
+      str('lines', 100000), // JSON: [{user_id, base_salary, incentives, deductions, net_pay}]
+      { key: 'total_net_pay', type: 'float', default: 0, min: 0 },
+    ],
+    [{ key: 'payroll_period_idx', type: 'key', columns: ['pay_period_start'] }],
+  ),
+
+  // ---- HR (System Admin / branch accountant owned) ----
+  log(
+    Tables.attendanceRecords,
+    'Attendance records',
+    [
+      str('user_id', 36, true),
+      str('date', 16, true), // "YYYY-MM-DD"
+      { key: 'check_in', type: 'datetime' },
+      { key: 'check_out', type: 'datetime' },
+      {
+        key: 'status',
+        type: 'enum',
+        elements: ['present', 'absent', 'leave', 'half_day'],
+        required: true,
+        default: 'present',
+      },
+      str('notes', 512),
+      str('branch_id', 36),
+      str('created_by', 36, true),
+      { key: 'created_at', type: 'datetime', required: true },
+    ],
+    [
+      { key: 'attendance_user_date_uq', type: 'unique', columns: ['user_id', 'date'] },
+      { key: 'attendance_branch_idx', type: 'key', columns: ['branch_id'] },
+    ],
+  ),
+
+  master(
+    Tables.incentiveRules,
+    'Incentive rules',
+    [
+      str('name', 128, true),
+      {
+        key: 'kind',
+        type: 'enum',
+        elements: ['sales_commission', 'production_bonus', 'attendance_bonus'],
+        required: true,
+      },
+      str('predicate', 2000), // JSON rule definition
+      { key: 'amount_or_pct', type: 'float', default: 0, min: 0 },
+      { key: 'is_active', type: 'boolean', default: true },
+    ],
   ),
 
   // ---- Immutable ledgers (Function-written only) ----
