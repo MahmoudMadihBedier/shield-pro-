@@ -12,6 +12,7 @@
 import { ExecutionMethod } from 'appwrite'
 
 import { appError, type AppError, type AppErrorCode } from '@/core/errors'
+import type { FraudCandidate } from '@/core/fraud'
 import type { GlLine } from '@/core/ledger'
 import type { ReferenceEntity } from '@/core/reference-id'
 import { err, ok, type Result } from '@/core/result'
@@ -28,6 +29,8 @@ export const ServerRoute = {
   postStockLedger: '/post-stock-ledger',
   postGl: '/post-gl',
   segregationGuard: '/segregation-guard',
+  fraudScan: '/fraud-scan',
+  reviewFraudFlag: '/review-fraud-flag',
 } as const
 
 export interface AllocatedReference {
@@ -83,6 +86,27 @@ export interface SegregationCheckResult {
   /** Ids of the violated SoD rules (`src/core/segregation.ts`); empty === clean. */
   violated: string[]
   clean: boolean
+}
+
+export interface FraudScanPayload {
+  /** Hours to look back over; server default 24, capped at 168 (7 days). */
+  lookbackHours?: number
+}
+
+export interface FraudScanResult {
+  scanned: { moves: number; auditEvents: number }
+  flagsCreated: number
+  flags: FraudCandidate[]
+}
+
+export interface ReviewFraudFlagPayload {
+  flagId: string
+  status: 'reviewed' | 'dismissed'
+}
+
+export interface ReviewFraudFlagResult {
+  id: string
+  status: string
 }
 
 const KNOWN_CODES: ReadonlySet<AppErrorCode> = new Set<AppErrorCode>([
@@ -194,6 +218,22 @@ export function checkSegregation(
   rowId: string,
 ): Promise<Result<SegregationCheckResult>> {
   return invoke<SegregationCheckResult>(ServerRoute.segregationGuard, { table, rowId })
+}
+
+/**
+ * Run the fraud-detection heuristics over a recent window and persist any new
+ * `fraud_flags` rows. Read-mostly for the caller: existing open flags are
+ * de-duplicated server-side, so a re-run never creates a duplicate.
+ */
+export function fraudScan(payload: FraudScanPayload = {}): Promise<Result<FraudScanResult>> {
+  return invoke<FraudScanResult>(ServerRoute.fraudScan, payload)
+}
+
+/** Resolve one `fraud_flags` row as reviewed or dismissed; only an `open` flag may transition. */
+export function reviewFraudFlag(
+  payload: ReviewFraudFlagPayload,
+): Promise<Result<ReviewFraudFlagResult>> {
+  return invoke<ReviewFraudFlagResult>(ServerRoute.reviewFraudFlag, payload)
 }
 
 export type { AppError }
