@@ -51,6 +51,13 @@ describe('shield-server router', () => {
     '/review-fraud-flag',
     '/evaluate-approval',
     '/decide-approval',
+    '/portal-account/create',
+    '/portal-account/reset',
+    '/portal-account/revoke',
+    '/portal/me',
+    '/portal/invoices',
+    '/portal/invoice-detail',
+    '/portal/receipts',
   ])(
     'has %s wired to a handler',
     async (path) => {

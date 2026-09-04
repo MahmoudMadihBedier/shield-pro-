@@ -15,7 +15,7 @@
  * Business logic lives in `functions/routes/*` as pure, unit-tested functions
  * that take a `TablesDB` — this file only wires the request to them.
  */
-import { tablesDbFromRequest } from '../../common/appwrite'
+import { tablesDbFromRequest, usersServiceFromRequest } from '../../common/appwrite'
 import { jsonHandler, type FnContext } from '../../common/handler'
 import { runInTransaction } from '../../common/transaction'
 import { allocateReferenceId, type AllocateInput } from '../../routes/allocate-reference-id'
@@ -27,6 +27,23 @@ import {
 import { evaluateApproval, type EvaluateApprovalInput } from '../../routes/evaluate-approval'
 import { fraudScan, type FraudScanInput } from '../../routes/fraud-scan'
 import { postGl, type PostGlInput } from '../../routes/post-gl'
+import {
+  createPortalAccount,
+  resetPortalPin,
+  revokePortalAccess,
+  type CreatePortalAccountInput,
+  type ResetPortalPinInput,
+  type RevokePortalAccessInput,
+} from '../../routes/portal-account'
+import {
+  getPortalInvoiceDetail,
+  getPortalMe,
+  listPortalInvoices,
+  listPortalReceipts,
+  type GetPortalInvoiceDetailInput,
+  type ListPortalInvoicesInput,
+  type ListPortalReceiptsInput,
+} from '../../routes/portal-data'
 import { postStockLedger, type PostStockLedgerInput } from '../../routes/post-stock-ledger'
 import {
   reviewFraudFlag,
@@ -74,6 +91,29 @@ const routes: Record<string, Route> = {
   ),
   '/decide-approval': jsonHandler<DecideApprovalInput>(async ({ body, req, caller }) =>
     runInTransaction(tablesDbFromRequest(req), (db) => decideApprovalRequest(db, body, caller)),
+  ),
+  // CRM client portal (Phase 3). The `Users` service can't participate in a
+  // TablesDB transaction, so these three stay un-transacted (see
+  // `functions/routes/portal-account.ts`'s header comment).
+  '/portal-account/create': jsonHandler<CreatePortalAccountInput>(async ({ body, req, caller }) =>
+    createPortalAccount(tablesDbFromRequest(req), usersServiceFromRequest(req), body, caller),
+  ),
+  '/portal-account/reset': jsonHandler<ResetPortalPinInput>(async ({ body, req, caller }) =>
+    resetPortalPin(tablesDbFromRequest(req), usersServiceFromRequest(req), body, caller),
+  ),
+  '/portal-account/revoke': jsonHandler<RevokePortalAccessInput>(async ({ body, req, caller }) =>
+    revokePortalAccess(tablesDbFromRequest(req), usersServiceFromRequest(req), body, caller),
+  ),
+  // Read-only, customer-scoped — no transaction, no audit row.
+  '/portal/me': jsonHandler(async ({ req, caller }) => getPortalMe(tablesDbFromRequest(req), caller)),
+  '/portal/invoices': jsonHandler<ListPortalInvoicesInput>(async ({ body, req, caller }) =>
+    listPortalInvoices(tablesDbFromRequest(req), body, caller),
+  ),
+  '/portal/invoice-detail': jsonHandler<GetPortalInvoiceDetailInput>(async ({ body, req, caller }) =>
+    getPortalInvoiceDetail(tablesDbFromRequest(req), body, caller),
+  ),
+  '/portal/receipts': jsonHandler<ListPortalReceiptsInput>(async ({ body, req, caller }) =>
+    listPortalReceipts(tablesDbFromRequest(req), body, caller),
   ),
 }
 
