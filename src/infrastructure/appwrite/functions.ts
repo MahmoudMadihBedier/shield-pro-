@@ -28,6 +28,15 @@ export const ServerRoute = {
   postStockLedger: '/post-stock-ledger',
   postGl: '/post-gl',
   segregationGuard: '/segregation-guard',
+  // CRM client portal (Phase 3) — see `functions/routes/portal-account.ts` and
+  // `functions/routes/portal-data.ts`.
+  createPortalAccount: '/portal-account/create',
+  resetPortalPin: '/portal-account/reset',
+  revokePortalAccess: '/portal-account/revoke',
+  portalMe: '/portal/me',
+  portalInvoices: '/portal/invoices',
+  portalInvoiceDetail: '/portal/invoice-detail',
+  portalReceipts: '/portal/receipts',
 } as const
 
 export interface AllocatedReference {
@@ -83,6 +92,89 @@ export interface SegregationCheckResult {
   /** Ids of the violated SoD rules (`src/core/segregation.ts`); empty === clean. */
   violated: string[]
   clean: boolean
+}
+
+// --- CRM client portal (Phase 3) -------------------------------------------
+
+export interface CreatePortalAccountPayload {
+  customerId: string
+}
+export interface CreatePortalAccountResult {
+  portalUserId: string
+  /** Shown to the admin exactly once — never persisted anywhere. */
+  pin: string
+}
+
+export interface ResetPortalPinPayload {
+  customerId: string
+}
+export interface ResetPortalPinResult {
+  /** Shown to the admin exactly once — never persisted anywhere. */
+  pin: string
+}
+
+export interface RevokePortalAccessPayload {
+  customerId: string
+}
+export interface RevokePortalAccessResult {
+  revoked: true
+}
+
+export interface PortalMeResult {
+  customerId: string
+  code: string
+  name: string
+  phone: string | null
+  branchId: string | null
+}
+
+export interface PortalInvoiceListPayload {
+  page?: number
+  pageSize?: number
+}
+export interface PortalInvoiceListItem {
+  id: string
+  referenceId: string
+  docStatus: number
+  netTotal: number
+  paymentMethod: string
+  postingDatetime: string
+}
+export interface PortalInvoiceListResult {
+  rows: PortalInvoiceListItem[]
+  total: number
+}
+
+export interface PortalInvoiceDetailPayload {
+  invoiceId: string
+}
+export interface PortalInvoiceDetailResult {
+  id: string
+  referenceId: string
+  lines: string
+  grossTotal: number
+  discountTotal: number
+  netTotal: number
+  paymentMethod: string
+  postingDatetime: string
+  docStatus: number
+}
+
+export interface PortalReceiptListPayload {
+  page?: number
+  pageSize?: number
+}
+export interface PortalReceiptListItem {
+  id: string
+  invoiceRef: string
+  amount: number
+  method: string
+  postingDatetime: string
+  docStatus: number
+}
+export interface PortalReceiptListResult {
+  rows: PortalReceiptListItem[]
+  total: number
 }
 
 const KNOWN_CODES: ReadonlySet<AppErrorCode> = new Set<AppErrorCode>([
@@ -194,6 +286,55 @@ export function checkSegregation(
   rowId: string,
 ): Promise<Result<SegregationCheckResult>> {
   return invoke<SegregationCheckResult>(ServerRoute.segregationGuard, { table, rowId })
+}
+
+// --- CRM client portal (Phase 3) -------------------------------------------
+
+/** Staff-only: create a customer's CRM portal Auth account, returning its one-time PIN. */
+export function createPortalAccount(
+  payload: CreatePortalAccountPayload,
+): Promise<Result<CreatePortalAccountResult>> {
+  return invoke<CreatePortalAccountResult>(ServerRoute.createPortalAccount, payload)
+}
+
+/** Staff-only: reset a customer's portal PIN, returning the new one-time PIN. */
+export function resetPortalPin(
+  payload: ResetPortalPinPayload,
+): Promise<Result<ResetPortalPinResult>> {
+  return invoke<ResetPortalPinResult>(ServerRoute.resetPortalPin, payload)
+}
+
+/** Staff-only: block logins and kill any live session for a customer's portal account. */
+export function revokePortalAccess(
+  payload: RevokePortalAccessPayload,
+): Promise<Result<RevokePortalAccessResult>> {
+  return invoke<RevokePortalAccessResult>(ServerRoute.revokePortalAccess, payload)
+}
+
+/** Portal-only: the signed-in customer's own profile. */
+export function getPortalMe(): Promise<Result<PortalMeResult>> {
+  return invoke<PortalMeResult>(ServerRoute.portalMe, {})
+}
+
+/** Portal-only: the signed-in customer's own invoices, paginated. */
+export function listPortalInvoices(
+  payload: PortalInvoiceListPayload = {},
+): Promise<Result<PortalInvoiceListResult>> {
+  return invoke<PortalInvoiceListResult>(ServerRoute.portalInvoices, payload)
+}
+
+/** Portal-only: one of the signed-in customer's own invoices, in full. */
+export function getPortalInvoiceDetail(
+  payload: PortalInvoiceDetailPayload,
+): Promise<Result<PortalInvoiceDetailResult>> {
+  return invoke<PortalInvoiceDetailResult>(ServerRoute.portalInvoiceDetail, payload)
+}
+
+/** Portal-only: the signed-in customer's own receipts, paginated. */
+export function listPortalReceipts(
+  payload: PortalReceiptListPayload = {},
+): Promise<Result<PortalReceiptListResult>> {
+  return invoke<PortalReceiptListResult>(ServerRoute.portalReceipts, payload)
 }
 
 export type { AppError }
