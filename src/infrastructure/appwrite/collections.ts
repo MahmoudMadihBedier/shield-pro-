@@ -33,6 +33,11 @@ export const Tables = {
   writeOffs: 'write_offs',
   stockCountSessions: 'stock_count_sessions',
   repCloseouts: 'rep_closeouts',
+  payrollRuns: 'payroll_runs',
+
+  // ---- HR (master data + logs, System Admin / branch accountant owned) ----
+  attendanceRecords: 'attendance_records',
+  incentiveRules: 'incentive_rules',
 
   // ---- Immutable ledgers (append-only, server-written) ----
   stockLedger: 'stock_ledger_entries',

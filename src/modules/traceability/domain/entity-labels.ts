@@ -24,6 +24,7 @@ export const ENTITY_LABELS: Record<string, EntityLabel> = {
   write_offs: { ar: 'إذن إعدام / هالك', en: 'Write-off / damage' },
   stock_count_sessions: { ar: 'جلسة جرد', en: 'Stock count session' },
   rep_closeouts: { ar: 'تقفيل يومي لمندوب', en: 'Rep daily close-out' },
+  payroll_runs: { ar: 'صرف رواتب', en: 'Payroll run' },
 }
 
 /** Label for an entity type, falling back to the raw id if it is unknown. */
