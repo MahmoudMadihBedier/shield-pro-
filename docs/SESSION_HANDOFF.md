@@ -1,98 +1,124 @@
-# Session handoff — 2026-09-04
+# Session handoff — 2026-09-04 (Wave 3 complete)
 
-**Phase 1 + Wave 2 complete.** 7 business modules built, merged, wired, pushed.
-Backend enforcement (transactions + SoD + RBAC/branch-scope) live on
-`shield-server` and smoke-tested.
+**Phase 1 + Wave 2 + Wave 3 done.** 10 business modules, tiered approvals,
+fraud detection, and a PIN-based CRM client portal — all merged, wired,
+deployed, and live-smoke-tested.
 
-## Branch — `feat/appwrite-scaffold` (pushed), HEAD `2433629`
+## Branch — `feat/appwrite-scaffold` (pushed), HEAD `e3be6f5`
 
-`pnpm lint` (only pre-existing `src/app/router.tsx` fast-refresh warnings, ~19
-now) · `pnpm typecheck` (app+scripts+functions) · `pnpm test` **467 / 63 files**
-· `pnpm build` (no INEFFECTIVE_DYNAMIC_IMPORT) · `pnpm fn:build`.
+`pnpm lint` (only pre-existing `src/app/router.tsx` fast-refresh warnings) ·
+`pnpm typecheck` (app+scripts+functions) · `pnpm test` **660 / 83 files** ·
+`pnpm build` (no INEFFECTIVE_DYNAMIC_IMPORT) · `pnpm fn:build`.
 
-Recent commits: Wave 2c (sales `392c8ab`, accounting `cdc7780`, Story 2.1
-`156b2e5`) each merged + wired; Wave 2b (purchasing/manufacturing/inventory);
-Wave 2a (admin `a15ffe4`); `0024ec4` shared doc layer; `8939103` txn wrapper;
-Phase 1 stories.
-
-## Modules (all on `@/shared/documents` + `@/modules/admin` domain types)
-| module | tables | routes |
-| --- | --- | --- |
-| **admin** | branches, warehouses, users, products+bom, raw_materials, suppliers, customers | `/admin/*` (SystemAdmin) |
-| **traceability** | (read chain + audit_log) | `/traceability`, `/audit-log` |
-| **purchasing** | purchase_orders, stock_receipts | `/purchasing/*` |
-| **manufacturing** | production_requests, production_batches | `/manufacturing/*` |
-| **inventory** | warehouse_transfers, stock_count_sessions, write_offs, bin_balances(read) | `/inventory/*` |
-| **accounting** | receipts, payment_vouchers, general_ledger_entries(read) | `/accounting/*` |
-| **sales** | sales_invoices, rep_stock_issues, rep_closeouts, rep_*_ledger(read) | `/sales/*` |
-
-Each module: `routes.tsx` (`RouteObject[]`, `React.lazy` + own Suspense,
-relative paths), `nav.ts` (`NavItem[]`), local `query-keys.ts`, `index.ts`
-barrel. `src/app/router.tsx` + `src/presentation/layout/nav.ts` import the
-**leaf** route/nav files and spread them. Each module's `post*ToLedger` /
-`post*ToGl` helper absorbs a re-post 409 as `ok({ alreadyPosted: true })`.
-`src/modules/{crm,hr}` are still empty.
-
-## `shield-server` — deployment `6a9aafc0d60519f5cdc4` active. **6 routes:**
+## `shield-server` — deployment `6a9b0d72a93c2fe23880` active. **17 routes:**
 `/allocate-reference-id`, `/submit-document`, `/cancel-document`,
-`/post-stock-ledger`, `/post-gl`, `/segregation-guard`.
-- The 4 mutating routes run inside `runInTransaction` (state + audit atomic).
-- `/submit-document` & `/cancel-document` now enforce (Story 2.1):
-  `canSubmitTable(roles, table)` → `canActOnBranch(principal, doc.branch_id)` →
-  `assertNoSelfApproval(row)` (the 4 SoD pairs). Caller roles + branch come from
-  `loadCallerContext` → the `users` profile table.
-- **Live-verified:** SoD violation → 403; valid submit → 200; `/segregation-guard`
-  missing row → 404.
-- A `users` profile row exists for the console account
-  (`6a95b5e86b745f5a76c4`, `roles: system_admin`) so MCP smoke tests pass the
-  RBAC gate. Real staff need a `users` row (admin module creates it).
-- Redeploy: `pnpm fn:deploy`.
+`/post-stock-ledger`, `/post-gl`, `/segregation-guard`, `/fraud-scan`,
+`/review-fraud-flag`, `/evaluate-approval`, `/decide-approval`,
+`/portal-account/{create,reset,revoke}`, `/portal/{me,invoices,invoice-detail,receipts}`.
+
+**Security hardening this wave (all live-verified):**
+- `requireStaffCaller` on every write route that lacked it — a `users` profile
+  row with ≥1 role IS staff; no row (a CRM portal account) is denied. Closes
+  a real gap where `/allocate-reference-id`, `/post-stock-ledger`, `/post-gl`,
+  `/segregation-guard` only checked "signed in", not "is staff".
+- CRM portal accounts are **function-mediated only** — no `tablesDB` client
+  ever reaches a customer session. Verified live: a customer session calling
+  a staff route (`/segregation-guard`) → 403; `/portal/invoice-detail` on
+  someone else's / a nonexistent invoice → 404/403, never a leak.
+- Revocation kills live sessions immediately (`users.updateStatus(false)` +
+  `users.deleteSessions`) — verified: a revoked PIN can no longer log in
+  (`403 user_blocked`).
+- Approval self-decision blocked (SoD) — verified live (`403 forbidden`).
+- Unmatched approval rule → fail-safe `force_manual` — verified live.
+- Deploy: `pnpm fn:deploy`. Function scopes: `rows.read/write`,
+  `users.read/write`, `sessions.write`.
+
+## Modules (10, all on `@/shared/documents` + `@/modules/admin` types)
+admin · traceability · purchasing · manufacturing · inventory · accounting ·
+sales · **returns** (Wave-3 gap fill) · **approvals** (Story 2.2) · **fraud**
+(Story 2.3) · **crm** (Phase 3 client portal). `src/modules/hr/` still empty.
+
+Wiring pattern held throughout: each module ships `routes.tsx`
+(`RouteObject[]`, `React.lazy` + own Suspense, relative paths — CRM's
+`portalRoutes` are the one exception, **top-level absolute** siblings of the
+staff `/` branch, not nested in `AppLayout`), `nav.ts` (`NavItem[]`), local
+`query-keys.ts`, `index.ts` barrel. The shell (`src/app/router.tsx`,
+`src/presentation/layout/nav.ts`, `functions/server/src/main.ts`) imports
+**leaf** files, never module barrels (barrels pull every page into the main
+chunk). `AppProviders` now nests `PortalAuthProvider` alongside the staff
+`AuthProvider` — both always mounted, independent of each other.
+
+## CRM portal — how it works
+A customer's **PIN is the password** on their own dedicated Appwrite Auth
+account (`<code>@portal.shieldpro.local`, `src/core/portal.ts`). Appwrite owns
+hashing/rate-limiting/sessions. Admin (`SystemAdmin`/`BranchAccountant`/
+`ChiefAccountant`) creates/resets the account via `/portal-account/*` — the
+8-digit PIN is returned once and never persisted. `customers.portal_user_id`
+links the two. The portal (`/portal/login`, `/portal/*`) never touches
+`tablesDB`; every read is `requireCustomerCaller`-scoped. Self-service PIN
+change is a plain `account.updatePassword()` client call (no Function).
+`src/modules/crm`'s `PortalAccountPanel` (admin-side create/reset/revoke UI)
+is built but **not yet mounted** into a customer detail page — do that next
+time a customer detail view exists in `@/modules/admin`.
 
 ## Deferred / tech debt (carry forward)
-1. **Two role sources**: client `Principal` uses **Teams**; `loadCallerContext`
-   uses the `users.roles` **string** column (64 chars). They can drift. Fix
-   (schema v2): resolve roles from Teams inside the Function, or make `roles` an
-   array. `SUBMIT_ROLE_BY_TABLE` in `src/core/access.ts` is a first cut — tune.
-2. SoD rule 4 is `created_by ≠ approved_by` (no dedicated purchase/payment actor
-   columns — schema frozen).
-3. Ledger voucher dedup is in-Function only (no DB unique on `*_ledger.voucher_no`).
-4. `/allocate-reference-id` sequence gap on a lost response (documented).
-5. `post*ToLedger` helpers exist and detail pages call them, but **not every
-   confirmed-movement path is wired** — audit each module's submit/confirm
-   actions actually post.
-6. Approval workflow (`approval_requests`/`approval_rules`) — Story 2.2
-   `/approve` route + engine — NOT built. Transfer/request status flows currently
-   advance via `updateDraft` on a still-Draft row.
-7. `rep_closeouts.expected` bag is hand-entered — needs a `rep-closeout` Function
-   to build it from the day's issues/sales/returns (Story 2.4 completion).
-8. Aging/GL repos scan client-side up to a row cap — move server-side (Plan §4.2).
-9. `src/app/router.tsx` fast-refresh lint warnings — one `.oxlintrc` override.
+1. Two role sources: client `Principal` (Teams) vs `loadCallerContext`
+   (`users.roles` string, 64 chars). Schema-v2 fix: resolve from Teams
+   server-side, or make `roles` an array.
+2. Ledger voucher dedup is in-Function only (no DB unique on `voucher_no`).
+3. `/allocate-reference-id` sequence gap on a lost response (documented).
+4. Not every module's "confirm movement" path is audited end-to-end for
+   actually calling its `post*ToLedger` helper — spot-check needed.
+5. Transfer/request status flows advance via `updateDraft` on a still-Draft
+   row (no dedicated Function for arbitrary `status` changes) — fine for now,
+   revisit if concurrent approvals become a real race.
+6. `rep_closeouts.expected` is hand-entered; needs a Function to build it from
+   the day's issues/sales/returns for Story 2.4 to be complete.
+7. CRM: no reactivate route (revoke is one-way today — re-running `create`
+   on an already-linked customer is blocked; add `/portal-account/reactivate`
+   when needed). `PortalAccountPanel` not mounted anywhere yet.
+8. Aging/GL/fraud-scan repos scan up to a row cap client/function-side — move
+   server-side aggregation later (Plan §4.2).
+9. `src/app/router.tsx` fast-refresh lint warnings — one `.oxlintrc` override
+   would silence the growing pile permanently.
 
 ## Next
-- **Story 2.2** — `/approve` route + `approval_rules`/`approval_requests` engine
-  (tiered auto-approve vs escalate; log every decision); exceptions dashboard.
-- **Story 2.3** — `/fraud-scan` route → `fraud_flags` (round-tripping, repeated
-  movement, high reversal ratio).
-- **crm** module (Phase 3 — client portal, `client_id` ≠ password hardening).
-- **hr** module (attendance, payroll, incentives).
+- **Mount `PortalAccountPanel`** into a customer detail view.
+- **hr** module — needs new schema (attendance/payroll/incentives tables
+  don't exist yet); design + `provision.ts` update needed first, same as the
+  `customers.portal_user_id` column this wave.
+- **Story 2.6** — `NotificationService` over Appwrite Realtime.
 - **Phase 4** — reporting / Excel I/O / dashboards (consumes every module).
-- Wire the remaining `post*` calls (deferred #5); `NotificationService` over
-  Realtime (Story 2.6).
-- **Manual smoke**: `pnpm dev`, log in as `admin@shieldpro.local`, click through
-  `/admin/*` → create master data → exercise a purchase→receipt→batch→transfer→
-  invoice→receipt chain and confirm ledgers + `/traceability` populate.
+- Wire `/evaluate-approval` into the actual document-submit flows where the
+  plan calls for auto-approve/escalate (currently a standalone route, not yet
+  called from purchasing/sales/inventory submit actions).
+- **Manual smoke**: `pnpm dev`, log in as `admin@shieldpro.local`
+  (password in Claude memory), click through every module; a real branch
+  ("menouf") and staff account already exist from earlier manual use — don't
+  delete them.
 
 ## Watch out for
 - Agent `isolation: worktree` branches from the repo's FIRST commit — every
-  agent prompt must `git reset --hard <HEAD-sha>` in step 0. Agents also keep
-  dying on flaky network / session limits — resume with a "run the gates" msg;
-  their worktree work survives. Check `git worktree list` for orphans.
+  agent prompt must `git reset --hard <HEAD-sha>` in step 0.
+- Agents die on flaky network / session rate-limits mid-run — **their work
+  survives in the worktree**; resume with "run the gates and report" rather
+  than restarting from scratch.
+- When 3+ agents touch `src/infrastructure/appwrite/functions.ts` in
+  parallel, expect an additive merge conflict there — resolve by keeping both
+  sides in sequence (never a real logical conflict so far).
+- `functions_update` (MCP) appears to be a full replace, not a patch — omitted
+  optional fields (`execute`, `commands`) came back **empty** once. Always pass
+  the complete current field set.
 - `.claude/worktrees/` git-ignored + vitest-excluded.
 - Free tier: 2-Function cap (one `shield-server`); slow column builds; txn ttl
-  min 60s; MCP mutating calls sometimes hit the auto-mode classifier — retry.
-- `pnpm-workspace.yaml`: `allowBuilds: { esbuild: true }` + `verifyDepsBeforeRun: false`.
-- git user `madih` commits/pushes alongside this session.
-- `provisioner` key lacks `rules.*` → use `fn:deploy` (create-deployment), not push.
+  min 60s; Appwrite min password length 8 (why the PIN is 8 digits).
+- `pnpm-workspace.yaml`: `allowBuilds: { esbuild: true }` +
+  `verifyDepsBeforeRun: false`.
+- git user `madih` commits/pushes alongside this session — a real branch and
+  customer data may already exist from manual use; smoke-test data must be
+  cleaned up carefully (this session always deletes what it creates).
+- `provisioner` key lacks `rules.*` → use `fn:deploy` (create-deployment), not
+  `appwrite push`.
 
 ## Vercel
 `vercel.json` in place. User owns Vercel — don't run `vercel`.
