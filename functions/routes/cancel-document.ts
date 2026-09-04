@@ -11,8 +11,11 @@ import type { TablesDB } from 'node-appwrite'
 import { DATABASE_ID } from '../common/appwrite'
 import { FnError } from '../common/handler'
 import { appendAudit } from '../common/audit'
+import { loadCallerContext } from '../common/caller'
 import { DocStatus, canTransition } from '@/core/doc-status'
 import { documentEnvelopeSchema, isSubmittableDocTable } from '@/core/document'
+import { canActOnBranch, canSubmitTable } from '@/core/access'
+import { assertNoSelfApproval } from '@/core/segregation'
 
 export interface CancelInput {
   table: string
@@ -47,7 +50,6 @@ export async function cancelDocument(
   }
   if (!rowId) throw new FnError('validation', 'rowId is required')
   if (!reason) throw new FnError('validation', 'a cancellation reason is required')
-  // TODO(story 2.1): assert the caller's role + branch may cancel this document.
 
   let row: Record<string, unknown>
   try {
@@ -64,6 +66,30 @@ export async function cancelDocument(
   const envelope = documentEnvelopeSchema.safeParse(row)
   if (!envelope.success) {
     throw new FnError('server', `${table}/${rowId} is missing a valid document envelope`)
+  }
+
+  // Story 2.1 — a cancellation is a privileged action: same RBAC + branch-scope
+  // gate as submit, and the SoD guard applies here too. Enforced server-side
+  // only (claude.md A.6).
+  const callerCtx = await loadCallerContext(tablesDB, caller)
+  if (!canSubmitTable(callerCtx.roles, table)) {
+    throw new FnError('forbidden', 'your role may not cancel this document type')
+  }
+  if (
+    !canActOnBranch(
+      { userId: callerCtx.userId, roles: callerCtx.roles, branchId: callerCtx.branchId },
+      envelope.data.branch_id,
+    )
+  ) {
+    throw new FnError('forbidden', 'this document belongs to another branch')
+  }
+  try {
+    assertNoSelfApproval(row)
+  } catch (e) {
+    throw new FnError(
+      'forbidden',
+      e instanceof Error ? e.message : 'segregation of duties violated',
+    )
   }
 
   const from = envelope.data.doc_status
@@ -96,7 +122,7 @@ export async function cancelDocument(
     entityType: table,
     entityRef: envelope.data.reference_id,
     before: { doc_status: DocStatus.Submitted },
-    after: { doc_status: DocStatus.Cancelled, reason },
+    after: { doc_status: DocStatus.Cancelled, reason, actorRoles: callerCtx.roles },
   })
 
   return { table, rowId, referenceId: envelope.data.reference_id, docStatus: DocStatus.Cancelled }

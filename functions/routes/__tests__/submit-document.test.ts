@@ -6,8 +6,14 @@ import { submitDocument } from '../submit-document'
 
 const NOW = new Date('2026-09-01T12:00:00.000Z')
 
+/** A `users` profile lookup result for `loadCallerContext`. */
+function profile(roles = 'sales_rep', branchId: string | null = null) {
+  return { total: 1, rows: [{ auth_user_id: 'auth', roles, branch_id: branchId ?? '' }] }
+}
+
 function fakeDb(over: Partial<Record<keyof TablesDB, unknown>>): TablesDB {
-  return over as unknown as TablesDB
+  // Default: caller has an allowed role for `sales_invoices` and no branch pin.
+  return { listRows: vi.fn().mockResolvedValue(profile()), ...over } as unknown as TablesDB
 }
 
 function draftRow(overrides: Record<string, unknown> = {}) {
@@ -43,7 +49,12 @@ describe('submitDocument', () => {
   it('maps a missing row to not_found', async () => {
     const getRow = vi.fn().mockRejectedValue(Object.assign(new Error('nope'), { code: 404 }))
     await expect(
-      submitDocument(fakeDb({ getRow }), { table: 'sales_invoices', rowId: 'row-1' }, 'user-1', NOW),
+      submitDocument(
+        fakeDb({ getRow }),
+        { table: 'sales_invoices', rowId: 'row-1' },
+        'user-1',
+        NOW,
+      ),
     ).rejects.toMatchObject({ code: 'not_found' })
   })
 
@@ -64,17 +75,76 @@ describe('submitDocument', () => {
   it('refuses to submit a cancelled row', async () => {
     const getRow = vi.fn().mockResolvedValue(draftRow({ doc_status: 2 }))
     await expect(
-      submitDocument(fakeDb({ getRow }), { table: 'sales_invoices', rowId: 'row-1' }, 'user-1', NOW),
+      submitDocument(
+        fakeDb({ getRow }),
+        { table: 'sales_invoices', rowId: 'row-1' },
+        'user-1',
+        NOW,
+      ),
     ).rejects.toMatchObject({ code: 'conflict' })
+  })
+
+  it('rejects a caller whose role may not submit this document type', async () => {
+    const getRow = vi.fn().mockResolvedValue(draftRow())
+    const listRows = vi.fn().mockResolvedValue(profile('raw_store_keeper'))
+    await expect(
+      submitDocument(
+        fakeDb({ getRow, listRows }),
+        { table: 'sales_invoices', rowId: 'row-1' },
+        'user-1',
+        NOW,
+      ),
+    ).rejects.toMatchObject({ code: 'forbidden' })
+  })
+
+  it('rejects a caller bound to a different branch', async () => {
+    const getRow = vi.fn().mockResolvedValue(draftRow({ branch_id: 'giza' }))
+    const listRows = vi.fn().mockResolvedValue(profile('sales_rep', 'cairo'))
+    await expect(
+      submitDocument(
+        fakeDb({ getRow, listRows }),
+        { table: 'sales_invoices', rowId: 'row-1' },
+        'user-1',
+        NOW,
+      ),
+    ).rejects.toMatchObject({ code: 'forbidden' })
+  })
+
+  it('rejects a row that violates segregation of duties (requested_by === approved_by)', async () => {
+    const getRow = vi
+      .fn()
+      .mockResolvedValue(draftRow({ requested_by: 'user-1', approved_by: 'user-1' }))
+    await expect(
+      submitDocument(
+        fakeDb({ getRow }),
+        { table: 'sales_invoices', rowId: 'row-1' },
+        'user-1',
+        NOW,
+      ),
+    ).rejects.toMatchObject({ code: 'forbidden' })
+  })
+
+  it('rejects a caller with no profile row and a non-global role', async () => {
+    const getRow = vi.fn().mockResolvedValue(draftRow())
+    const listRows = vi.fn().mockResolvedValue({ total: 0, rows: [] })
+    await expect(
+      submitDocument(
+        fakeDb({ getRow, listRows }),
+        { table: 'sales_invoices', rowId: 'row-1' },
+        'user-1',
+        NOW,
+      ),
+    ).rejects.toMatchObject({ code: 'forbidden' })
   })
 
   it('flips a draft to submitted, stamps the posting time, and writes an audit row', async () => {
     const getRow = vi.fn().mockResolvedValue(draftRow())
     const updateRow = vi.fn().mockResolvedValue({})
     const createRow = vi.fn().mockResolvedValue({})
+    const listRows = vi.fn().mockResolvedValue(profile('system_admin'))
 
     const out = await submitDocument(
-      fakeDb({ getRow, updateRow, createRow }),
+      fakeDb({ getRow, updateRow, createRow, listRows }),
       { table: 'sales_invoices', rowId: 'row-1' },
       'user-7',
       NOW,

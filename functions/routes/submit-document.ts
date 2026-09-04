@@ -2,16 +2,20 @@
  * Draft → Submitted. The only path that confirms a business document.
  *
  * Story 1.2 scope: state transition + posting timestamp + audit trail.
- * Deferred: SoD guard (Story 2.1), tiered approval engine (2.2), ledger posting
- * (1.3). Those hook in here as follow-ups, before the `updateRow` call.
+ * Story 2.1 adds the RBAC + branch-scope + segregation-of-duties gate below.
+ * Deferred: tiered approval engine (2.2), ledger posting (1.3). Those hook in
+ * here as follow-ups, before the `updateRow` call.
  */
 import { Permission, Role, type TablesDB } from 'node-appwrite'
 
 import { DATABASE_ID } from '../common/appwrite'
 import { FnError } from '../common/handler'
 import { appendAudit } from '../common/audit'
+import { loadCallerContext } from '../common/caller'
 import { DocStatus, canTransition } from '@/core/doc-status'
 import { documentEnvelopeSchema, isSubmittableDocTable } from '@/core/document'
+import { canActOnBranch, canSubmitTable } from '@/core/access'
+import { assertNoSelfApproval } from '@/core/segregation'
 
 /** A submitted document is immutable to every client — only Functions write it. */
 const READ_ONLY_PERMS = [Permission.read(Role.users())]
@@ -46,7 +50,6 @@ export async function submitDocument(
     throw new FnError('validation', `"${table}" is not a submittable document table`)
   }
   if (!rowId) throw new FnError('validation', 'rowId is required')
-  // TODO(story 2.1): assert the caller's role + branch may submit this document.
 
   let row: Record<string, unknown>
   try {
@@ -63,6 +66,29 @@ export async function submitDocument(
   const envelope = documentEnvelopeSchema.safeParse(row)
   if (!envelope.success) {
     throw new FnError('server', `${table}/${rowId} is missing a valid document envelope`)
+  }
+
+  // Story 2.1 — RBAC + branch scope + segregation of duties. Enforcement lives
+  // here (and in collection permissions), never in the client (claude.md A.6).
+  const callerCtx = await loadCallerContext(tablesDB, caller)
+  if (!canSubmitTable(callerCtx.roles, table)) {
+    throw new FnError('forbidden', 'your role may not submit this document type')
+  }
+  if (
+    !canActOnBranch(
+      { userId: callerCtx.userId, roles: callerCtx.roles, branchId: callerCtx.branchId },
+      envelope.data.branch_id,
+    )
+  ) {
+    throw new FnError('forbidden', 'this document belongs to another branch')
+  }
+  try {
+    assertNoSelfApproval(row)
+  } catch (e) {
+    throw new FnError(
+      'forbidden',
+      e instanceof Error ? e.message : 'segregation of duties violated',
+    )
   }
 
   const from = envelope.data.doc_status
@@ -91,7 +117,11 @@ export async function submitDocument(
     entityType: table,
     entityRef: envelope.data.reference_id,
     before: { doc_status: DocStatus.Draft },
-    after: { doc_status: DocStatus.Submitted, posting_datetime: postingDatetime },
+    after: {
+      doc_status: DocStatus.Submitted,
+      posting_datetime: postingDatetime,
+      actorRoles: callerCtx.roles,
+    },
   })
 
   return {

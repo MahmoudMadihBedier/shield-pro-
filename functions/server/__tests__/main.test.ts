@@ -43,13 +43,16 @@ describe('shield-server router', () => {
     expect(payload).toMatchObject({ ok: false, error: { code: 'server' } })
   })
 
-  it.each(['/post-stock-ledger', '/post-gl'])('has %s wired to a handler', async (path) => {
-    // Registered routes reach their handler and fail building a client (no
-    // x-appwrite-key) → a 500 server envelope, never a 404 not_found.
-    const c = ctx(path)
-    await main(c)
-    const [payload, status] = (c.res.json as ReturnType<typeof vi.fn>).mock.calls[0] ?? []
-    expect(status).toBe(500)
-    expect(payload).toMatchObject({ ok: false, error: { code: 'server' } })
-  })
+  it.each(['/post-stock-ledger', '/post-gl', '/segregation-guard'])(
+    'has %s wired to a handler',
+    async (path) => {
+      // Registered routes reach their handler and fail building a client (no
+      // x-appwrite-key) → a 500 server envelope, never a 404 not_found.
+      const c = ctx(path)
+      await main(c)
+      const [payload, status] = (c.res.json as ReturnType<typeof vi.fn>).mock.calls[0] ?? []
+      expect(status).toBe(500)
+      expect(payload).toMatchObject({ ok: false, error: { code: 'server' } })
+    },
+  )
 })
