@@ -27,6 +27,7 @@ export const ServerRoute = {
   cancelDocument: '/cancel-document',
   postStockLedger: '/post-stock-ledger',
   postGl: '/post-gl',
+  segregationGuard: '/segregation-guard',
 } as const
 
 export interface AllocatedReference {
@@ -76,6 +77,12 @@ export interface PostGlPayload {
 export interface PostGlResult {
   voucherNo: string
   entries: number
+}
+
+export interface SegregationCheckResult {
+  /** Ids of the violated SoD rules (`src/core/segregation.ts`); empty === clean. */
+  violated: string[]
+  clean: boolean
 }
 
 const KNOWN_CODES: ReadonlySet<AppErrorCode> = new Set<AppErrorCode>([
@@ -136,8 +143,7 @@ async function invoke<T>(path: string, payload: unknown): Promise<Result<T>> {
   }
   if (parsed.ok) return ok(parsed.data)
 
-  const message =
-    parsed.error?.message ?? 'The operation could not be completed. Please try again.'
+  const message = parsed.error?.message ?? 'The operation could not be completed. Please try again.'
   return err(appError(toAppErrorCode(parsed.error?.code), message))
 }
 
@@ -176,6 +182,18 @@ export function postStockLedger(
  */
 export function postGl(payload: PostGlPayload): Promise<Result<PostGlResult>> {
   return invoke<PostGlResult>(ServerRoute.postGl, payload)
+}
+
+/**
+ * Read-only pre-check for the Submit button: does `<table>/<rowId>` currently
+ * break a segregation-of-duties rule? The authoritative check still runs inside
+ * `submitDocument` / `cancelDocument`.
+ */
+export function checkSegregation(
+  table: string,
+  rowId: string,
+): Promise<Result<SegregationCheckResult>> {
+  return invoke<SegregationCheckResult>(ServerRoute.segregationGuard, { table, rowId })
 }
 
 export type { AppError }
