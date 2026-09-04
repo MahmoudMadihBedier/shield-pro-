@@ -10,6 +10,7 @@
  *   POST /cancel-document        { table, rowId, reason }    → { table, rowId, referenceId, docStatus }
  *   POST /post-stock-ledger      { voucherType, voucherNo, postingDatetime, moves } → { voucherNo, entries, balances }
  *   POST /post-gl                { voucherType, voucherNo, postingDatetime, branchId?, lines } → { voucherNo, entries }
+ *   POST /segregation-guard      { table, rowId }           → { violated, clean }
  *
  * Business logic lives in `functions/routes/*` as pure, unit-tested functions
  * that take a `TablesDB` — this file only wires the request to them.
@@ -21,6 +22,7 @@ import { allocateReferenceId, type AllocateInput } from '../../routes/allocate-r
 import { cancelDocument, type CancelInput } from '../../routes/cancel-document'
 import { postGl, type PostGlInput } from '../../routes/post-gl'
 import { postStockLedger, type PostStockLedgerInput } from '../../routes/post-stock-ledger'
+import { segregationGuard, type SegregationGuardInput } from '../../routes/segregation-guard'
 import { submitDocument, type SubmitInput } from '../../routes/submit-document'
 
 type Route = (context: FnContext) => Promise<unknown>
@@ -43,6 +45,10 @@ const routes: Record<string, Route> = {
   ),
   '/post-gl': jsonHandler<PostGlInput>(async ({ body, req, caller }) =>
     runInTransaction(tablesDbFromRequest(req), (db) => postGl(db, body, caller)),
+  ),
+  // Read-only pre-check — no transaction, no audit row.
+  '/segregation-guard': jsonHandler<SegregationGuardInput>(async ({ body, req, caller }) =>
+    segregationGuard(tablesDbFromRequest(req), body, caller),
   ),
 }
 
