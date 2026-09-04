@@ -16,6 +16,7 @@ import { z } from 'zod'
 import { rolesFromTeamIds } from '@/core/principal'
 import type { Role } from '@/core/rbac'
 import { DATABASE_ID } from './appwrite'
+import { FnError } from './handler'
 
 const USERS_TABLE = 'users'
 
@@ -75,4 +76,25 @@ export async function loadCallerContext(
   const branchId = profile.branch_id && profile.branch_id.trim() !== '' ? profile.branch_id : null
 
   return { userId: callerUserId, roles: parseRoles(profile.roles), branchId }
+}
+
+/**
+ * Gate a route to staff only. A `users` profile row with at least one role IS
+ * "staff" — a CRM portal account (Appwrite Auth user with no `users` row) has
+ * none and is denied. Every route that isn't explicitly customer-facing must
+ * call this before touching a table a customer session could otherwise reach
+ * via `execute: users` on the Function (segregation-guard, allocate-
+ * reference-id, post-stock-ledger, post-gl). `submit-document` / `cancel-
+ * document` get the equivalent check for free from `canSubmitTable`, which
+ * denies an empty role list for every table.
+ */
+export async function requireStaffCaller(
+  tablesDB: TablesDB,
+  callerUserId: string,
+): Promise<CallerContext> {
+  const ctx = await loadCallerContext(tablesDB, callerUserId)
+  if (ctx.roles.length === 0) {
+    throw new FnError('forbidden', 'this action is restricted to staff accounts')
+  }
+  return ctx
 }

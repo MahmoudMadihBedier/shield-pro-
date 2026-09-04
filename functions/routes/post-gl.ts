@@ -10,6 +10,7 @@
 import { ID, Query, type TablesDB } from 'node-appwrite'
 
 import { DATABASE_ID } from '../common/appwrite'
+import { requireStaffCaller } from '../common/caller'
 import { FnError } from '../common/handler'
 import { appendAudit } from '../common/audit'
 import { assertBalanced, LedgerError, type GlLine } from '@/core/ledger'
@@ -48,6 +49,9 @@ export async function postGl(
   const postingDatetime = String(input?.postingDatetime ?? '').trim()
   const branchId = input?.branchId ?? null
   const lines = Array.isArray(input?.lines) ? input.lines : []
+
+  if (!caller) throw new FnError('unauthorized', 'a signed-in caller is required')
+  await requireStaffCaller(tablesDB, caller)
 
   if (!voucherType) throw new FnError('validation', 'voucherType is required')
   if (!voucherNo) throw new FnError('validation', 'voucherNo is required')

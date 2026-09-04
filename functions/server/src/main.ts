@@ -29,8 +29,8 @@ type Route = (context: FnContext) => Promise<unknown>
 
 const routes: Record<string, Route> = {
   // A single atomic `incrementRowColumn` — no transaction needed.
-  '/allocate-reference-id': jsonHandler<AllocateInput>(async ({ body, req }) =>
-    allocateReferenceId(tablesDbFromRequest(req), body),
+  '/allocate-reference-id': jsonHandler<AllocateInput>(async ({ body, req, caller }) =>
+    allocateReferenceId(tablesDbFromRequest(req), body, caller),
   ),
   // Read-check-write + audit: wrapped so the transition and its audit row
   // commit together, and concurrent writers of the same row conflict.

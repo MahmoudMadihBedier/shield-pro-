@@ -14,6 +14,7 @@
 import { ID, Query, type TablesDB } from 'node-appwrite'
 
 import { DATABASE_ID } from '../common/appwrite'
+import { requireStaffCaller } from '../common/caller'
 import { FnError } from '../common/handler'
 import { appendAudit } from '../common/audit'
 import { LedgerError, nextQtyAfter } from '@/core/ledger'
@@ -62,6 +63,9 @@ export async function postStockLedger(
   const voucherNo = String(input?.voucherNo ?? '').trim()
   const postingDatetime = String(input?.postingDatetime ?? '').trim()
   const moves = Array.isArray(input?.moves) ? input.moves : []
+
+  if (!caller) throw new FnError('unauthorized', 'a signed-in caller is required')
+  await requireStaffCaller(tablesDB, caller)
 
   if (!voucherType) throw new FnError('validation', 'voucherType is required')
   if (!voucherNo) throw new FnError('validation', 'voucherNo is required')

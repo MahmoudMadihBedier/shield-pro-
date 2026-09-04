@@ -5,16 +5,36 @@ import { FnError } from '../../common/handler'
 import { allocateReferenceId } from '../allocate-reference-id'
 
 const AUG_2026 = new Date('2026-08-15T10:00:00.000Z')
+const CALLER = 'user-1'
+
+/** A `users` profile lookup result for `requireStaffCaller`. */
+function profile(roles = 'purchasing_accountant') {
+  return { total: 1, rows: [{ auth_user_id: CALLER, roles, branch_id: '' }] }
+}
 
 function fakeDb(over: Partial<Record<keyof TablesDB, unknown>>): TablesDB {
-  return over as unknown as TablesDB
+  // Default: caller has a staff profile, so requireStaffCaller passes.
+  return { listRows: vi.fn().mockResolvedValue(profile()), ...over } as unknown as TablesDB
 }
 
 describe('allocateReferenceId', () => {
-  it('rejects an unknown entity before touching the database', async () => {
+  it('rejects an anonymous caller', async () => {
+    await expect(
+      allocateReferenceId(fakeDb({}), { entity: 'SalesInvoice' }, null, AUG_2026),
+    ).rejects.toMatchObject({ code: 'unauthorized' })
+  })
+
+  it('rejects a caller with no staff profile', async () => {
+    const listRows = vi.fn().mockResolvedValue({ total: 0, rows: [] })
+    await expect(
+      allocateReferenceId(fakeDb({ listRows }), { entity: 'SalesInvoice' }, CALLER, AUG_2026),
+    ).rejects.toMatchObject({ code: 'forbidden' })
+  })
+
+  it('rejects an unknown entity before touching the counter', async () => {
     const incrementRowColumn = vi.fn()
     await expect(
-      allocateReferenceId(fakeDb({ incrementRowColumn }), { entity: 'Nope' }, AUG_2026),
+      allocateReferenceId(fakeDb({ incrementRowColumn }), { entity: 'Nope' }, CALLER, AUG_2026),
     ).rejects.toBeInstanceOf(FnError)
     expect(incrementRowColumn).not.toHaveBeenCalled()
   })
@@ -24,6 +44,7 @@ describe('allocateReferenceId', () => {
     const out = await allocateReferenceId(
       fakeDb({ incrementRowColumn }),
       { entity: 'SalesInvoice' },
+      CALLER,
       AUG_2026,
     )
     expect(out).toEqual({
@@ -49,6 +70,7 @@ describe('allocateReferenceId', () => {
     const out = await allocateReferenceId(
       fakeDb({ incrementRowColumn, createRow }),
       { entity: 'PurchaseOrder' },
+      CALLER,
       new Date('2027-01-02T00:00:00.000Z'),
     )
 
@@ -66,7 +88,7 @@ describe('allocateReferenceId', () => {
     const boom = Object.assign(new Error('server on fire'), { code: 500 })
     const incrementRowColumn = vi.fn().mockRejectedValue(boom)
     await expect(
-      allocateReferenceId(fakeDb({ incrementRowColumn }), { entity: 'SalesInvoice' }, AUG_2026),
+      allocateReferenceId(fakeDb({ incrementRowColumn }), { entity: 'SalesInvoice' }, CALLER, AUG_2026),
     ).rejects.toBe(boom)
   })
 
@@ -83,6 +105,7 @@ describe('allocateReferenceId', () => {
     const out = await allocateReferenceId(
       fakeDb({ incrementRowColumn, createRow }),
       { entity: 'PurchaseOrder' },
+      CALLER,
       new Date('2027-01-02T00:00:00.000Z'),
     )
 

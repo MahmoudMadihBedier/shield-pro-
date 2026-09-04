@@ -273,6 +273,12 @@ export const TABLES: TableDef[] = [
         default: 'pending_approval',
       },
       str('created_by', 36),
+      // CRM client portal (Phase 3): the customer's own Appwrite Auth account.
+      // Its password IS the portal PIN — Appwrite owns hashing, rate-limiting
+      // and session management, so no custom credential store is needed. Never
+      // set by the client; only the portal-account Function (System Admin /
+      // Branch Accountant triggered) creates or resets it.
+      str('portal_user_id', 36),
     ],
     [
       { key: 'customers_code_uq', type: 'unique', columns: ['code'] },

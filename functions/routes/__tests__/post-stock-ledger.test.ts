@@ -5,9 +5,13 @@ import { FnError } from '../../common/handler'
 import { postStockLedger } from '../post-stock-ledger'
 
 const NOW = new Date('2026-09-01T12:00:00.000Z')
+const CALLER = 'user-7'
+
+/** A `users` profile lookup result for `requireStaffCaller` — always call #1. */
+const STAFF_PROFILE = { total: 1, rows: [{ auth_user_id: CALLER, roles: 'main_warehouse_manager', branch_id: '' }] }
 
 function fakeDb(over: Partial<Record<keyof TablesDB, unknown>>): TablesDB {
-  return over as unknown as TablesDB
+  return { listRows: vi.fn().mockResolvedValue(STAFF_PROFILE), ...over } as unknown as TablesDB
 }
 
 const baseInput = {
@@ -18,17 +22,33 @@ const baseInput = {
 }
 
 describe('postStockLedger', () => {
+  it('rejects an anonymous caller', async () => {
+    await expect(
+      postStockLedger(fakeDb({}), baseInput, null, NOW),
+    ).rejects.toMatchObject({ code: 'unauthorized' })
+  })
+
+  it('rejects a caller with no staff profile', async () => {
+    const listRows = vi.fn().mockResolvedValue({ total: 0, rows: [] })
+    await expect(
+      postStockLedger(fakeDb({ listRows }), baseInput, CALLER, NOW),
+    ).rejects.toMatchObject({ code: 'forbidden' })
+  })
+
   it('requires at least one move', async () => {
     await expect(
-      postStockLedger(fakeDb({}), { ...baseInput, moves: [] }, 'user-1', NOW),
+      postStockLedger(fakeDb({}), { ...baseInput, moves: [] }, CALLER, NOW),
     ).rejects.toMatchObject({ code: 'validation' })
   })
 
   it('refuses to re-post a voucher that already has ledger entries', async () => {
-    const listRows = vi.fn().mockResolvedValue({ total: 1, rows: [{ $id: 'sle-old' }] })
+    const listRows = vi
+      .fn()
+      .mockResolvedValueOnce(STAFF_PROFILE) // requireStaffCaller
+      .mockResolvedValueOnce({ total: 1, rows: [{ $id: 'sle-old' }] }) // voucher dedup
     const createRow = vi.fn()
     await expect(
-      postStockLedger(fakeDb({ listRows, createRow }), baseInput, 'user-1', NOW),
+      postStockLedger(fakeDb({ listRows, createRow }), baseInput, CALLER, NOW),
     ).rejects.toMatchObject({ code: 'conflict' })
     expect(createRow).not.toHaveBeenCalled()
   })
@@ -36,6 +56,7 @@ describe('postStockLedger', () => {
   it('blocks a move that would drive the bin negative', async () => {
     const listRows = vi
       .fn()
+      .mockResolvedValueOnce(STAFF_PROFILE) // requireStaffCaller
       .mockResolvedValueOnce({ total: 0, rows: [] }) // voucher dedup
       .mockResolvedValueOnce({ total: 1, rows: [{ $id: 'bin-1', qty: 3 }] }) // current bin
     const createRow = vi.fn()
@@ -43,7 +64,7 @@ describe('postStockLedger', () => {
       postStockLedger(
         fakeDb({ listRows, createRow }),
         { ...baseInput, moves: [{ productId: 'prod-1', warehouseId: 'wh-1', qtyChange: -10 }] },
-        'user-1',
+        CALLER,
         NOW,
       ),
     ).rejects.toBeInstanceOf(FnError)
@@ -53,6 +74,7 @@ describe('postStockLedger', () => {
   it('appends an SLE row, creates the missing bin, and writes an audit row', async () => {
     const listRows = vi
       .fn()
+      .mockResolvedValueOnce(STAFF_PROFILE) // requireStaffCaller
       .mockResolvedValueOnce({ total: 0, rows: [] }) // voucher dedup
       .mockResolvedValueOnce({ total: 0, rows: [] }) // no bin yet
     const createRow = vi.fn().mockResolvedValue({})
@@ -61,7 +83,7 @@ describe('postStockLedger', () => {
     const out = await postStockLedger(
       fakeDb({ listRows, createRow, updateRow }),
       baseInput,
-      'user-7',
+      CALLER,
       NOW,
     )
 
@@ -103,7 +125,7 @@ describe('postStockLedger', () => {
       expect.objectContaining({
         tableId: 'audit_log',
         data: expect.objectContaining({
-          actor_id: 'user-7',
+          actor_id: CALLER,
           action: 'post_stock_ledger',
           entity_type: 'stock_ledger_entries',
           entity_ref: 'SR-2026-00007',
@@ -115,6 +137,7 @@ describe('postStockLedger', () => {
   it('upserts an existing bin to the new running quantity', async () => {
     const listRows = vi
       .fn()
+      .mockResolvedValueOnce(STAFF_PROFILE) // requireStaffCaller
       .mockResolvedValueOnce({ total: 0, rows: [] }) // voucher dedup
       .mockResolvedValueOnce({ total: 1, rows: [{ $id: 'bin-9', qty: 10 }] }) // current bin
     const createRow = vi.fn().mockResolvedValue({})
@@ -123,7 +146,7 @@ describe('postStockLedger', () => {
     const out = await postStockLedger(
       fakeDb({ listRows, createRow, updateRow }),
       baseInput,
-      'user-7',
+      CALLER,
       NOW,
     )
 
