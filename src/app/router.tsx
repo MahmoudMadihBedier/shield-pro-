@@ -2,6 +2,10 @@ import { lazy, Suspense, type ReactNode } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 
 import { Role } from '@/core/rbac'
+// Import the leaf route manifests, not the module barrels — the barrels
+// statically pull every page + repo into the main chunk and defeat the split.
+import { inventoryRoutes } from '@/modules/inventory/presentation/routes'
+import { purchasingRoutes } from '@/modules/purchasing/routes'
 import { RequireAuth } from '@/presentation/components/RequireAuth'
 import { RequireRole } from '@/presentation/components/RequireRole'
 import { AppLayout } from '@/presentation/layout/AppLayout'
@@ -134,6 +138,11 @@ export const router = createBrowserRouter([
       { path: 'admin/raw-materials', element: <AdminRoute><RawMaterialsListPage /></AdminRoute> },
       { path: 'admin/suppliers', element: <AdminRoute><SuppliersListPage /></AdminRoute> },
       { path: 'admin/customers', element: <AdminRoute><CustomersListPage /></AdminRoute> },
+
+      // Business modules — each ships its own lazy+Suspense route objects; role
+      // gating for these lives in-page (SubmitCancelBar etc.) and server-side.
+      ...purchasingRoutes,
+      ...inventoryRoutes,
     ],
   },
 ])
