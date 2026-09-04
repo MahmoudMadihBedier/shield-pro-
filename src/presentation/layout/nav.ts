@@ -2,6 +2,7 @@ import type { Role } from '@/core/rbac'
 import { accountingNavItems } from '@/modules/accounting/presentation/nav'
 import { adminNavItems } from '@/modules/admin/nav'
 import { inventoryNavItems } from '@/modules/inventory/presentation/nav'
+import { approvalsNavItems } from '@/modules/approvals/presentation/nav'
 import { fraudNavItems } from '@/modules/fraud/nav'
 import { manufacturingNavItems } from '@/modules/manufacturing/presentation/nav'
 import { purchasingNavItems } from '@/modules/purchasing/nav'
@@ -46,4 +47,5 @@ export const NAV_ITEMS: readonly NavItem[] = [
   ...salesNavItems,
   ...returnsNavItems,
   ...fraudNavItems,
+  ...approvalsNavItems,
 ]

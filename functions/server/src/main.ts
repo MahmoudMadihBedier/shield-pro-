@@ -20,6 +20,11 @@ import { jsonHandler, type FnContext } from '../../common/handler'
 import { runInTransaction } from '../../common/transaction'
 import { allocateReferenceId, type AllocateInput } from '../../routes/allocate-reference-id'
 import { cancelDocument, type CancelInput } from '../../routes/cancel-document'
+import {
+  decideApprovalRequest,
+  type DecideApprovalInput,
+} from '../../routes/decide-approval'
+import { evaluateApproval, type EvaluateApprovalInput } from '../../routes/evaluate-approval'
 import { fraudScan, type FraudScanInput } from '../../routes/fraud-scan'
 import { postGl, type PostGlInput } from '../../routes/post-gl'
 import { postStockLedger, type PostStockLedgerInput } from '../../routes/post-stock-ledger'
@@ -60,6 +65,15 @@ const routes: Record<string, Route> = {
   ),
   '/review-fraud-flag': jsonHandler<ReviewFraudFlagInput>(async ({ body, req, caller }) =>
     runInTransaction(tablesDbFromRequest(req), (db) => reviewFraudFlag(db, body, caller)),
+  ),
+  // Read-then-write-once (idempotent replay on repeat evaluation) — no
+  // conflicting concurrent writers to guard against, but wrapped anyway for a
+  // consistent audit-atomicity story.
+  '/evaluate-approval': jsonHandler<EvaluateApprovalInput>(async ({ body, req, caller }) =>
+    runInTransaction(tablesDbFromRequest(req), (db) => evaluateApproval(db, body, caller)),
+  ),
+  '/decide-approval': jsonHandler<DecideApprovalInput>(async ({ body, req, caller }) =>
+    runInTransaction(tablesDbFromRequest(req), (db) => decideApprovalRequest(db, body, caller)),
   ),
 }
 

@@ -43,7 +43,15 @@ describe('shield-server router', () => {
     expect(payload).toMatchObject({ ok: false, error: { code: 'server' } })
   })
 
-  it.each(['/post-stock-ledger', '/post-gl', '/segregation-guard', '/fraud-scan', '/review-fraud-flag'])(
+  it.each([
+    '/post-stock-ledger',
+    '/post-gl',
+    '/segregation-guard',
+    '/fraud-scan',
+    '/review-fraud-flag',
+    '/evaluate-approval',
+    '/decide-approval',
+  ])(
     'has %s wired to a handler',
     async (path) => {
       // Registered routes reach their handler and fail building a client (no
