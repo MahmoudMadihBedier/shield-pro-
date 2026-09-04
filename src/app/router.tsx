@@ -5,6 +5,7 @@ import { Role } from '@/core/rbac'
 // Import the leaf route manifests, not the module barrels — the barrels
 // statically pull every page + repo into the main chunk and defeat the split.
 import { accountingRoutes } from '@/modules/accounting/presentation/routes'
+import { fraudRoutes } from '@/modules/fraud/routes'
 import { returnsRoutes } from '@/modules/returns/presentation/routes'
 import { salesRoutes } from '@/modules/sales/presentation/routes'
 import { inventoryRoutes } from '@/modules/inventory/presentation/routes'
@@ -151,6 +152,7 @@ export const router = createBrowserRouter([
       ...accountingRoutes,
       ...salesRoutes,
       ...returnsRoutes,
+      ...fraudRoutes,
     ],
   },
 ])

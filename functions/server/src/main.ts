@@ -20,8 +20,13 @@ import { jsonHandler, type FnContext } from '../../common/handler'
 import { runInTransaction } from '../../common/transaction'
 import { allocateReferenceId, type AllocateInput } from '../../routes/allocate-reference-id'
 import { cancelDocument, type CancelInput } from '../../routes/cancel-document'
+import { fraudScan, type FraudScanInput } from '../../routes/fraud-scan'
 import { postGl, type PostGlInput } from '../../routes/post-gl'
 import { postStockLedger, type PostStockLedgerInput } from '../../routes/post-stock-ledger'
+import {
+  reviewFraudFlag,
+  type ReviewFraudFlagInput,
+} from '../../routes/review-fraud-flag'
 import { segregationGuard, type SegregationGuardInput } from '../../routes/segregation-guard'
 import { submitDocument, type SubmitInput } from '../../routes/submit-document'
 
@@ -49,6 +54,12 @@ const routes: Record<string, Route> = {
   // Read-only pre-check — no transaction, no audit row.
   '/segregation-guard': jsonHandler<SegregationGuardInput>(async ({ body, req, caller }) =>
     segregationGuard(tablesDbFromRequest(req), body, caller),
+  ),
+  '/fraud-scan': jsonHandler<FraudScanInput>(async ({ body, req, caller }) =>
+    runInTransaction(tablesDbFromRequest(req), (db) => fraudScan(db, body, caller)),
+  ),
+  '/review-fraud-flag': jsonHandler<ReviewFraudFlagInput>(async ({ body, req, caller }) =>
+    runInTransaction(tablesDbFromRequest(req), (db) => reviewFraudFlag(db, body, caller)),
   ),
 }
 
