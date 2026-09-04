@@ -1,6 +1,7 @@
 import type { Role } from '@/core/rbac'
 import { adminNavItems } from '@/modules/admin/nav'
 import { inventoryNavItems } from '@/modules/inventory/presentation/nav'
+import { manufacturingNavItems } from '@/modules/manufacturing/presentation/nav'
 import { purchasingNavItems } from '@/modules/purchasing/nav'
 import { traceabilityNavItems } from '@/modules/traceability/nav'
 
@@ -35,5 +36,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
   ),
   ...adminNavItems,
   ...purchasingNavItems,
+  ...manufacturingNavItems,
   ...inventoryNavItems,
 ]

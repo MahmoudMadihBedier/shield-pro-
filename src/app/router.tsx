@@ -5,6 +5,7 @@ import { Role } from '@/core/rbac'
 // Import the leaf route manifests, not the module barrels — the barrels
 // statically pull every page + repo into the main chunk and defeat the split.
 import { inventoryRoutes } from '@/modules/inventory/presentation/routes'
+import { manufacturingRoutes } from '@/modules/manufacturing/presentation/routes'
 import { purchasingRoutes } from '@/modules/purchasing/routes'
 import { RequireAuth } from '@/presentation/components/RequireAuth'
 import { RequireRole } from '@/presentation/components/RequireRole'
@@ -142,6 +143,7 @@ export const router = createBrowserRouter([
       // Business modules — each ships its own lazy+Suspense route objects; role
       // gating for these lives in-page (SubmitCancelBar etc.) and server-side.
       ...purchasingRoutes,
+      ...manufacturingRoutes,
       ...inventoryRoutes,
     ],
   },
