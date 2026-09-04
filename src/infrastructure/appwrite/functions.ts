@@ -11,6 +11,7 @@
  */
 import { ExecutionMethod } from 'appwrite'
 
+import type { ApprovalAction, ApprovalContext } from '@/core/approval'
 import { appError, type AppError, type AppErrorCode } from '@/core/errors'
 import type { FraudCandidate } from '@/core/fraud'
 import type { GlLine } from '@/core/ledger'
@@ -31,6 +32,8 @@ export const ServerRoute = {
   segregationGuard: '/segregation-guard',
   fraudScan: '/fraud-scan',
   reviewFraudFlag: '/review-fraud-flag',
+  evaluateApproval: '/evaluate-approval',
+  decideApproval: '/decide-approval',
 } as const
 
 export interface AllocatedReference {
@@ -107,6 +110,36 @@ export interface ReviewFraudFlagPayload {
 export interface ReviewFraudFlagResult {
   id: string
   status: string
+}
+
+export interface EvaluateApprovalPayload {
+  movementType: string
+  entityRef: string
+  context: Omit<ApprovalContext, 'movementType' | 'entityRef' | 'actorId'>
+}
+
+export interface EvaluateApprovalResult {
+  action: ApprovalAction
+  /** The `approval_rules` row that decided this, or `null` on the fail-safe default. */
+  ruleId: string | null
+  approvalRequestId: string
+}
+
+export interface DecideApprovalPayload {
+  approvalRequestId: string
+  decision: 'approved' | 'rejected'
+  reason?: string
+}
+
+export interface DecideApprovalResult {
+  $id: string
+  entityType: string
+  entityRef: string
+  branchId: string | null
+  requestedBy: string
+  state: 'approved' | 'rejected'
+  decidedBy: string
+  decisionReason: string | null
 }
 
 const KNOWN_CODES: ReadonlySet<AppErrorCode> = new Set<AppErrorCode>([
@@ -234,6 +267,28 @@ export function reviewFraudFlag(
   payload: ReviewFraudFlagPayload,
 ): Promise<Result<ReviewFraudFlagResult>> {
   return invoke<ReviewFraudFlagResult>(ServerRoute.reviewFraudFlag, payload)
+}
+
+/**
+ * Run the tiered approval engine for one movement (`src/core/approval.ts`).
+ * Idempotent per `entityRef` — calling this again for the same movement
+ * replays the first decision rather than evaluating twice.
+ */
+export function evaluateApproval(
+  payload: EvaluateApprovalPayload,
+): Promise<Result<EvaluateApprovalResult>> {
+  return invoke<EvaluateApprovalResult>(ServerRoute.evaluateApproval, payload)
+}
+
+/**
+ * Resolve a `pending` approval request as approved or rejected. The server
+ * re-checks that the decider isn't the original requester (segregation of
+ * duties) and that the request is still `pending`.
+ */
+export function decideApprovalRequest(
+  payload: DecideApprovalPayload,
+): Promise<Result<DecideApprovalResult>> {
+  return invoke<DecideApprovalResult>(ServerRoute.decideApproval, payload)
 }
 
 export type { AppError }
