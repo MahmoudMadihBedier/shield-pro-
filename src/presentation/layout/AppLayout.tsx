@@ -3,6 +3,9 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '@/application/auth/context'
 import { RequireRole } from '@/presentation/components/RequireRole'
 import { APP_NAME, APP_NAME_AR } from '@/shared/constants'
+// Leaf import, not the `@/shared/notifications` barrel — AppLayout is not
+// lazy-loaded, so anything pulled in here lands in the main bundle.
+import { NotificationBell } from '@/shared/notifications/NotificationBell'
 
 import { NAV_ITEMS, type NavItem } from './nav'
 
@@ -57,6 +60,7 @@ export function AppLayout() {
           </h1>
           {principal ? (
             <div className="flex items-center gap-3 text-xs text-zinc-500">
+              <NotificationBell />
               <span className="font-mono">{principal.roles.join(', ') || 'no role'}</span>
               <button
                 type="button"

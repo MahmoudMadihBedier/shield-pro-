@@ -143,6 +143,7 @@ export const userRowSchema = z.object({
   sub_warehouse_id: rowOptStr,
   job_grade: rowOptStr,
   is_active: rowBool,
+  base_salary: rowNum0,
 })
 /**
  * `branch_id` is deliberately NOT here: branch binding is set exclusively by the
@@ -275,6 +276,9 @@ export const customerRowSchema = z.object({
   payment_terms_days: rowNum0,
   approval_state: customerApprovalStateSchema,
   created_by: rowOptStr,
+  /** Links to the customer's own Appwrite Auth account for the CRM portal
+   *  (`src/core/portal.ts`) — set only by the `/portal-account/*` Functions. */
+  portal_user_id: rowOptStr,
 })
 /**
  * `approval_state` and `created_by` are NOT form fields:

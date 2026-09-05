@@ -1,3 +1,25 @@
+# Session handoff — 2026-09-05 (Wave 4 complete)
+
+**Wave 4 done on top of everything below:** HR (attendance/incentives/payroll
+— new schema: `payroll_runs`, `attendance_records`, `incentive_rules`,
+`users.base_salary`), Story 2.6 notifications (in-app centre over Appwrite
+Realtime, wired into fraud-scan + evaluate-approval as the worked example),
+Phase 4 Story 4.4 reporting dashboard (KPIs, inline-SVG charts via the
+`dataviz` skill, CSV export, no new dependency). Plus: `PortalAccountPanel`
+mounted at `/admin/customers/:id`; `admin`'s `userRowSchema`/`customerRowSchema`
+caught up to `base_salary`/`portal_user_id`. HEAD `f7317e1`, **792 tests**,
+`shield-server` deployment `6a9c080093714beee083` (19 routes). Live-verified:
+a `force_manual` approval decision creates a correctly-scoped notification
+row (`update` permission on exactly the recipient). `src/modules/crm` is the
+only module still lacking a schema-driven counterpart gap — none left; every
+`docs/IMPLEMENTATION_PLAN.md` module area now has *something* built except
+Phase 3 Story 3.1 follow-ups (reactivate route) and deeper Phase 4 (4.1/4.2/4.3).
+
+Everything below this line is prior-wave history — still accurate, not
+re-verified this pass.
+
+---
+
 # Session handoff — 2026-09-04 (Wave 3 complete)
 
 **Phase 1 + Wave 2 + Wave 3 done.** 10 business modules, tiered approvals,

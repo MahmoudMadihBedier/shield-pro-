@@ -1,9 +1,19 @@
 import type { TablesDB } from 'node-appwrite'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const { mockCreateNotification, mockListSystemAdminUserIds } = vi.hoisted(() => ({
+  mockCreateNotification: vi.fn(),
+  mockListSystemAdminUserIds: vi.fn(),
+}))
+vi.mock('../../common/notifications', () => ({
+  createNotification: mockCreateNotification,
+  listSystemAdminUserIds: mockListSystemAdminUserIds,
+}))
 
 import { fraudScan } from '../fraud-scan'
 
 const CALLER = 'user-7'
+const ADMINS = ['admin-1', 'admin-2']
 /** A `users` profile lookup result for `requireStaffCaller` — always call #1. */
 const STAFF_PROFILE = {
   total: 1,
@@ -45,6 +55,11 @@ function slEntry(over: Record<string, unknown>) {
 }
 
 describe('fraudScan', () => {
+  beforeEach(() => {
+    mockCreateNotification.mockReset().mockResolvedValue(undefined)
+    mockListSystemAdminUserIds.mockReset().mockResolvedValue(ADMINS)
+  })
+
   it('rejects an anonymous caller', async () => {
     await expect(fraudScan(fakeDb({}), {}, null)).rejects.toMatchObject({ code: 'unauthorized' })
   })
@@ -143,6 +158,56 @@ describe('fraudScan', () => {
         }),
       }),
     )
+
+    // The admin roster is fetched once for the whole batch, not once per flag.
+    expect(mockListSystemAdminUserIds).toHaveBeenCalledTimes(1)
+    expect(mockListSystemAdminUserIds).toHaveBeenCalledWith(db)
+
+    // One notification per (created flag × admin) pair: 2 flags × 2 admins.
+    expect(mockCreateNotification).toHaveBeenCalledTimes(4)
+    expect(mockCreateNotification).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({
+        recipientUserId: 'admin-1',
+        kind: 'fraud_flag',
+        entityRef: 'p1:w1',
+        body: expect.stringContaining('p1:w1'),
+      }),
+    )
+    expect(mockCreateNotification).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({
+        recipientUserId: 'admin-2',
+        kind: 'fraud_flag',
+        entityRef: 'p1:w1',
+      }),
+    )
+    expect(mockCreateNotification).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({
+        recipientUserId: 'admin-1',
+        kind: 'fraud_flag',
+        entityRef: 'user-9',
+      }),
+    )
+    expect(mockCreateNotification).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({
+        recipientUserId: 'admin-2',
+        kind: 'fraud_flag',
+        entityRef: 'user-9',
+      }),
+    )
+  })
+
+  it('does not notify when no new fraud flag is created', async () => {
+    const createRow = vi.fn().mockResolvedValue({})
+    const db = fakeDbSequence([], [], [], createRow)
+
+    await fraudScan(db, {}, CALLER)
+
+    expect(mockListSystemAdminUserIds).not.toHaveBeenCalled()
+    expect(mockCreateNotification).not.toHaveBeenCalled()
   })
 
   it('skips creating a fraud_flags row for a subject that already has an open flag', async () => {
@@ -163,5 +228,28 @@ describe('fraudScan', () => {
     expect(out.flagsCreated).toBe(0)
     expect(createRow).toHaveBeenCalledTimes(1) // only the scan audit row
     expect(createRow).not.toHaveBeenCalledWith(expect.objectContaining({ tableId: 'fraud_flags' }))
+    expect(mockListSystemAdminUserIds).not.toHaveBeenCalled()
+    expect(mockCreateNotification).not.toHaveBeenCalled()
+  })
+
+  it('does not let a notification failure fail the scan (would otherwise roll back the whole transaction)', async () => {
+    const moves = [
+      slEntry({
+        voucher_no: 'WT-1',
+        qty_change: -50,
+        posting_datetime: '2026-09-01T09:00:00.000Z',
+      }),
+      slEntry({ voucher_no: 'WT-2', qty_change: 50, posting_datetime: '2026-09-01T11:00:00.000Z' }),
+    ]
+    const createRow = vi.fn().mockResolvedValue({})
+    const db = fakeDbSequence(moves, [], [], createRow)
+    mockCreateNotification.mockRejectedValueOnce(new Error('network blip'))
+
+    const out = await fraudScan(db, {}, CALLER)
+
+    expect(out.flagsCreated).toBe(1)
+    expect(createRow).toHaveBeenCalledWith(expect.objectContaining({ tableId: 'fraud_flags' }))
+    // The failed admin-1 call and the still-successful admin-2 call both happen.
+    expect(mockCreateNotification).toHaveBeenCalledTimes(2)
   })
 })

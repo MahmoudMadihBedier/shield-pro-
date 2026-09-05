@@ -6,6 +6,9 @@ import { Role } from '@/core/rbac'
 // statically pull every page + repo into the main chunk and defeat the split.
 import { accountingRoutes } from '@/modules/accounting/presentation/routes'
 import { approvalsRoutes } from '@/modules/approvals/presentation/routes'
+import { hrRoutes } from '@/modules/hr/presentation/routes'
+import { notificationsRoutes } from '@/shared/notifications/routes'
+import { reportsRoutes } from '@/modules/reports/routes'
 import { portalRoutes } from '@/modules/crm/portal/routes'
 import { fraudRoutes } from '@/modules/fraud/routes'
 import { returnsRoutes } from '@/modules/returns/presentation/routes'
@@ -56,6 +59,9 @@ const SuppliersListPage = lazy(() =>
 )
 const CustomersListPage = lazy(() =>
   import('@/modules/admin').then((m) => ({ default: m.CustomersListPage })),
+)
+const CustomerDetailPage = lazy(() =>
+  import('@/modules/admin').then((m) => ({ default: m.CustomerDetailPage })),
 )
 
 const NO_ADMIN_ACCESS = (
@@ -145,6 +151,7 @@ export const router = createBrowserRouter([
       { path: 'admin/raw-materials', element: <AdminRoute><RawMaterialsListPage /></AdminRoute> },
       { path: 'admin/suppliers', element: <AdminRoute><SuppliersListPage /></AdminRoute> },
       { path: 'admin/customers', element: <AdminRoute><CustomersListPage /></AdminRoute> },
+      { path: 'admin/customers/:id', element: <AdminRoute><CustomerDetailPage /></AdminRoute> },
 
       // Business modules — each ships its own lazy+Suspense route objects; role
       // gating for these lives in-page (SubmitCancelBar etc.) and server-side.
@@ -156,6 +163,9 @@ export const router = createBrowserRouter([
       ...returnsRoutes,
       ...fraudRoutes,
       ...approvalsRoutes,
+      ...reportsRoutes,
+      ...hrRoutes,
+      ...notificationsRoutes,
     ],
   },
   // CRM client portal — a sibling branch with its own layout/auth gate, NOT

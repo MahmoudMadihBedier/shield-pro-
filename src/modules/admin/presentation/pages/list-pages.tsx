@@ -20,7 +20,3 @@ export function SuppliersListPage() {
 export function RawMaterialsListPage() {
   return <MasterListPage entity="rawMaterial" />
 }
-
-export function CustomersListPage() {
-  return <MasterListPage entity="customer" />
-}
