@@ -143,6 +143,7 @@ export const userRowSchema = z.object({
   sub_warehouse_id: rowOptStr,
   job_grade: rowOptStr,
   is_active: rowBool,
+  base_salary: rowNum0,
 })
 /**
  * `branch_id` is deliberately NOT here: branch binding is set exclusively by the
