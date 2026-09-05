@@ -1,5 +1,8 @@
 import type { TablesDB } from 'node-appwrite'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const { mockNotifySystemAdmins } = vi.hoisted(() => ({ mockNotifySystemAdmins: vi.fn() }))
+vi.mock('../../common/notifications', () => ({ notifySystemAdmins: mockNotifySystemAdmins }))
 
 import { evaluateApproval } from '../evaluate-approval'
 
@@ -37,10 +40,14 @@ function ruleRow(over: Record<string, unknown> = {}) {
 }
 
 describe('evaluateApproval', () => {
+  beforeEach(() => {
+    mockNotifySystemAdmins.mockReset().mockResolvedValue(undefined)
+  })
+
   it('rejects an anonymous caller', async () => {
-    await expect(
-      evaluateApproval(fakeDb({}), baseInput, null, NOW),
-    ).rejects.toMatchObject({ code: 'unauthorized' })
+    await expect(evaluateApproval(fakeDb({}), baseInput, null, NOW)).rejects.toMatchObject({
+      code: 'unauthorized',
+    })
   })
 
   it('rejects a caller with no staff profile', async () => {
@@ -99,6 +106,7 @@ describe('evaluateApproval', () => {
         }),
       }),
     )
+    expect(mockNotifySystemAdmins).not.toHaveBeenCalled()
   })
 
   it('forces manual review when no active rule matches (fail-safe) and creates a pending request', async () => {
@@ -126,6 +134,11 @@ describe('evaluateApproval', () => {
         data: expect.objectContaining({ state: 'pending' }),
       }),
     )
+    expect(mockNotifySystemAdmins).toHaveBeenCalledTimes(1)
+    expect(mockNotifySystemAdmins).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ kind: 'approval_pending', entityRef: 'INV-2026-00042' }),
+    )
   })
 
   it('is idempotent — a second evaluation for the same entityRef replays the existing decision', async () => {
@@ -139,9 +152,10 @@ describe('evaluateApproval', () => {
 
     expect(out).toEqual({ action: 'auto_approve', ruleId: null, approvalRequestId: 'req-1' })
     expect(createRow).not.toHaveBeenCalled()
+    expect(mockNotifySystemAdmins).not.toHaveBeenCalled()
   })
 
-  it('replays a pending existing request as force_manual', async () => {
+  it('replays a pending existing request as force_manual without re-notifying', async () => {
     const listRows = vi
       .fn()
       .mockResolvedValueOnce(STAFF_PROFILE)
@@ -152,6 +166,7 @@ describe('evaluateApproval', () => {
 
     expect(out).toEqual({ action: 'force_manual', ruleId: null, approvalRequestId: 'req-3' })
     expect(createRow).not.toHaveBeenCalled()
+    expect(mockNotifySystemAdmins).not.toHaveBeenCalled()
   })
 
   it('never auto-approves a new customer even under a matching auto_approve rule', async () => {
@@ -183,5 +198,28 @@ describe('evaluateApproval', () => {
     )
 
     expect(out).toEqual({ action: 'force_manual', ruleId: 'rule-1', approvalRequestId: 'req-4' })
+    expect(mockNotifySystemAdmins).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not let a notification failure fail the evaluation (would otherwise roll back the approval request)', async () => {
+    const listRows = vi
+      .fn()
+      .mockResolvedValueOnce(STAFF_PROFILE)
+      .mockResolvedValueOnce(NO_EXISTING_REQUEST)
+      .mockResolvedValueOnce({ total: 0, rows: [] }) // no active rules -> force_manual
+    const createRow = vi
+      .fn()
+      .mockResolvedValueOnce({ $id: 'log-5' })
+      .mockResolvedValueOnce({ $id: 'req-5' })
+    mockNotifySystemAdmins.mockRejectedValueOnce(new Error('network blip'))
+
+    const out = await evaluateApproval(
+      fakeDb({ listRows, createRow }),
+      { ...baseInput, context: {} },
+      CALLER,
+      NOW,
+    )
+
+    expect(out).toEqual({ action: 'force_manual', ruleId: null, approvalRequestId: 'req-5' })
   })
 })

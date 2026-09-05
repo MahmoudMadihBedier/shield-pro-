@@ -15,6 +15,7 @@ import { ID, Query, type TablesDB } from 'node-appwrite'
 import { DATABASE_ID } from '../common/appwrite'
 import { requireStaffCaller } from '../common/caller'
 import { FnError } from '../common/handler'
+import { notifySystemAdmins } from '../common/notifications'
 import {
   approvalPredicateSchema,
   decideApproval,
@@ -141,6 +142,28 @@ export async function evaluateApproval(
       created_at: createdAt,
     },
   })) as unknown as { $id: string }
+
+  // Only a fresh `force_manual` decision needs a human — never on auto_approve,
+  // and the idempotency short-circuit above means this never re-fires on replay.
+  // Swallow-and-log: this runs inside `runInTransaction` (see
+  // `functions/server/src/main.ts`), so an uncaught failure here would roll
+  // back the `approval_requests`/`approval_rule_log` rows just written above —
+  // a missed notification must never undo a real approval decision.
+  if (decision.action === 'force_manual') {
+    try {
+      await notifySystemAdmins(tablesDB, {
+        kind: 'approval_pending',
+        title: `طلب موافقة بانتظار المراجعة: ${movementType}`,
+        body: `الحركة ${entityRef} تتطلب مراجعة يدوية قبل الاعتماد.`,
+        entityRef,
+      })
+    } catch (e) {
+      console.error(
+        `evaluate-approval: notification failed for ${entityRef}:`,
+        e instanceof Error ? e.message : String(e),
+      )
+    }
+  }
 
   return { action: decision.action, ruleId: decision.ruleId, approvalRequestId: request.$id }
 }

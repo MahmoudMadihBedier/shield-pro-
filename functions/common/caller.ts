@@ -35,8 +35,10 @@ const profileSchema = z.object({
   branch_id: z.string().optional().nullable(),
 })
 
-/** `roles` is a single short string: comma / whitespace separated role slugs. */
-function parseRoles(raw: string | null | undefined): Role[] {
+/** `roles` is a single short string: comma / whitespace separated role slugs.
+ *  Exported so other Functions (e.g. `./notifications.ts`) share this exact
+ *  parsing instead of re-implementing it. */
+export function parseRoles(raw: string | null | undefined): Role[] {
   if (!raw) return []
   const slugs = raw
     .split(/[\s,]+/)

@@ -14,6 +14,7 @@ import { DATABASE_ID } from '../common/appwrite'
 import { requireStaffCaller } from '../common/caller'
 import { FnError } from '../common/handler'
 import { appendAudit } from '../common/audit'
+import { createNotification, listSystemAdminUserIds } from '../common/notifications'
 import {
   dedupeCandidates,
   detectHighReversalRatio,
@@ -31,6 +32,13 @@ const FRAUD_FLAGS_TABLE = 'fraud_flags'
 const SUBJECT_TYPE_MAX = 32
 const SUBJECT_ID_MAX = 36
 const DETAIL_MAX = 2000
+
+/** Arabic-friendly short label per `FraudCandidate.kind`, for the notification title. */
+const FRAUD_KIND_TITLE_AR: Record<string, string> = {
+  round_tripping: 'حركة دائرية',
+  repeated_movement: 'حركة متكررة',
+  high_reversal_ratio: 'نسبة إلغاء مرتفعة',
+}
 
 const DEFAULT_LOOKBACK_HOURS = 24
 /** Reject anything asking to scan further back than 7 days. */
@@ -136,6 +144,12 @@ export async function fraudScan(
 
   const toCreate = dedupeCandidates(openSubjects, candidates)
 
+  // Fetch the System Admin roster once for the whole batch — calling
+  // `notifySystemAdmins` per candidate would re-scan the `users` table once
+  // per flag, multiplying reads inside this transaction's TTL window for no
+  // benefit once there is more than one new flag.
+  const adminIds = toCreate.length > 0 ? await listSystemAdminUserIds(tablesDB) : []
+
   for (const candidate of toCreate) {
     await tablesDB.createRow({
       databaseId: DATABASE_ID,
@@ -150,6 +164,28 @@ export async function fraudScan(
         created_at: now.toISOString(),
       },
     })
+    // One notification per surviving candidate (not a single batch summary) —
+    // each flag is its own fraud pattern/subject and the System Admin team
+    // needs to triage them individually. Swallow-and-log: this whole scan
+    // runs inside `runInTransaction` (see `functions/server/src/main.ts`), so
+    // an uncaught failure here would roll back the fraud_flags row just
+    // written above — a missed notification must never do that.
+    for (const recipientUserId of adminIds) {
+      try {
+        await createNotification(tablesDB, {
+          recipientUserId,
+          kind: 'fraud_flag',
+          title: `بلاغ احتيال جديد: ${FRAUD_KIND_TITLE_AR[candidate.kind] ?? candidate.kind}`,
+          body: candidate.detail,
+          entityRef: candidate.subjectId,
+        })
+      } catch (e) {
+        console.error(
+          `fraud-scan: notification failed for admin ${recipientUserId}:`,
+          e instanceof Error ? e.message : String(e),
+        )
+      }
+    }
   }
 
   await appendAudit(tablesDB, {
