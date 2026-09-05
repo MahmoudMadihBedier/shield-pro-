@@ -7,6 +7,7 @@ import { Role } from '@/core/rbac'
 import { accountingRoutes } from '@/modules/accounting/presentation/routes'
 import { approvalsRoutes } from '@/modules/approvals/presentation/routes'
 import { hrRoutes } from '@/modules/hr/presentation/routes'
+import { notificationsRoutes } from '@/shared/notifications/routes'
 import { reportsRoutes } from '@/modules/reports/routes'
 import { portalRoutes } from '@/modules/crm/portal/routes'
 import { fraudRoutes } from '@/modules/fraud/routes'
@@ -164,6 +165,7 @@ export const router = createBrowserRouter([
       ...approvalsRoutes,
       ...reportsRoutes,
       ...hrRoutes,
+      ...notificationsRoutes,
     ],
   },
   // CRM client portal — a sibling branch with its own layout/auth gate, NOT

@@ -4,6 +4,7 @@ import { adminNavItems } from '@/modules/admin/nav'
 import { inventoryNavItems } from '@/modules/inventory/presentation/nav'
 import { approvalsNavItems } from '@/modules/approvals/presentation/nav'
 import { hrNavItems } from '@/modules/hr/presentation/nav'
+import { notificationsNavItems } from '@/shared/notifications/nav'
 import { reportsNavItems } from '@/modules/reports/nav'
 import { fraudNavItems } from '@/modules/fraud/nav'
 import { manufacturingNavItems } from '@/modules/manufacturing/presentation/nav'
@@ -52,4 +53,5 @@ export const NAV_ITEMS: readonly NavItem[] = [
   ...approvalsNavItems,
   ...reportsNavItems,
   ...hrNavItems,
+  ...notificationsNavItems,
 ]
