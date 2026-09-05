@@ -11,11 +11,12 @@ export {
   WarehousesListPage,
   SuppliersListPage,
   RawMaterialsListPage,
-  CustomersListPage,
 } from './presentation/pages/list-pages'
 export { UsersListPage } from './presentation/pages/UsersListPage'
 export { ProductsListPage } from './presentation/pages/ProductsListPage'
 export { ProductDetailPage } from './presentation/pages/ProductDetailPage'
+export { CustomersListPage } from './presentation/pages/CustomersListPage'
+export { CustomerDetailPage } from './presentation/pages/CustomerDetailPage'
 
 // --- domain (imported by other modules) ---------------------------------
 export * from './domain/schemas'
