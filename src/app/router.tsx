@@ -6,6 +6,7 @@ import { Role } from '@/core/rbac'
 // statically pull every page + repo into the main chunk and defeat the split.
 import { accountingRoutes } from '@/modules/accounting/presentation/routes'
 import { approvalsRoutes } from '@/modules/approvals/presentation/routes'
+import { reportsRoutes } from '@/modules/reports/routes'
 import { portalRoutes } from '@/modules/crm/portal/routes'
 import { fraudRoutes } from '@/modules/fraud/routes'
 import { returnsRoutes } from '@/modules/returns/presentation/routes'
@@ -160,6 +161,7 @@ export const router = createBrowserRouter([
       ...returnsRoutes,
       ...fraudRoutes,
       ...approvalsRoutes,
+      ...reportsRoutes,
     ],
   },
   // CRM client portal — a sibling branch with its own layout/auth gate, NOT
