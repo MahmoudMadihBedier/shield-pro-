@@ -146,6 +146,7 @@ export function ProductionBatchDetailPage() {
         batchId={batch.$id}
         qcStatus={batch.qc_status}
         docStatus={batch.doc_status}
+        createdBy={batch.created_by}
         onDone={() => void query.refetch()}
       />
 
