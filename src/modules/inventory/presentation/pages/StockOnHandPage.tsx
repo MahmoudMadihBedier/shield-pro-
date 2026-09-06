@@ -6,7 +6,13 @@
 import { useMemo, useState } from 'react'
 
 import { formatDateTime, formatNumber } from '@/shared/formatters'
-import { DataTable, useDebouncedValue, type ColumnDef, type PaginationState } from '@/shared/data-table'
+import {
+  DataTable,
+  useDebouncedValue,
+  type ColumnDef,
+  type PaginationState,
+} from '@/shared/data-table'
+import { ExportButton } from '@/shared/excel'
 import { PageHeader } from '@/shared/ui'
 
 import {
@@ -18,6 +24,13 @@ import {
 } from '../hooks'
 
 const PAGE_SIZE = 100
+
+const STOCK_EXPORT_COLUMNS = [
+  { key: 'product', header: 'الصنف / Product' },
+  { key: 'warehouse', header: 'المخزن / Warehouse' },
+  { key: 'qty', header: 'الرصيد / Qty' },
+  { key: 'updated', header: 'آخر تحديث / Updated' },
+] as const
 
 export function StockOnHandPage() {
   const [warehouseId, setWarehouseId] = useState('')
@@ -81,9 +94,26 @@ export function StockOnHandPage() {
   const rows = query.data?.rows ?? []
   const total = query.data?.total ?? 0
 
+  const exportRows = useMemo(
+    () =>
+      (query.data?.rows ?? []).map((r) => ({
+        product: productLabel.get(r.product_id) ?? r.product_id,
+        warehouse: warehouseLabel.get(r.warehouse_id) ?? r.warehouse_id,
+        qty: r.qty,
+        updated: formatDateTime(r.updated_datetime),
+      })),
+    [query.data?.rows, productLabel, warehouseLabel],
+  )
+
   return (
     <div className="space-y-4">
-      <PageHeader title="الرصيد الحالي" titleEn="Stock on hand" />
+      <PageHeader
+        title="الرصيد الحالي"
+        titleEn="Stock on hand"
+        actions={
+          <ExportButton rows={exportRows} columns={STOCK_EXPORT_COLUMNS} fileName="stock-on-hand" />
+        }
+      />
 
       <DataTable
         columns={columns}
