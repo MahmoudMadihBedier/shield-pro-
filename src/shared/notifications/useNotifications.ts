@@ -1,17 +1,16 @@
 /**
- * TanStack Query hooks for the notification centre, plus a small Appwrite
+ * TanStack Query hooks for the notification centre, plus a small Supabase
  * Realtime subscription that invalidates them on a matching event
  * (Implementation Plan §4 / Phase 2 Story 2.6).
  */
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { Realtime, Query as RealtimeQuery } from 'appwrite'
 
 import { useAuth } from '@/application/auth/context'
 import type { AppError } from '@/core/errors'
 import { isErr } from '@/core/result'
-import { client } from '@/infrastructure/appwrite/client'
-import { DATABASE_ID, Tables } from '@/infrastructure/appwrite/collections'
+import { supabase } from '@/infrastructure/appwrite/client'
+import { Tables } from '@/infrastructure/appwrite/collections'
 
 import type { Notification } from './domain'
 import {
@@ -105,35 +104,18 @@ export function useMarkAllNotificationsRead() {
 }
 
 /**
- * The Realtime channel for `notifications` row events.
- *
- * `appwrite@26` ships a non-deprecated `Realtime` service (`new
- * Realtime(client)`) alongside a `Channel` builder
- * (`Channel.tablesdb(id).table(id).row()`); the older `client.subscribe(...)`
- * method still exists but its own doc comment says "deprecated, use the
- * Realtime service instead" and only documents the legacy
- * `databases`/`collections`/`documents` channel shape, which predates
- * TablesDB. Per Appwrite's Realtime docs (`docs/apis/realtime/subscribe` and
- * `.../queries`), the current TablesDB row channel string is
- * `tablesdb.<DATABASE_ID>.tables.<TABLE_ID>.rows` — written here as a plain
- * string (rather than via the `Channel` builder) only so it's trivial to
- * assert on in tests; both forms resolve to the identical wire channel.
+ * The Supabase Realtime channel name for `notifications` row events. Postgres
+ * changes are delivered on any channel once the client subscribes to
+ * `postgres_changes` for `public.notifications`; the string is kept exported
+ * (and stable) purely so tests can assert on it.
  */
-export const NOTIFICATIONS_CHANNEL = `tablesdb.${DATABASE_ID}.tables.${Tables.notifications}.rows`
-
-interface NotificationRealtimePayload {
-  recipient_user_id?: unknown
-}
+export const NOTIFICATIONS_CHANNEL = `realtime:public:${Tables.notifications}`
 
 /**
- * Subscribes to {@link NOTIFICATIONS_CHANNEL} and, for every event whose
- * payload belongs to the signed-in principal, invalidates the unread-count +
- * list queries so the bell/page pick it up live. The server-side `Query`
- * passed as the third `subscribe` argument narrows the socket traffic to
- * this recipient — a nice-to-have; the payload check is what actually
- * decides whether to invalidate, since the collection's broader read
- * permission (see `repo.ts`) means this is the only check this client can
- * fully trust.
+ * Subscribes to `postgres_changes` on `public.notifications`, filtered to the
+ * signed-in principal's rows, and invalidates the unread-count + list queries
+ * so the bell/page pick a new notification up live. A dropped connection
+ * degrades to "no live push" — the queries still refetch on their own.
  */
 export function useNotificationsRealtime(): void {
   const { principal } = useAuth()
@@ -143,34 +125,22 @@ export function useNotificationsRealtime(): void {
   useEffect(() => {
     if (!recipientUserId) return undefined
 
-    const realtime = new Realtime(client)
-    let cancelled = false
-    let unsubscribe: (() => void) | null = null
-
-    void realtime
-      .subscribe<NotificationRealtimePayload>(
-        NOTIFICATIONS_CHANNEL,
-        (event) => {
-          if (event.payload?.recipient_user_id !== recipientUserId) return
-          invalidateAll(queryClient)
+    const channel = supabase
+      .channel(`notifications:${recipientUserId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: Tables.notifications,
+          filter: `recipient_user_id=eq.${recipientUserId}`,
         },
-        [RealtimeQuery.equal('recipient_user_id', recipientUserId)],
+        () => invalidateAll(queryClient),
       )
-      .then((subscription) => {
-        if (cancelled) {
-          void subscription.unsubscribe()
-          return
-        }
-        unsubscribe = () => void subscription.unsubscribe()
-      })
-      .catch(() => {
-        // A dropped/failed Realtime connection degrades to "no live push" —
-        // the bell/list still work via normal query refetch/invalidation.
-      })
+      .subscribe()
 
     return () => {
-      cancelled = true
-      unsubscribe?.()
+      void supabase.removeChannel(channel)
     }
   }, [recipientUserId, queryClient])
 }
