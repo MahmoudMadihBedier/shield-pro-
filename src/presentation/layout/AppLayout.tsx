@@ -1,79 +1,52 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 
 import { useAuth } from '@/application/auth/context'
-import { RequireRole } from '@/presentation/components/RequireRole'
 import { APP_NAME, APP_NAME_AR } from '@/shared/constants'
 // Leaf import, not the `@/shared/notifications` barrel — AppLayout is not
 // lazy-loaded, so anything pulled in here lands in the main bundle.
 import { NotificationBell } from '@/shared/notifications/NotificationBell'
 
-import { NAV_ITEMS, type NavItem } from './nav'
-
-function NavItemLink({ item }: { item: NavItem }) {
-  return (
-    <NavLink
-      to={item.to}
-      end={item.end}
-      className={({ isActive }) =>
-        `block rounded-lg px-3 py-2 text-sm transition ${
-          isActive
-            ? 'bg-black/5 font-medium text-zinc-900 dark:bg-white/10 dark:text-zinc-100'
-            : 'text-zinc-600 hover:bg-black/5 dark:text-zinc-400 dark:hover:bg-white/10'
-        }`
-      }
-    >
-      {item.label}
-      <span className="text-zinc-400"> / {item.labelEn}</span>
-    </NavLink>
-  )
-}
-
-function SidebarNav() {
-  return (
-    <nav aria-label="التنقل الرئيسي" className="flex flex-col gap-1">
-      {NAV_ITEMS.map((item) =>
-        item.roles ? (
-          <RequireRole key={item.to} anyOf={item.roles}>
-            <NavItemLink item={item} />
-          </RequireRole>
-        ) : (
-          <NavItemLink key={item.to} item={item} />
-        ),
-      )}
-    </nav>
-  )
-}
+import { TopNav } from './TopNav'
 
 export function AppLayout() {
   const { principal, logout } = useAuth()
 
   return (
-    <div className="mx-auto flex min-h-full max-w-6xl gap-6 px-5 py-10">
-      <aside className="hidden w-52 shrink-0 border-e border-black/10 pe-4 sm:block dark:border-white/10">
-        <SidebarNav />
-      </aside>
+    <div className="flex min-h-full flex-col">
+      <header className="relative border-b border-black/10 dark:border-white/10">
+        <div className="mx-auto max-w-7xl px-5">
+          <div className="flex items-center justify-between gap-4 py-3">
+            <h1 className="shrink-0 text-lg font-bold tracking-tight">
+              {APP_NAME_AR} <span className="text-zinc-400">/ {APP_NAME}</span>
+            </h1>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="mb-8 flex items-center justify-between gap-4">
-          <h1 className="text-xl font-bold tracking-tight">
-            {APP_NAME_AR} <span className="text-zinc-400">/ {APP_NAME}</span>
-          </h1>
+            {principal ? (
+              <div className="flex items-center gap-3 text-xs text-zinc-500">
+                <NotificationBell />
+                <span className="hidden font-mono sm:inline">
+                  {principal.roles.join(', ') || 'no role'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void logout()}
+                  className="rounded-full border border-black/10 px-2 py-0.5 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : null}
+          </div>
+
           {principal ? (
-            <div className="flex items-center gap-3 text-xs text-zinc-500">
-              <NotificationBell />
-              <span className="font-mono">{principal.roles.join(', ') || 'no role'}</span>
-              <button
-                type="button"
-                onClick={() => void logout()}
-                className="rounded-full border border-black/10 px-2 py-0.5 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
-              >
-                Sign out
-              </button>
+            <div className="flex items-center gap-2 pb-2">
+              <TopNav />
             </div>
           ) : null}
-        </header>
+        </div>
+      </header>
 
-        <main className="flex-1">
+      <div className="mx-auto w-full max-w-7xl flex-1 px-5 py-8">
+        <main>
           <Outlet />
         </main>
 

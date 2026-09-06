@@ -30,28 +30,51 @@ export interface NavItem {
   end?: boolean
 }
 
-/** Primary nav — the dashboard plus each module's own entries. */
-export const NAV_ITEMS: readonly NavItem[] = [
-  { to: '/', label: 'الرئيسية', labelEn: 'Home', end: true },
-  ...traceabilityNavItems.map(
-    (item): NavItem => ({
-      to: item.to,
-      label: item.labelAr,
-      labelEn: item.labelEn,
-      roles: item.roles,
-      end: true,
-    }),
-  ),
-  ...adminNavItems,
-  ...purchasingNavItems,
-  ...manufacturingNavItems,
-  ...inventoryNavItems,
-  ...accountingNavItems,
-  ...salesNavItems,
-  ...returnsNavItems,
-  ...fraudNavItems,
-  ...approvalsNavItems,
-  ...reportsNavItems,
-  ...hrNavItems,
-  ...notificationsNavItems,
+/**
+ * A top-nav group: its own landing route (`to`, the module hub) plus the
+ * child routes. `items` empty ⇒ the group renders as a plain link; otherwise
+ * as a dropdown whose panel lists the hub + `items`.
+ */
+export interface NavGroup extends NavItem {
+  items: readonly NavItem[]
+}
+
+const traceabilityAsNavItems: readonly NavItem[] = traceabilityNavItems.map((item) => ({
+  to: item.to,
+  label: item.labelAr,
+  labelEn: item.labelEn,
+  roles: item.roles,
+  end: true,
+}))
+
+/** `[head, ...children]` → one group. `head` is the module hub / landing link. */
+function group(items: readonly NavItem[]): NavGroup {
+  const [head, ...rest] = items
+  if (!head) throw new Error('nav group needs at least one item')
+  return { ...head, items: rest }
+}
+
+/** Primary nav as groups — the dashboard plus one group per module. */
+export const NAV_GROUPS: readonly NavGroup[] = [
+  { to: '/', label: 'الرئيسية', labelEn: 'Home', end: true, items: [] },
+  group(traceabilityAsNavItems),
+  group(adminNavItems),
+  group(purchasingNavItems),
+  group(manufacturingNavItems),
+  group(inventoryNavItems),
+  group(accountingNavItems),
+  group(salesNavItems),
+  group(returnsNavItems),
+  group(fraudNavItems),
+  group(approvalsNavItems),
+  group(reportsNavItems),
+  group(hrNavItems),
+  group(notificationsNavItems),
 ]
+
+/** Flat list of every nav entry (hubs + children) — kept for any consumer that
+ *  wants the ungrouped view. */
+export const NAV_ITEMS: readonly NavItem[] = NAV_GROUPS.flatMap((g) => [
+  { to: g.to, label: g.label, labelEn: g.labelEn, roles: g.roles, end: g.end },
+  ...g.items,
+])
