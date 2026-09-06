@@ -109,7 +109,17 @@ dropdowns** (`TopNav.tsx` + `NAV_GROUPS` in `nav.ts`); hamburger panel below `lg
   (P&L / production-waste / rep cash-up), opening-stock + bank-statement
   importers.
 
-Migrations are now 0001–0013. Aging buckets were already built in
+- **System Admin god-mode (0014).** Per `rbac.ts` the admin is the "owner"
+  role. It is now exempt from every SoD / approval / credit / QC submit gate;
+  `admin_set_status(table,row,patch,reason)` forces any workflow status (audited,
+  reason required); a per-table `<t>_admin_override` RLS policy (FOR ALL,
+  `has_role('system_admin')`) on the 14 docs + attendance lets the admin edit
+  any row via the normal forms. Immutable ledgers + audit_log + control tables
+  stay admin-read-only. `<AdminOverridePanel>` mounted on the PO / production
+  request / production batch / warehouse transfer / rep stock issue detail
+  pages. 0001 regenerated to match.
+
+Migrations are now 0001–0014. Aging buckets were already built in
 `accounting/domain/aging.ts`.
 
 Remaining backlog (see `docs/IMPLEMENTATION_PLAN.md` §5): finish Phase 4.1
