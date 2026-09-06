@@ -55,6 +55,7 @@ const MESSAGES: Record<AppError['code'], string> = {
   validation: 'Some of the information provided is invalid. Please review and try again.',
   conflict: 'This change conflicts with the current state. Refresh and try again.',
   rate_limited: 'Too many attempts. Please wait a moment and try again.',
+  pending_approval: 'This document is awaiting approval review and cannot be submitted yet.',
   server: 'The service is temporarily unavailable. Please try again shortly.',
   unknown: 'Something went wrong.',
 }
