@@ -34,6 +34,7 @@ export const ServerRoute = {
   checkCustomerCredit: '/credit/check',
   recordCreditOverride: '/credit/override',
   importRawMaterialPrices: '/import/raw-material-prices',
+  adminSetStatus: '/admin/set-status',
   // CRM client portal (Phase 3) — see `functions/routes/portal-account.ts` and
   // `functions/routes/portal-data.ts`.
   createPortalAccount: '/portal-account/create',
@@ -316,6 +317,11 @@ const DISPATCH: Record<string, Dispatch> = {
     fn: 'import_raw_material_prices',
     args: (p) => ({ p_rows: p.rows }),
   },
+  [ServerRoute.adminSetStatus]: {
+    kind: 'rpc',
+    fn: 'admin_set_status',
+    args: (p) => ({ p_table: p.table, p_row_id: p.rowId, p_patch: p.patch, p_reason: p.reason }),
+  },
   [ServerRoute.createPortalAccount]: {
     kind: 'edge',
     fn: 'portal-account',
@@ -565,6 +571,30 @@ export function importRawMaterialPrices(
   rows: ReadonlyArray<{ code: string; purchase_price: number }>,
 ): Promise<Result<PriceImportResult>> {
   return invoke<PriceImportResult>(ServerRoute.importRawMaterialPrices, { rows })
+}
+
+// --- Admin operational override ----------------------------------------
+
+export interface AdminSetStatusResult {
+  table: string
+  rowId: string
+  patch: Record<string, unknown>
+}
+
+/**
+ * System-Admin-only: force a status change on any workflow document
+ * (`doc_status` / `status` / `qc_status` / `approval_state` + sign-off actor
+ * fields), with a mandatory reason. Audited. The admin bypasses the normal
+ * role / SoD / workflow gates — this is the "owner" role's operational
+ * authority (Plan §1 / `src/core/rbac.ts`).
+ */
+export function adminSetStatus(
+  table: string,
+  rowId: string,
+  patch: Record<string, string | number | null>,
+  reason: string,
+): Promise<Result<AdminSetStatusResult>> {
+  return invoke<AdminSetStatusResult>(ServerRoute.adminSetStatus, { table, rowId, patch, reason })
 }
 
 // --- CRM client portal (Phase 3) -------------------------------------------

@@ -233,12 +233,16 @@ function rlsSql(def: TableDef): string {
       lines.push(
         readAll,
         // clients may create a Draft they own; submit/cancel/amend go through
-        // SECURITY DEFINER RPC. No client UPDATE/DELETE policy at all.
+        // SECURITY DEFINER RPC. No client UPDATE/DELETE policy at all — except
+        // the System Admin, who has full operational authority (Plan §1 / the
+        // "owner / god-mode" role) and may edit any row, any status.
         `CREATE POLICY "${def.id}_create_draft" ON ${t} FOR INSERT TO authenticated`,
         `  WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);`,
         `CREATE POLICY "${def.id}_update_draft" ON ${t} FOR UPDATE TO authenticated`,
         `  USING (doc_status = 0 AND created_by = auth.uid()::text)`,
         `  WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);`,
+        `CREATE POLICY "${def.id}_admin_override" ON ${t} FOR ALL TO authenticated`,
+        `  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));`,
       )
       break
     case 'attendance':
@@ -248,6 +252,8 @@ function rlsSql(def: TableDef): string {
         `  WITH CHECK (created_by = auth.uid()::text);`,
         `CREATE POLICY "${def.id}_update_own" ON ${t} FOR UPDATE TO authenticated`,
         `  USING (created_by = auth.uid()::text) WITH CHECK (created_by = auth.uid()::text);`,
+        `CREATE POLICY "${def.id}_admin_override" ON ${t} FOR ALL TO authenticated`,
+        `  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));`,
       )
       break
     case 'notifications':

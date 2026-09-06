@@ -898,6 +898,8 @@ CREATE POLICY "purchase_orders_create_draft" ON public."purchase_orders" FOR INS
 CREATE POLICY "purchase_orders_update_draft" ON public."purchase_orders" FOR UPDATE TO authenticated
   USING (doc_status = 0 AND created_by = auth.uid()::text)
   WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "purchase_orders_admin_override" ON public."purchase_orders" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: stock_receipts (document)
 CREATE POLICY "stock_receipts_read" ON public."stock_receipts" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id));
@@ -906,6 +908,8 @@ CREATE POLICY "stock_receipts_create_draft" ON public."stock_receipts" FOR INSER
 CREATE POLICY "stock_receipts_update_draft" ON public."stock_receipts" FOR UPDATE TO authenticated
   USING (doc_status = 0 AND created_by = auth.uid()::text)
   WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "stock_receipts_admin_override" ON public."stock_receipts" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: production_requests (document)
 CREATE POLICY "production_requests_read" ON public."production_requests" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id));
@@ -914,6 +918,8 @@ CREATE POLICY "production_requests_create_draft" ON public."production_requests"
 CREATE POLICY "production_requests_update_draft" ON public."production_requests" FOR UPDATE TO authenticated
   USING (doc_status = 0 AND created_by = auth.uid()::text)
   WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "production_requests_admin_override" ON public."production_requests" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: production_batches (document)
 CREATE POLICY "production_batches_read" ON public."production_batches" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id));
@@ -922,6 +928,8 @@ CREATE POLICY "production_batches_create_draft" ON public."production_batches" F
 CREATE POLICY "production_batches_update_draft" ON public."production_batches" FOR UPDATE TO authenticated
   USING (doc_status = 0 AND created_by = auth.uid()::text)
   WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "production_batches_admin_override" ON public."production_batches" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: warehouse_transfers (document)
 CREATE POLICY "warehouse_transfers_read" ON public."warehouse_transfers" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id));
@@ -930,6 +938,8 @@ CREATE POLICY "warehouse_transfers_create_draft" ON public."warehouse_transfers"
 CREATE POLICY "warehouse_transfers_update_draft" ON public."warehouse_transfers" FOR UPDATE TO authenticated
   USING (doc_status = 0 AND created_by = auth.uid()::text)
   WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "warehouse_transfers_admin_override" ON public."warehouse_transfers" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: rep_stock_issues (document)
 CREATE POLICY "rep_stock_issues_read" ON public."rep_stock_issues" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id));
@@ -938,6 +948,8 @@ CREATE POLICY "rep_stock_issues_create_draft" ON public."rep_stock_issues" FOR I
 CREATE POLICY "rep_stock_issues_update_draft" ON public."rep_stock_issues" FOR UPDATE TO authenticated
   USING (doc_status = 0 AND created_by = auth.uid()::text)
   WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "rep_stock_issues_admin_override" ON public."rep_stock_issues" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: sales_invoices (document)
 CREATE POLICY "sales_invoices_read" ON public."sales_invoices" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id));
@@ -946,6 +958,8 @@ CREATE POLICY "sales_invoices_create_draft" ON public."sales_invoices" FOR INSER
 CREATE POLICY "sales_invoices_update_draft" ON public."sales_invoices" FOR UPDATE TO authenticated
   USING (doc_status = 0 AND created_by = auth.uid()::text)
   WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "sales_invoices_admin_override" ON public."sales_invoices" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: receipts (document)
 CREATE POLICY "receipts_read" ON public."receipts" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id));
@@ -954,6 +968,8 @@ CREATE POLICY "receipts_create_draft" ON public."receipts" FOR INSERT TO authent
 CREATE POLICY "receipts_update_draft" ON public."receipts" FOR UPDATE TO authenticated
   USING (doc_status = 0 AND created_by = auth.uid()::text)
   WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "receipts_admin_override" ON public."receipts" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: payment_vouchers (document)
 CREATE POLICY "payment_vouchers_read" ON public."payment_vouchers" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id));
@@ -962,6 +978,8 @@ CREATE POLICY "payment_vouchers_create_draft" ON public."payment_vouchers" FOR I
 CREATE POLICY "payment_vouchers_update_draft" ON public."payment_vouchers" FOR UPDATE TO authenticated
   USING (doc_status = 0 AND created_by = auth.uid()::text)
   WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "payment_vouchers_admin_override" ON public."payment_vouchers" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: return_requests (document)
 CREATE POLICY "return_requests_read" ON public."return_requests" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id));
@@ -970,6 +988,8 @@ CREATE POLICY "return_requests_create_draft" ON public."return_requests" FOR INS
 CREATE POLICY "return_requests_update_draft" ON public."return_requests" FOR UPDATE TO authenticated
   USING (doc_status = 0 AND created_by = auth.uid()::text)
   WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "return_requests_admin_override" ON public."return_requests" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: write_offs (document)
 CREATE POLICY "write_offs_read" ON public."write_offs" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id));
@@ -978,6 +998,8 @@ CREATE POLICY "write_offs_create_draft" ON public."write_offs" FOR INSERT TO aut
 CREATE POLICY "write_offs_update_draft" ON public."write_offs" FOR UPDATE TO authenticated
   USING (doc_status = 0 AND created_by = auth.uid()::text)
   WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "write_offs_admin_override" ON public."write_offs" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: stock_count_sessions (document)
 CREATE POLICY "stock_count_sessions_read" ON public."stock_count_sessions" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id));
@@ -986,6 +1008,8 @@ CREATE POLICY "stock_count_sessions_create_draft" ON public."stock_count_session
 CREATE POLICY "stock_count_sessions_update_draft" ON public."stock_count_sessions" FOR UPDATE TO authenticated
   USING (doc_status = 0 AND created_by = auth.uid()::text)
   WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "stock_count_sessions_admin_override" ON public."stock_count_sessions" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: rep_closeouts (document)
 CREATE POLICY "rep_closeouts_read" ON public."rep_closeouts" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id));
@@ -994,6 +1018,8 @@ CREATE POLICY "rep_closeouts_create_draft" ON public."rep_closeouts" FOR INSERT 
 CREATE POLICY "rep_closeouts_update_draft" ON public."rep_closeouts" FOR UPDATE TO authenticated
   USING (doc_status = 0 AND created_by = auth.uid()::text)
   WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "rep_closeouts_admin_override" ON public."rep_closeouts" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: payroll_runs (document)
 CREATE POLICY "payroll_runs_read" ON public."payroll_runs" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id));
@@ -1002,6 +1028,8 @@ CREATE POLICY "payroll_runs_create_draft" ON public."payroll_runs" FOR INSERT TO
 CREATE POLICY "payroll_runs_update_draft" ON public."payroll_runs" FOR UPDATE TO authenticated
   USING (doc_status = 0 AND created_by = auth.uid()::text)
   WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "payroll_runs_admin_override" ON public."payroll_runs" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: attendance_records (attendance)
 CREATE POLICY "attendance_records_read" ON public."attendance_records" FOR SELECT TO authenticated USING (true);
@@ -1009,6 +1037,8 @@ CREATE POLICY "attendance_records_insert" ON public."attendance_records" FOR INS
   WITH CHECK (created_by = auth.uid()::text);
 CREATE POLICY "attendance_records_update_own" ON public."attendance_records" FOR UPDATE TO authenticated
   USING (created_by = auth.uid()::text) WITH CHECK (created_by = auth.uid()::text);
+CREATE POLICY "attendance_records_admin_override" ON public."attendance_records" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: incentive_rules (master)
 CREATE POLICY "incentive_rules_read" ON public."incentive_rules" FOR SELECT TO authenticated USING (true);

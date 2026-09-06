@@ -12,6 +12,7 @@ import { useAuth } from '@/application/auth/context'
 import { DocStatus } from '@/core/doc-status'
 import type { AppError } from '@/core/errors'
 import { formatDateTime, formatNumber } from '@/shared/formatters'
+import { AdminOverridePanel } from '@/shared/documents'
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
 import { postRepIssueToLedger, type RepIssueLedgerPosting } from '../../data/post-sales'
@@ -161,6 +162,12 @@ export function RepStockIssueDetailPage() {
           <p className="text-sm text-red-600 dark:text-red-400">{actionError}</p>
         ) : null}
       </Card>
+
+      <AdminOverridePanel
+        table="rep_stock_issues"
+        row={issue}
+        onDone={() => void query.refetch()}
+      />
     </div>
   )
 }

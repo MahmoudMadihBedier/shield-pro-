@@ -8,3 +8,4 @@ export type {
   DraftEnvelopeExtras,
 } from './document-repo'
 export { useDocumentList, useDocument, useDocumentActions } from './hooks'
+export { AdminOverridePanel, type AdminOverridePanelProps } from './AdminOverridePanel'

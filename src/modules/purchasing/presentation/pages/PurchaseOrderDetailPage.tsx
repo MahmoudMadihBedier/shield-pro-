@@ -15,6 +15,8 @@ import { PO_FIELD_LABELS, PURCHASING_LABELS } from '../../domain/labels'
 import { canActOnPurchasing } from '../../domain/permissions'
 import { Dialog } from '../components/Dialog'
 import { DocStatusPill } from '../components/DocStatusPill'
+import { AdminOverridePanel } from '@/shared/documents'
+
 import { SubmitCancelBar } from '../components/SubmitCancelBar'
 import { usePurchaseOrder, usePurchaseOrderActions } from '../hooks/usePurchaseOrders'
 import { useRawMaterialOptions, useSupplierOptions } from '../hooks/usePickerOptions'
@@ -153,6 +155,8 @@ export function PurchaseOrderDetailPage() {
           </Link>
         </p>
       </Card>
+
+      <AdminOverridePanel table="purchase_orders" row={order} onDone={() => void query.refetch()} />
 
       <Dialog
         open={editOpen}

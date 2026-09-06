@@ -20,6 +20,8 @@ import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 import { isAlreadyPosted, postBatchToLedger } from '../../data/post-batch'
 import { parseRawMaterialLots } from '../../domain/planning'
 import type { ProductionBatch } from '../../domain/schemas'
+import { AdminOverridePanel } from '@/shared/documents'
+
 import { QcActionBar } from '../components/QcActionBar'
 import { SubmitCancelBar } from '../components/SubmitCancelBar'
 import { useFactoryWarehouses, useProductOptions } from '../hooks/catalog'
@@ -122,7 +124,9 @@ export function ProductionBatchDetailPage() {
         {batch.production_request_ref ? (
           <Fact label="مرجع طلب الإنتاج" value={batch.production_request_ref} dir="ltr" />
         ) : null}
-        {batch.expiry_date ? <Fact label="تاريخ الانتهاء" value={batch.expiry_date} dir="ltr" /> : null}
+        {batch.expiry_date ? (
+          <Fact label="تاريخ الانتهاء" value={batch.expiry_date} dir="ltr" />
+        ) : null}
         {batch.remarks ? <Fact label="ملاحظات" value={batch.remarks} /> : null}
       </Card>
 
@@ -157,6 +161,12 @@ export function ProductionBatchDetailPage() {
         onCancel={(reason) => cancel.mutate({ id: batch.$id, reason })}
         busy={submit.isPending || cancel.isPending || ledger.kind === 'posting'}
         error={submitCancelError}
+      />
+
+      <AdminOverridePanel
+        table="production_batches"
+        row={batch}
+        onDone={() => void query.refetch()}
       />
 
       {batch.doc_status === DocStatus.Submitted ? (
