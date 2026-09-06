@@ -72,7 +72,8 @@ function throwFrom(error: PostgrestError | null, context: string): never {
   // PGRST116 = "Results contain 0 rows" from `.single()`
   if (error.code === 'PGRST116') throw coded(`${context}: not found`, 404)
   if (error.code === '23505') throw coded(`${context}: ${error.message}`, 409) // unique_violation
-  if (error.code === '42501' || error.code === 'PGRST301') throw coded(`${context}: ${error.message}`, 403)
+  if (error.code === '42501' || error.code === 'PGRST301')
+    throw coded(`${context}: ${error.message}`, 403)
   if (error.code === '23503' || error.code === '23514' || error.code === '22P02')
     throw coded(`${context}: ${error.message}`, 400)
   throw coded(`${context}: ${error.message}`, 500)
@@ -200,7 +201,9 @@ export const tablesDB = {
   async listRows(params: ListParams): Promise<RowList> {
     const parsed = parseQueries(params.queries)
     const selectQ = parsed.find((p) => p.method === 'select')
-    const cols = selectQ ? (selectQ.values as string[]).filter((c) => c !== '*').join(',') || '*' : '*'
+    const cols = selectQ
+      ? (selectQ.values as string[]).filter((c) => c !== '*').join(',') || '*'
+      : '*'
     const base = supabase.from(params.tableId).select(cols, { count: 'exact' })
     const { data, error, count } = await applyQueries(base, parsed)
     if (error) throwFrom(error, `list ${params.tableId}`)
@@ -226,11 +229,7 @@ export const tablesDB = {
     if (params.rowId && params.rowId !== 'unique()' && params.rowId !== 'ID.unique()') {
       payload.id = params.rowId
     }
-    const { data, error } = await supabase
-      .from(params.tableId)
-      .insert(payload)
-      .select('*')
-      .single()
+    const { data, error } = await supabase.from(params.tableId).insert(payload).select('*').single()
     if (error) throwFrom(error, `create ${params.tableId}`)
     return toRow(data as Record<string, unknown>) as unknown as T
   },

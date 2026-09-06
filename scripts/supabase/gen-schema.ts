@@ -1,6 +1,6 @@
 /**
  * Generate the Supabase (Postgres) schema from the SAME declarative table
- * definitions the Appwrite provisioner used (`scripts/appwrite/schema.ts`), so
+ * definitions the Appwrite provisioner used (`scripts/supabase/schema.ts`), so
  * the schema stays code and the two backends can't silently drift during the
  * migration.
  *
@@ -20,7 +20,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import { TABLES, type Column, type TableDef } from '../appwrite/schema'
+import { TABLES, type Column, type TableDef } from './schema'
 
 // ---------------------------------------------------------------------------
 // classification (drives the RLS policy set)
@@ -62,7 +62,10 @@ function classify(def: TableDef): Kind {
   if (LEDGER_TABLES.has(def.id)) return 'ledger'
   if (CONTROL_TABLES.has(def.id)) return 'control'
   if (MASTER_TABLES.has(def.id)) return 'master'
-  if (def.columns.some((c) => c.key === 'doc_status') && def.columns.some((c) => c.key === 'reference_id')) {
+  if (
+    def.columns.some((c) => c.key === 'doc_status') &&
+    def.columns.some((c) => c.key === 'reference_id')
+  ) {
     return 'document'
   }
   return 'master'
@@ -236,7 +239,7 @@ function rlsSql(def: TableDef): string {
 // assemble
 // ---------------------------------------------------------------------------
 
-const header = `-- Shield Pro — Supabase schema (generated from scripts/appwrite/schema.ts)
+const header = `-- Shield Pro — Supabase schema (generated from scripts/supabase/schema.ts)
 -- Regenerate:  pnpm tsx scripts/supabase/gen-schema.ts
 -- Do not hand-edit; add follow-on migrations for changes.
 

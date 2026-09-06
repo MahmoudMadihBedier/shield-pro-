@@ -22,7 +22,8 @@ export const account = {
     const { data, error } = await supabase.auth.getUser()
     if (error) throw error
     const user = data.user
-    if (!user) throw Object.assign(new Error('no active session'), { name: 'AuthSessionMissingError' })
+    if (!user)
+      throw Object.assign(new Error('no active session'), { name: 'AuthSessionMissingError' })
     return {
       $id: user.id,
       email: user.email ?? '',
@@ -32,7 +33,7 @@ export const account = {
 
   async getPrefs<T = Record<string, unknown>>(): Promise<T> {
     const { data } = await supabase.auth.getUser()
-    return ((data.user?.user_metadata ?? {}) as T)
+    return (data.user?.user_metadata ?? {}) as T
   },
 
   async createEmailPasswordSession(params: { email: string; password: string }): Promise<void> {

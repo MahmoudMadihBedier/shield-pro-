@@ -323,7 +323,9 @@ const DISPATCH: Record<string, Dispatch> = {
 async function invoke<T>(path: string, payload: unknown): Promise<Result<T>> {
   const d = DISPATCH[path]
   if (!d) {
-    return err(appError('unknown', 'This operation is not available.', { detail: `no binding: ${path}` }))
+    return err(
+      appError('unknown', 'This operation is not available.', { detail: `no binding: ${path}` }),
+    )
   }
   try {
     if (d.kind === 'rpc') {
@@ -333,7 +335,12 @@ async function invoke<T>(path: string, payload: unknown): Promise<Result<T>> {
     }
     const { data, error } = await supabase.functions.invoke(d.fn, { body: d.body(payload ?? {}) })
     if (error) return err(mapAppwriteError(error))
-    if (data && typeof data === 'object' && 'error' in data && (data as { error?: unknown }).error) {
+    if (
+      data &&
+      typeof data === 'object' &&
+      'error' in data &&
+      (data as { error?: unknown }).error
+    ) {
       return err(
         appError('server', String((data as { error: unknown }).error) || 'The operation failed.'),
       )

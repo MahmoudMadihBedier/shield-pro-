@@ -45,7 +45,8 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405)
 
   const authHeader = req.headers.get('Authorization') ?? ''
-  if (!authHeader.startsWith('Bearer ')) return json({ error: 'a signed-in staff caller is required' }, 401)
+  if (!authHeader.startsWith('Bearer '))
+    return json({ error: 'a signed-in staff caller is required' }, 401)
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } })
   const asCaller = createClient(SUPABASE_URL, ANON_KEY, {
@@ -124,7 +125,8 @@ Deno.serve(async (req) => {
       email_confirm: true,
       user_metadata: { name: customer.name, portal_customer_id: customer.id },
     })
-    if (createErr || !created.user) return json({ error: createErr?.message ?? 'could not create account' }, 500)
+    if (createErr || !created.user)
+      return json({ error: createErr?.message ?? 'could not create account' }, 500)
 
     const { error: linkErr } = await admin
       .from('customers')
@@ -141,7 +143,8 @@ Deno.serve(async (req) => {
 
   // --- reset ---------------------------------------------------------
   if (action === 'reset') {
-    if (!portalUserId) return json({ error: 'this customer has no portal account — create one first' }, 400)
+    if (!portalUserId)
+      return json({ error: 'this customer has no portal account — create one first' }, 400)
     const pin = generatePin()
     const { error: resetErr } = await admin.auth.admin.updateUserById(portalUserId, {
       password: pin,

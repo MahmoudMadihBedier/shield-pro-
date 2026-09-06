@@ -37,7 +37,13 @@ function readEnvFile(name: string): Record<string, string> {
         .filter((l) => l.includes('=') && !l.trim().startsWith('#'))
         .map((l) => {
           const i = l.indexOf('=')
-          return [l.slice(0, i).trim(), l.slice(i + 1).trim().replace(/^["']|["']$/g, '')]
+          return [
+            l.slice(0, i).trim(),
+            l
+              .slice(i + 1)
+              .trim()
+              .replace(/^["']|["']$/g, ''),
+          ]
         }),
     )
   } catch {
@@ -73,9 +79,9 @@ interface UserRow {
 }
 type Export = Record<string, Array<Record<string, unknown>>> & { users: UserRow[] }
 
-const data = JSON.parse(
-  readFileSync(resolve(HERE, 'appwrite-export.json'), 'utf8'),
-) as Export & { _comment?: string }
+const data = JSON.parse(readFileSync(resolve(HERE, 'appwrite-export.json'), 'utf8')) as Export & {
+  _comment?: string
+}
 delete data._comment
 
 /** Table load order — parents before children (FKs are soft, but keep it tidy). */
@@ -127,7 +133,9 @@ async function main() {
   console.log(`Shield Pro data migration → ${SUPABASE_URL}`)
   console.log(COMMIT ? '*** COMMIT mode ***' : '(dry run — pass --commit to write)')
   console.log(
-    ACCOUNTS_PASSWORD ? '*** will (re)create staff auth accounts ***' : '(no --accounts: profiles keep their Appwrite auth_user_id)',
+    ACCOUNTS_PASSWORD
+      ? '*** will (re)create staff auth accounts ***'
+      : '(no --accounts: profiles keep their Appwrite auth_user_id)',
   )
   console.log()
 

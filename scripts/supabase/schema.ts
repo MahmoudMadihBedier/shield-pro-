@@ -1,50 +1,40 @@
 /**
- * Declarative Appwrite schema for Shield Pro — the single source of truth for
- * the database, tables, columns, indexes and permissions.
- *
- * `provision.ts` reads this and applies it idempotently. Never hand-edit schema
- * in the Appwrite console (claude.md Section C).
+ * Declarative schema for Shield Pro — the single source of truth for the
+ * database tables, columns and indexes. `scripts/supabase/gen-schema.ts` reads
+ * `TABLES` and emits `supabase/migrations/0001_init.sql` (tables + RLS). Never
+ * hand-edit schema in a console — change it here and regenerate.
  *
  * Design notes:
  *  - Table ids come from `src/infrastructure/appwrite/collections.ts` so the app
- *    and the provisioner can never drift.
+ *    and the generator can never drift.
  *  - Movement / financial documents carry the ERPNext-style envelope:
  *    `reference_id`, `doc_status` (0 Draft / 1 Submitted / 2 Cancelled),
  *    `branch_id`, `created_by`, `amended_from`, `posting_datetime`.
  *  - Line items are stored as a JSON string column (`lines`) for v1 rather than
  *    child-table relationships — revisit if querying inside lines is needed.
- *  - Ledgers have NO client write permission. Their only writer is an Appwrite
- *    Function using an API key. Documents allow client `create` (Draft only);
- *    submit/cancel go through Functions.
+ *  - Access control is RLS (see gen-schema.ts). The `permissions` tag below is
+ *    an inert classification hint kept only so the table defs read the same as
+ *    before the Supabase migration.
  */
-import { Permission, Role } from 'node-appwrite'
-
 import { DATABASE_ID, Tables } from '../../src/infrastructure/appwrite/collections'
 import { Role as StaffRole } from '../../src/core/rbac'
 
 export const DATABASE = { id: DATABASE_ID, name: 'Shield Pro' }
 
-/** Teams that back RBAC — one per staff role (see src/core/rbac.ts). */
+/** RBAC roles — one per staff role (see src/core/rbac.ts). */
 export const TEAMS: ReadonlyArray<{ id: string; name: string }> = Object.entries(StaffRole).map(
   ([label, id]) => ({ id, name: label.replace(/([a-z])([A-Z])/g, '$1 $2') }),
 )
 
-const admin = Role.team(StaffRole.SystemAdmin)
-
-/** Read for any signed-in user; all writes restricted to the System Admin team. */
-const masterDataPerms = [
-  Permission.read(Role.users()),
-  Permission.create(admin),
-  Permission.update(admin),
-  Permission.delete(admin),
-]
+/** Read for any signed-in user; all writes restricted to the System Admin. */
+const masterDataPerms = ['read:authenticated', 'write:system_admin']
 
 /** Read for any signed-in user; client may create Drafts. Submit/cancel + all
- *  updates happen in Functions (API key). Row-level perms narrow per branch. */
-const documentPerms = [Permission.read(Role.users()), Permission.create(Role.users())]
+ *  updates happen in SECURITY DEFINER RPC. Row-level scope narrows per branch. */
+const documentPerms = ['read:authenticated', 'create:authenticated']
 
 /** Append-only ledgers + control tables: readable, never client-writable. */
-const readOnlyPerms = [Permission.read(Role.users())]
+const readOnlyPerms = ['read:authenticated']
 
 // ---------------------------------------------------------------------------
 // Column + index vocabulary
@@ -558,22 +548,18 @@ export const TABLES: TableDef[] = [
     ],
   ),
 
-  master(
-    Tables.incentiveRules,
-    'Incentive rules',
-    [
-      str('name', 128, true),
-      {
-        key: 'kind',
-        type: 'enum',
-        elements: ['sales_commission', 'production_bonus', 'attendance_bonus'],
-        required: true,
-      },
-      str('predicate', 2000), // JSON rule definition
-      { key: 'amount_or_pct', type: 'float', default: 0, min: 0 },
-      { key: 'is_active', type: 'boolean', default: true },
-    ],
-  ),
+  master(Tables.incentiveRules, 'Incentive rules', [
+    str('name', 128, true),
+    {
+      key: 'kind',
+      type: 'enum',
+      elements: ['sales_commission', 'production_bonus', 'attendance_bonus'],
+      required: true,
+    },
+    str('predicate', 2000), // JSON rule definition
+    { key: 'amount_or_pct', type: 'float', default: 0, min: 0 },
+    { key: 'is_active', type: 'boolean', default: true },
+  ]),
 
   // ---- Immutable ledgers (Function-written only) ----
   ledger(

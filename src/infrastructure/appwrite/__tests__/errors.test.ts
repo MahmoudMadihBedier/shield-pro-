@@ -1,4 +1,4 @@
-import { AppwriteException } from 'appwrite'
+import { AppwriteException } from '@/infrastructure/appwrite/testing'
 import { describe, expect, it } from 'vitest'
 
 import { mapAppwriteError } from '../errors'

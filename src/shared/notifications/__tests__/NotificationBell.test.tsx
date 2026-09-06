@@ -10,26 +10,22 @@ const { mockListRows, mockUpdateRow } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/infrastructure/appwrite/services', async () => {
-  const { Query } = await import('appwrite')
+  const { Query } = await import('@/infrastructure/appwrite/testing')
   return { tablesDB: { listRows: mockListRows, updateRow: mockUpdateRow }, Query }
 })
 
-// Realtime would otherwise open a real WebSocket in jsdom — stub it to a
-// never-resolving no-op so `useNotificationsRealtime` degrades harmlessly.
-vi.mock('appwrite', async () => {
-  const actual = await vi.importActual<typeof import('appwrite')>('appwrite')
-  return {
-    ...actual,
-    Realtime: class {
-      subscribe() {
-        return Promise.resolve({
-          unsubscribe: () => Promise.resolve(),
-          update: () => Promise.resolve(),
-          close: () => Promise.resolve(),
-        })
-      }
+// Supabase Realtime would otherwise open a real WebSocket in jsdom — stub the
+// shared client's channel API so `useNotificationsRealtime` degrades harmlessly.
+vi.mock('@/infrastructure/appwrite/client', () => {
+  const channel = {
+    on() {
+      return channel
+    },
+    subscribe() {
+      return channel
     },
   }
+  return { supabase: { channel: () => channel, removeChannel: () => Promise.resolve() } }
 })
 
 import { AuthContext, type AuthContextValue } from '@/application/auth/context'

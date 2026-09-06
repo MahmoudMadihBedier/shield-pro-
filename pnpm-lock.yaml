@@ -20,9 +20,6 @@ importers:
       '@tanstack/react-virtual':
         specifier: ^3.14.10
         version: 3.14.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      appwrite:
-        specifier: ^26.2.0
-        version: 26.2.0
       react:
         specifier: ^19.2.8
         version: 19.2.8
@@ -69,15 +66,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.1.0
         version: 6.1.1(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
-      esbuild:
-        specifier: ^0.28.2
-        version: 0.28.2
       jsdom:
         specifier: ^30.0.1
         version: 30.0.1
-      node-appwrite:
-        specifier: ^28.0.0
-        version: 28.0.0
       oxlint:
         specifier: ^1.79.0
         version: 1.80.0
@@ -917,10 +908,6 @@ packages:
     resolution: {integrity: sha512-Cxwpt2SfTzTtXcfOlzGEee8O+c+MmUgGrNiBcXnuWxuFJHe6a5Hz7qwhwe5OgaSYI0IJvkLqWX1ASG+cJOkEiA==}
     engines: {node: '>=10'}
 
-  appwrite@26.2.0:
-    resolution: {integrity: sha512-8TCd4mMKhhUxGF9sjZ6W2V1gesnj43v1SFZoeAue/0O0ikMXIU92p96PiRn0D4nAVvFM/92bluTTb/PoXH5mnQ==}
-    engines: {node: '>=18.0.0'}
-
   aria-query@5.3.0:
     resolution: {integrity: sha512-b0P0sZPKtyu8HkeRAfCq0IfURZK+SuwMjY1UXGBU27wpAiTwQAIlq56IbIO+ytk/JjS1fMR14ee5WBBfKi5J6A==}
 
@@ -934,9 +921,6 @@ packages:
 
   bidi-js@1.0.3:
     resolution: {integrity: sha512-RKshQI1R3YQ+n9YJz2QQ147P66ELpa1FQEg20Dk8oW9t2KgLbpDLLp9aGZ7y8WHSshDknG0bknqGw5/tyCs5tw==}
-
-  bignumber.js@9.3.1:
-    resolution: {integrity: sha512-Ko0uX15oIUS7wJ3Rb30Fs6SkVbLmPBAKdlm7q9+ak9bbIeFf0MwuBsQV6z7+X768/cHsfg+WlysDWJcmthjsjQ==}
 
   chai@6.2.2:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
@@ -1050,9 +1034,6 @@ packages:
     peerDependenciesMeta:
       canvas:
         optional: true
-
-  json-bigint@1.0.0:
-    resolution: {integrity: sha512-SiPv/8VpZuWbvLSMtTDU8hEfrZWg/mH/nV/b4o0CYbSxu1UIQPLdwKOCIyLQX+VIPO5vrLX3i8qtqFyhdPSUSQ==}
 
   lightningcss-android-arm64@1.32.0:
     resolution: {integrity: sha512-YK7/ClTt4kAK0vo6w3X+Pnm0D2cf2vPHbhOXdoNti1Ga0al1P4TBZhwjATvjNwLEBCnKvjJc2jQgHXH0NEwlAg==}
@@ -1224,9 +1205,6 @@ packages:
     resolution: {integrity: sha512-DTg4MJbGMWkfi6VZFdNt2/caMbQy4Ou+Op/hJQvGEWcnVfoA1QA+xzRKAzw9jD6+GVOOeYr/mIcuDSdug6F6+w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
-
-  node-appwrite@28.0.0:
-    resolution: {integrity: sha512-3pLMannNwZf1WUJYdZ998B/ckgAkUGI+Wis31GEwy2NJlx0PooghXe6U3ZJvH86oFaLGl+evnjFWcaQJXu+PZg==}
 
   obug@2.1.4:
     resolution: {integrity: sha512-4a+OsYv9UktOJKE+l1A4OufDgdRF9PifWj+tJnHURo/P+WOxpG4GzUFL9qCalmWauao6ogiG+QvnCovwPoyAWA==}
@@ -1405,10 +1383,6 @@ packages:
 
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
-
-  undici@6.28.0:
-    resolution: {integrity: sha512-LIY910g9TI13YS95lrMFrs8Rm/u/irgHeTWoKCoteeJ04CUJ92eEfj0rVn+7VKMPBpUPiUoBKfhNyLI23EE/KA==}
-    engines: {node: '>=18.17'}
 
   undici@8.10.0:
     resolution: {integrity: sha512-HvltHd7avK13QIw/oLe4qoOLyoVSoafqJ2jYOrtMRBkbYT31eiBQ8O0ehRKZiEZCMEyLFQNIADpgCWC5fALvYQ==}
@@ -2058,10 +2032,6 @@ snapshots:
 
   ansi-styles@5.2.0: {}
 
-  appwrite@26.2.0:
-    dependencies:
-      json-bigint: 1.0.0
-
   aria-query@5.3.0:
     dependencies:
       dequal: 2.0.3
@@ -2073,8 +2043,6 @@ snapshots:
   bidi-js@1.0.3:
     dependencies:
       require-from-string: 2.0.2
-
-  bignumber.js@9.3.1: {}
 
   chai@6.2.2: {}
 
@@ -2203,10 +2171,6 @@ snapshots:
     transitivePeerDependencies:
       - '@noble/hashes'
 
-  json-bigint@1.0.0:
-    dependencies:
-      bignumber.js: 9.3.1
-
   lightningcss-android-arm64@1.32.0:
     optional: true
 
@@ -2318,11 +2282,6 @@ snapshots:
   min-indent@1.0.1: {}
 
   nanoid@3.3.18: {}
-
-  node-appwrite@28.0.0:
-    dependencies:
-      json-bigint: 1.0.0
-      undici: 6.28.0
 
   obug@2.1.4: {}
 
@@ -2491,8 +2450,6 @@ snapshots:
   typescript@6.0.3: {}
 
   undici-types@7.18.2: {}
-
-  undici@6.28.0: {}
 
   undici@8.10.0: {}
 

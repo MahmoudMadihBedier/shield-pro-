@@ -112,7 +112,9 @@ export function mapAppwriteError(e: unknown): AppError {
     const message = /invalid login credentials/i.test(e.message)
       ? 'The email or password is incorrect.'
       : MESSAGES[code]
-    return appError(code, message, { detail: `${e.name}${e.code ? ` ${e.code}` : ''}: ${e.message}` })
+    return appError(code, message, {
+      detail: `${e.name}${e.code ? ` ${e.code}` : ''}: ${e.message}`,
+    })
   }
 
   // PostgREST / plpgsql errors (also what `supabase.rpc()` returns on failure).
