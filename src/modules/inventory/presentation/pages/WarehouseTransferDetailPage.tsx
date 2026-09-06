@@ -11,6 +11,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import type { AppError } from '@/core/errors'
 import { isErr } from '@/core/result'
 import { formatDate, formatNumber } from '@/shared/formatters'
+import { AdminOverridePanel } from '@/shared/documents'
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
 import { postTransferToLedger, type LedgerPostResult } from '../../data/post-movement'
@@ -76,7 +77,10 @@ export function WarehouseTransferDetailPage() {
         await postLedger.mutateAsync({ ...row, status: 'received' })
       }
     } catch (e) {
-      const message = e && typeof e === 'object' && 'message' in e ? String((e as AppError).message) : 'تعذّر تنفيذ الإجراء.'
+      const message =
+        e && typeof e === 'object' && 'message' in e
+          ? String((e as AppError).message)
+          : 'تعذّر تنفيذ الإجراء.'
       setActionError(message)
     }
   }
@@ -107,7 +111,9 @@ export function WarehouseTransferDetailPage() {
         <>
           <Card className="space-y-2 text-sm">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge tone={TRANSFER_STATUS_TONE[row.status]}>{TRANSFER_STATUS_LABEL[row.status]}</Badge>
+              <Badge tone={TRANSFER_STATUS_TONE[row.status]}>
+                {TRANSFER_STATUS_LABEL[row.status]}
+              </Badge>
             </div>
             <div className="grid gap-1 sm:grid-cols-2">
               <span>من: {warehouseLabel.get(row.from_warehouse_id) ?? row.from_warehouse_id}</span>
@@ -148,7 +154,9 @@ export function WarehouseTransferDetailPage() {
             pending={busy}
             canSubmit={perms.canApproveTransfer}
             canCancel={perms.canApproveTransfer}
-            onSubmit={() => void submit.mutateAsync(row.$id).catch((e: AppError) => setActionError(e.message))}
+            onSubmit={() =>
+              void submit.mutateAsync(row.$id).catch((e: AppError) => setActionError(e.message))
+            }
             onCancel={(reason) =>
               void cancel
                 .mutateAsync({ id: row.$id, reason })
@@ -163,6 +171,12 @@ export function WarehouseTransferDetailPage() {
             onAdvance={(to) => void advance(to)}
           />
 
+          <AdminOverridePanel
+            table="warehouse_transfers"
+            row={row}
+            onDone={() => void query.refetch()}
+          />
+
           {actionError ? (
             <Card className="text-sm text-red-600 dark:text-red-400">{actionError}</Card>
           ) : null}
@@ -174,8 +188,8 @@ export function WarehouseTransferDetailPage() {
                 <p className="text-zinc-500">سبق ترحيل هذا السند إلى الدفتر — لا تغيير.</p>
               ) : (
                 <p className="text-zinc-500">
-                  تم ترحيل {formatNumber(ledger.posted?.entries ?? 0)} قيد إلى دفتر المخزون تحت السند{' '}
-                  <span dir="ltr">{ledger.voucherNo}</span>.
+                  تم ترحيل {formatNumber(ledger.posted?.entries ?? 0)} قيد إلى دفتر المخزون تحت
+                  السند <span dir="ltr">{ledger.voucherNo}</span>.
                 </p>
               )}
             </Card>

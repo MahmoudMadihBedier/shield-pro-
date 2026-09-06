@@ -43,6 +43,10 @@ export function PortalAccountPanel({ customer, onChanged }: PortalAccountPanelPr
   const linked = Boolean(customer.portal_user_id)
   const isPending = create.isPending || reset.isPending || revoke.isPending
   const activeError = create.error ?? reset.error ?? revoke.error
+  // A revoke bans the auth user but keeps `portal_user_id` set — so the account
+  // is still "linked" but access is off. A subsequent PIN reset lifts the ban
+  // (reactivates). We only know the ban state from actions taken in this panel.
+  const revoked = revoke.isSuccess && !reset.isSuccess
 
   async function handleCreate() {
     setCopied(false)
@@ -78,7 +82,9 @@ export function PortalAccountPanel({ customer, onChanged }: PortalAccountPanelPr
     <Card className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold">حساب بوابة العملاء / CRM portal account</h3>
-        <Badge tone={linked ? 'success' : 'neutral'}>{linked ? 'مرتبط' : 'غير مرتبط'}</Badge>
+        <Badge tone={!linked ? 'neutral' : revoked ? 'danger' : 'success'}>
+          {!linked ? 'غير مرتبط' : revoked ? 'موقوف' : 'مرتبط'}
+        </Badge>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -94,11 +100,18 @@ export function PortalAccountPanel({ customer, onChanged }: PortalAccountPanelPr
               disabled={isPending}
               onClick={() => void handleReset()}
             >
-              إعادة تعيين الرقم السري
+              {revoked ? 'إعادة التفعيل برقم سري جديد' : 'إعادة تعيين الرقم السري'}
             </Button>
-            <Button size="sm" variant="danger" disabled={isPending} onClick={() => void handleRevoke()}>
-              إلغاء الوصول
-            </Button>
+            {!revoked ? (
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={isPending}
+                onClick={() => void handleRevoke()}
+              >
+                إلغاء الوصول
+              </Button>
+            ) : null}
           </>
         )}
       </div>
@@ -118,10 +131,15 @@ export function PortalAccountPanel({ customer, onChanged }: PortalAccountPanelPr
       {revealed ? (
         <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-500/30 dark:bg-amber-500/10">
           <p className="font-medium text-amber-900 dark:text-amber-300">
-            {revealed.action === 'create' ? 'تم إنشاء الحساب. الرقم السري:' : 'تم تعيين رقم سري جديد:'}
+            {revealed.action === 'create'
+              ? 'تم إنشاء الحساب. الرقم السري:'
+              : 'تم تعيين رقم سري جديد:'}
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <code dir="ltr" className="rounded bg-white px-2 py-1 font-mono text-base dark:bg-zinc-900">
+            <code
+              dir="ltr"
+              className="rounded bg-white px-2 py-1 font-mono text-base dark:bg-zinc-900"
+            >
               {revealed.pin}
             </code>
             <Button size="sm" variant="secondary" onClick={() => void copyPin()}>

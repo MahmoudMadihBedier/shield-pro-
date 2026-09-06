@@ -78,15 +78,57 @@ verified against the Supabase project:
   on the detail page. (migrations 0009 + 0010; 0010 fixed a latent 42804 in
   `_assert_no_self_approval`)
 
-Migrations are now 0001–0010. Aging buckets (0-30/31-60/61-90/90+) were already
-built in `accounting/domain/aging.ts`.
+- **Story 4.3 — branch-scoped reads in RLS.** `gen-schema.ts` `readScope()` +
+  `_has_global_scope` / `_can_read_{branch,warehouse,rep}` helpers; 22 tables'
+  `_read` policies re-scoped (0001 regenerated to match; `0011` applies the
+  delta). Branch roles see only their branch; global roles see all. No client
+  change — RLS + count(exact) filter transparently. Live-verified.
+- **Story 2.7 — QC hold/release enforced server-side.** `0012`: `_submit_gates`
+  helper consolidates the approval/credit/QC submit gates; a
+  `production_batches` submit requires `qc_status='released'` + `qc_by` set +
+  `qc_by <> created_by` (SoD). `QcActionBar` now requires a reject reason and
+  blocks the creator from self-signing.
 
-Remaining backlog (see `docs/IMPLEMENTATION_PLAN.md` §5): Story 4.3 query-level
-branch scoping (RLS SELECT tightening), Story 2.7 QC hold/release depth, Phase
-4.1 Excel I/O, CRM portal-account reactivate route.
+Also fixed a migration-blocking bug: the `tablesDB` shim wasn't translating
+`$createdAt`/`$id`/`$updatedAt` in **queries** (only in row output), so every
+document list view failed with "The service is temporarily unavailable"
+(`document-repo.list` sorts by `$createdAt`). `tables.ts` now maps them for
+every operator; `tables.test.ts` added.
 
-## Gates (this session): `pnpm typecheck` · `pnpm lint` (16 pre-existing
-router.tsx fast-refresh warns) · `pnpm test` **659 / 85 files** · `pnpm build`.
+UI: primary nav moved from a left sidebar to a **top bar with per-module
+dropdowns** (`TopNav.tsx` + `NAV_GROUPS` in `nav.ts`); hamburger panel below `lg`.
+
+- **Phase 4.1 v1 — CSV import/export facade.** `src/core/csv.ts` (canonical
+  `toCsv` + new `parseCsv`); `src/shared/excel/` (download wiring, generic
+  `<ExportButton>`, reusable `<CsvImportPanel>` — pick/paste → per-row Zod
+  validation → preview → Apply). Export wired into **Customer Aging** and
+  **Stock on Hand**. Importer: `0013` `import_raw_material_prices` (System
+  Admin only, by `code`, audited) behind a new `/admin/import` page
+  (`DataImportPage`) in the Admin nav. `reports/domain/csv.ts` re-exports
+  `@/core/csv` — one implementation. Remaining 4.1: more export surfaces
+  (P&L / production-waste / rep cash-up), opening-stock + bank-statement
+  importers.
+
+- **System Admin god-mode (0014).** Per `rbac.ts` the admin is the "owner"
+  role. It is now exempt from every SoD / approval / credit / QC submit gate;
+  `admin_set_status(table,row,patch,reason)` forces any workflow status (audited,
+  reason required); a per-table `<t>_admin_override` RLS policy (FOR ALL,
+  `has_role('system_admin')`) on the 14 docs + attendance lets the admin edit
+  any row via the normal forms. Immutable ledgers + audit_log + control tables
+  stay admin-read-only. `<AdminOverridePanel>` mounted on the PO / production
+  request / production batch / warehouse transfer / rep stock issue detail
+  pages. 0001 regenerated to match.
+
+Migrations are now 0001–0014. Aging buckets were already built in
+`accounting/domain/aging.ts`.
+
+Remaining backlog (see `docs/IMPLEMENTATION_PLAN.md` §5): finish Phase 4.1
+(more exports + 2 more importers), Phase 4.2 server-side report aggregation.
+Operational: rotate the DB password + service-role key, then disconnect
+Appwrite.
+
+## Gates (this session): `pnpm typecheck` · `pnpm lint` (17 pre-existing
+router.tsx fast-refresh warns) · `pnpm test` **668 / 87 files** · `pnpm build`.
 
 ## MCP
 `.mcp.json` has the Supabase HTTP MCP (`project_ref=ajrevsyyudfjrwiifekj`).

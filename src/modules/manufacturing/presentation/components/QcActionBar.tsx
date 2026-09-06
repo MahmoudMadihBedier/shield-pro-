@@ -13,8 +13,10 @@
  * its `qc_status` is frozen with the rest of the document. `SubmitCancelBar`
  * then refuses Submit unless `qc_status === 'released'`.
  *
- * Visible only to Factory Manager / System Admin (UX gate; the enforcing
- * Function is a later phase).
+ * Visible only to Factory Manager / System Admin. Server enforcement lives in
+ * `submit_document` → `_submit_gates` (migration 0012): a batch cannot be
+ * submitted unless `qc_status = 'released'` and `qc_by` is set to someone other
+ * than `created_by`.
  */
 import { useState } from 'react'
 
@@ -32,10 +34,12 @@ export interface QcActionBarProps {
   batchId: string
   qcStatus: QcStatus
   docStatus: number
+  /** The batch's `created_by` — QC sign-off may not be the creator (SoD). */
+  createdBy: string
   onDone?: () => void
 }
 
-export function QcActionBar({ batchId, qcStatus, docStatus, onDone }: QcActionBarProps) {
+export function QcActionBar({ batchId, qcStatus, docStatus, createdBy, onDone }: QcActionBarProps) {
   const { principal } = useAuth()
   const { updateDraft } = useProductionBatchActions()
   const [reason, setReason] = useState('')
@@ -46,14 +50,18 @@ export function QcActionBar({ batchId, qcStatus, docStatus, onDone }: QcActionBa
 
   if (!isDraft || (!canRelease && !canReject)) return null
 
+  const selfCheck = principal?.userId != null && principal.userId === createdBy
+  const rejectReady = reason.trim().length > 0
+
   const run = (next: QcStatus) => {
+    if (next === 'rejected' && !rejectReady) return
     updateDraft.mutate(
       {
         id: batchId,
         patch: {
           qc_status: next,
           qc_by: principal?.userId,
-          ...(next === 'rejected' && reason.trim() ? { remarks: reason.trim() } : {}),
+          ...(next === 'rejected' ? { remarks: reason.trim() } : {}),
         },
       },
       { onSuccess: () => onDone?.() },
@@ -69,7 +77,9 @@ export function QcActionBar({ batchId, qcStatus, docStatus, onDone }: QcActionBa
         </p>
 
         <label className="block text-sm">
-          <span className="mb-1 block text-zinc-600 dark:text-zinc-400">سبب الرفض (اختياري)</span>
+          <span className="mb-1 block text-zinc-600 dark:text-zinc-400">
+            سبب الرفض (إلزامي عند الرفض)
+          </span>
           <textarea
             rows={2}
             value={reason}
@@ -78,6 +88,12 @@ export function QcActionBar({ batchId, qcStatus, docStatus, onDone }: QcActionBa
           />
         </label>
 
+        {selfCheck ? (
+          <p className="text-xs text-amber-700 dark:text-amber-300">
+            لا يمكنك توقيع فحص الجودة لتشغيلة أنشأتها بنفسك — يجب أن يعتمدها شخص آخر.
+          </p>
+        ) : null}
+
         {updateDraft.isError ? (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {updateDraft.error.message}
@@ -85,13 +101,16 @@ export function QcActionBar({ batchId, qcStatus, docStatus, onDone }: QcActionBa
         ) : null}
 
         <div className="flex items-center gap-2">
-          <Button onClick={() => run('released')} disabled={!canRelease || updateDraft.isPending}>
+          <Button
+            onClick={() => run('released')}
+            disabled={!canRelease || selfCheck || updateDraft.isPending}
+          >
             اعتماد / Release
           </Button>
           <Button
             variant="danger"
             onClick={() => run('rejected')}
-            disabled={!canReject || updateDraft.isPending}
+            disabled={!canReject || selfCheck || !rejectReady || updateDraft.isPending}
           >
             رفض / Reject
           </Button>

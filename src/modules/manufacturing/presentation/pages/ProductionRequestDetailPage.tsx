@@ -13,6 +13,8 @@ import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 import { parseRequiredMaterials } from '../../domain/planning'
 import { canRequestTransition } from '../../domain/request-status'
 import { PRODUCTION_REQUEST_STATUSES, type ProductionRequestStatus } from '../../domain/schemas'
+import { AdminOverridePanel } from '@/shared/documents'
+
 import { SubmitCancelBar } from '../components/SubmitCancelBar'
 import { useProductOptions, useRawMaterialOptions } from '../hooks/catalog'
 import { useProductionRequest, useProductionRequestActions } from '../hooks/documents'
@@ -42,7 +44,9 @@ export function ProductionRequestDetailPage() {
 
   const productName = useMemo(() => {
     if (!request) return ''
-    return (products.data ?? []).find((p) => p.$id === request.product_id)?.name ?? request.product_id
+    return (
+      (products.data ?? []).find((p) => p.$id === request.product_id)?.name ?? request.product_id
+    )
   }, [products.data, request])
 
   const required = useMemo(() => {
@@ -55,9 +59,7 @@ export function ProductionRequestDetailPage() {
     return <p className="text-sm text-zinc-500">جارٍ التحميل…</p>
   }
   if (query.isError) {
-    return (
-      <Card className="text-sm text-red-600 dark:text-red-400">{query.error.message}</Card>
-    )
+    return <Card className="text-sm text-red-600 dark:text-red-400">{query.error.message}</Card>
   }
   if (!request) {
     return <Card className="text-sm text-zinc-500">لا يوجد طلب بهذا المعرّف.</Card>
@@ -145,6 +147,12 @@ export function ProductionRequestDetailPage() {
         onCancel={(reason) => cancel.mutate({ id: request.$id, reason })}
         busy={submit.isPending || cancel.isPending}
         error={actionError}
+      />
+
+      <AdminOverridePanel
+        table="production_requests"
+        row={request}
+        onDone={() => void query.refetch()}
       />
     </div>
   )
