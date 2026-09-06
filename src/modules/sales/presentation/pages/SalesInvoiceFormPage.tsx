@@ -14,8 +14,11 @@ import { err, ok, type Result } from '@/core/result'
 import { Form, FormError, SelectField } from '@/shared/forms'
 import { Button, Card, PageHeader } from '@/shared/ui'
 
+import { formatCurrency } from '@/shared/formatters'
+
 import { invoiceTotals, splitPayment } from '../../domain/pricing'
 import { canActOnSales } from '../../domain/permissions'
+import { RECEIVABLE_INVOICE_METHODS } from '@/modules/accounting/domain/aging'
 import {
   salesInvoiceDraftSchema,
   serializeJsonArray,
@@ -23,12 +26,15 @@ import {
 } from '../../domain/schemas'
 import { GeoCaptureField, InvoiceLineEditor, PaymentPanel } from '../components'
 import {
+  useCustomerCreditCheck,
   useCustomerOptions,
   useProductOptions,
   useRepOptions,
   useSalesInvoiceActions,
   type ProductOption,
 } from '../hooks'
+
+const RECEIVABLE_METHODS: ReadonlySet<string> = new Set(RECEIVABLE_INVOICE_METHODS)
 
 const DEFAULTS: SalesInvoiceDraft = {
   customer_id: '',
@@ -150,6 +156,8 @@ export function SalesInvoiceFormPage() {
 
                 <PaymentTotalsBridge />
 
+                <CreditCheckBridge />
+
                 <GeoCaptureField name="geo" />
 
                 <FormError message={formError} />
@@ -200,4 +208,33 @@ function PaymentTotalsBridge() {
   const watched = useWatch({ name: 'lines' }) as SalesInvoiceDraft['lines'] | undefined
   const totals = useMemo(() => invoiceTotals(watched ?? []), [watched])
   return <PaymentPanel netTotal={totals.net_total} />
+}
+
+/**
+ * Live credit-limit check (Story 2.5). For a credit-side payment method it
+ * warns when `outstanding + this invoice` exceeds the customer's limit — the
+ * draft can still be saved, but `submit` is blocked server-side until a System
+ * Admin / Chief Accountant records an override.
+ */
+function CreditCheckBridge() {
+  const customerId = (useWatch({ name: 'customer_id' }) as string | undefined) || undefined
+  const method = (useWatch({ name: 'payment_method' }) as string | undefined) ?? 'cash'
+  const lines = useWatch({ name: 'lines' }) as SalesInvoiceDraft['lines'] | undefined
+  const netTotal = useMemo(() => invoiceTotals(lines ?? []).net_total, [lines])
+  const receivable = RECEIVABLE_METHODS.has(method)
+
+  const check = useCustomerCreditCheck(receivable ? customerId : undefined, netTotal)
+
+  if (!receivable || !customerId || !check.data || check.data.ok) return null
+  return (
+    <Card className="border-amber-300 bg-amber-50 text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-200">
+      <p className="font-semibold">تجاوز حد الائتمان / Over credit limit</p>
+      <p className="mt-1">
+        الرصيد المستحق {formatCurrency(check.data.outstanding)} + هذه الفاتورة{' '}
+        {formatCurrency(netTotal)} يتجاوز الحد {formatCurrency(check.data.creditLimit)} بمقدار{' '}
+        <strong dir="ltr">{formatCurrency(check.data.overBy)}</strong>. يمكن حفظ المسودة، لكن
+        اعتمادها يتطلب موافقة المحاسب الرئيسي أو مدير النظام.
+      </p>
+    </Card>
+  )
 }

@@ -14,20 +14,26 @@ import type { AppError } from '@/core/errors'
 import { formatCurrency, formatDateTime, formatNumber } from '@/shared/formatters'
 import { Button, Card, PageHeader } from '@/shared/ui'
 
+import { RECEIVABLE_INVOICE_METHODS } from '@/modules/accounting/domain/aging'
+
 import { postInvoiceToLedger, type InvoiceLedgerPosting } from '../../data/post-sales'
-import { canActOnSales } from '../../domain/permissions'
+import { canActOnSales, canOverrideCredit } from '../../domain/permissions'
 import { parseInvoiceLines, type InvoiceLine, type SalesInvoiceRow } from '../../domain/schemas'
 import { DocStatusPill, SubmitCancelBar } from '../components'
 import {
   optionLabelMap,
+  useCustomerCreditCheck,
   useCustomerOptions,
   useProductOptions,
+  useRecordCreditOverride,
   useRepCustodyWarehouseOptions,
   useRepOptions,
   useSalesInvoice,
   useSalesInvoiceActions,
 } from '../hooks'
 import { PAYMENT_METHOD_LABEL } from '../labels'
+
+const RECEIVABLE_METHODS: ReadonlySet<string> = new Set(RECEIVABLE_INVOICE_METHODS)
 
 export function SalesInvoiceDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -158,6 +164,10 @@ export function SalesInvoiceDetailPage() {
         )}
       </Card>
 
+      {invoice.doc_status === DocStatus.Draft ? (
+        <CreditStatusPanel invoice={invoice} canOverride={canOverrideCredit(principal)} />
+      ) : null}
+
       <Card className="space-y-3">
         <SubmitCancelBar
           docStatus={invoice.doc_status}
@@ -259,6 +269,68 @@ function PostToLedgerPanel({ invoice, canAct }: { invoice: SalesInvoiceRow; canA
         </div>
       ) : null}
     </div>
+  )
+}
+
+/**
+ * On a Draft credit-side invoice, shows the customer's credit status. When over
+ * the limit the submit is blocked server-side; a System Admin / Chief Accountant
+ * can record a logged, SoD-checked override here.
+ */
+function CreditStatusPanel({
+  invoice,
+  canOverride,
+}: {
+  invoice: SalesInvoiceRow
+  canOverride: boolean
+}) {
+  const [reason, setReason] = useState('')
+  const receivable = RECEIVABLE_METHODS.has(invoice.payment_method)
+  const check = useCustomerCreditCheck(
+    receivable ? invoice.customer_id : undefined,
+    invoice.net_total,
+  )
+  const override = useRecordCreditOverride()
+
+  if (!receivable || !check.data || check.data.ok || override.isSuccess) return null
+
+  return (
+    <Card className="space-y-2 border-amber-300 bg-amber-50 text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-200">
+      <p className="font-semibold">تجاوز حد الائتمان / Over credit limit</p>
+      <p>
+        المستحق {formatCurrency(check.data.outstanding)} + الفاتورة{' '}
+        {formatCurrency(invoice.net_total)} يتجاوز الحد {formatCurrency(check.data.creditLimit)}{' '}
+        بمقدار <strong dir="ltr">{formatCurrency(check.data.overBy)}</strong>. لا يمكن اعتماد
+        الفاتورة قبل تسجيل تجاوز من المحاسب الرئيسي أو مدير النظام.
+      </p>
+
+      {canOverride ? (
+        <div className="space-y-2 pt-1">
+          <input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="سبب التجاوز (إلزامي)"
+            className="w-full rounded-lg border border-amber-400/50 bg-transparent px-3 py-2 text-sm outline-none"
+          />
+          <Button
+            variant="secondary"
+            disabled={override.isPending || reason.trim().length === 0}
+            onClick={() =>
+              override.mutate({ invoiceRef: invoice.reference_id, reason: reason.trim() })
+            }
+          >
+            {override.isPending ? 'جارٍ التسجيل…' : 'تسجيل تجاوز الائتمان'}
+          </Button>
+          {override.isError ? (
+            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+              {override.error.message}
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <p className="text-xs">بانتظار تسجيل التجاوز من صلاحية أعلى.</p>
+      )}
+    </Card>
   )
 }
 

@@ -22,4 +22,9 @@ export const salesKeys = {
       ['sales', 'rep-ledger', 'stock-balance', repUserId] as const,
     cashBalance: (repUserId: string) => ['sales', 'rep-ledger', 'cash-balance', repUserId] as const,
   },
+
+  credit: {
+    check: (customerId: string, amount: number) =>
+      ['sales', 'credit', 'check', customerId, amount] as const,
+  },
 } as const

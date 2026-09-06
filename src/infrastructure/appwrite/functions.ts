@@ -31,6 +31,8 @@ export const ServerRoute = {
   decideApproval: '/decide-approval',
   buildRepCloseoutExpected: '/rep-closeout/build-expected',
   confirmRepCloseout: '/rep-closeout/confirm',
+  checkCustomerCredit: '/credit/check',
+  recordCreditOverride: '/credit/override',
   // CRM client portal (Phase 3) — see `functions/routes/portal-account.ts` and
   // `functions/routes/portal-data.ts`.
   createPortalAccount: '/portal-account/create',
@@ -298,6 +300,16 @@ const DISPATCH: Record<string, Dispatch> = {
     fn: 'confirm_rep_closeout',
     args: (p) => ({ p_row_id: p.rowId }),
   },
+  [ServerRoute.checkCustomerCredit]: {
+    kind: 'rpc',
+    fn: 'check_customer_credit',
+    args: (p) => ({ p_customer_id: p.customerId, p_new_amount: p.newAmount ?? 0 }),
+  },
+  [ServerRoute.recordCreditOverride]: {
+    kind: 'rpc',
+    fn: 'record_credit_override',
+    args: (p) => ({ p_invoice_ref: p.invoiceRef, p_reason: p.reason }),
+  },
   [ServerRoute.createPortalAccount]: {
     kind: 'edge',
     fn: 'portal-account',
@@ -495,6 +507,42 @@ export function buildRepCloseoutExpected(
  */
 export function confirmRepCloseout(rowId: string): Promise<Result<RepCloseoutConfirmResult>> {
   return invoke<RepCloseoutConfirmResult>(ServerRoute.confirmRepCloseout, { rowId })
+}
+
+// --- Customer credit limit (Story 2.5) ----------------------------------
+
+export interface CreditCheckResult {
+  ok: boolean
+  creditLimit: number
+  outstanding: number
+  available: number
+  overBy: number
+}
+
+export interface CreditOverrideResult {
+  ok: true
+  invoiceRef: string
+}
+
+/** Server-authoritative credit check: `outstanding + newAmount` vs the
+ *  customer's `credit_limit` (0 = cash only). */
+export function checkCustomerCredit(
+  customerId: string,
+  newAmount = 0,
+): Promise<Result<CreditCheckResult>> {
+  return invoke<CreditCheckResult>(ServerRoute.checkCustomerCredit, { customerId, newAmount })
+}
+
+/**
+ * System Admin / Chief Accountant records a one-off override for an over-limit
+ * draft invoice. SoD: the sale's own creator is rejected. Logged to
+ * `audit_log`; `submit_document` reads that marker.
+ */
+export function recordCreditOverride(
+  invoiceRef: string,
+  reason: string,
+): Promise<Result<CreditOverrideResult>> {
+  return invoke<CreditOverrideResult>(ServerRoute.recordCreditOverride, { invoiceRef, reason })
 }
 
 // --- CRM client portal (Phase 3) -------------------------------------------
