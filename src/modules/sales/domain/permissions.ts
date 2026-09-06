@@ -32,3 +32,10 @@ export function canManageSales(principal: Principal | null | undefined): boolean
   if (!principal) return false
   return SALES_MANAGER_ROLES.some((role) => hasRole(principal, role))
 }
+
+/** Record a credit-limit override for an over-limit draft invoice (Story 2.5) —
+ *  mirrors `record_credit_override`'s server-side role check. */
+export function canOverrideCredit(principal: Principal | null | undefined): boolean {
+  if (!principal) return false
+  return hasRole(principal, Role.SystemAdmin) || hasRole(principal, Role.ChiefAccountant)
+}

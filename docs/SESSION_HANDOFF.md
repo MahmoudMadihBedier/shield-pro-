@@ -55,8 +55,38 @@ comes from the `0002` seed.
    verified (typecheck + 647 tests) but not exercised end-to-end on Supabase.
 6. `mapAppwriteError` / the `appwrite/` folder name — rename in a later pass.
 
+## Feature work resumed (post-migration, same session)
+
+Three built-but-incomplete stories finished, each server-authoritative + live-
+verified against the Supabase project:
+
+- **Story 2.2 — approval engine wired into submit.** `evaluate_approval` v2
+  enriches context from the doc row (branch / new-customer / over-limit /
+  amount); ungoverned movement types auto-approve; `submit_document` gated by
+  `_approval_cleared`. Client `submit()` returns a `pending_approval` AppError
+  on force-manual. (migration 0007)
+- **Story 2.4 — rep daily close-out.** `build_rep_closeout_expected(rep,date)`
+  assembles the bag from the day's issues/sales/returns/receipts;
+  `confirm_rep_closeout` recomputes variance authoritatively, sets
+  confirmed/flagged, submits, and notifies Admins on a flag. UI: "auto-compute"
+  button + server confirm. (migration 0008; 0008 was repair-reapplied once for
+  a plpgsql record/jsonb bug)
+- **Story 2.5 — credit-limit hard block.** `check_customer_credit` +
+  `record_credit_override` (System Admin / Chief Accountant, SoD-checked,
+  logged); `submit_document` v3 blocks over-limit credit-side sales invoices
+  unless an override marker exists. UI: live banner on the form, override form
+  on the detail page. (migrations 0009 + 0010; 0010 fixed a latent 42804 in
+  `_assert_no_self_approval`)
+
+Migrations are now 0001–0010. Aging buckets (0-30/31-60/61-90/90+) were already
+built in `accounting/domain/aging.ts`.
+
+Remaining backlog (see `docs/IMPLEMENTATION_PLAN.md` §5): Story 4.3 query-level
+branch scoping (RLS SELECT tightening), Story 2.7 QC hold/release depth, Phase
+4.1 Excel I/O, CRM portal-account reactivate route.
+
 ## Gates (this session): `pnpm typecheck` · `pnpm lint` (16 pre-existing
-router.tsx fast-refresh warns) · `pnpm test` **647 / 83 files** · `pnpm build`.
+router.tsx fast-refresh warns) · `pnpm test` **659 / 85 files** · `pnpm build`.
 
 ## MCP
 `.mcp.json` has the Supabase HTTP MCP (`project_ref=ajrevsyyudfjrwiifekj`).

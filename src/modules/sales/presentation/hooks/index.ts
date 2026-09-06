@@ -28,3 +28,4 @@ export {
   type RepCashLedgerQuery,
 } from './useRepLedgers'
 export { useBuildCloseoutExpected, useConfirmCloseout } from './useCloseoutOps'
+export { useCustomerCreditCheck, useRecordCreditOverride } from './useCredit'
