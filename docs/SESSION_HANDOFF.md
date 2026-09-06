@@ -78,15 +78,34 @@ verified against the Supabase project:
   on the detail page. (migrations 0009 + 0010; 0010 fixed a latent 42804 in
   `_assert_no_self_approval`)
 
-Migrations are now 0001–0010. Aging buckets (0-30/31-60/61-90/90+) were already
+- **Story 4.3 — branch-scoped reads in RLS.** `gen-schema.ts` `readScope()` +
+  `_has_global_scope` / `_can_read_{branch,warehouse,rep}` helpers; 22 tables'
+  `_read` policies re-scoped (0001 regenerated to match; `0011` applies the
+  delta). Branch roles see only their branch; global roles see all. No client
+  change — RLS + count(exact) filter transparently. Live-verified.
+- **Story 2.7 — QC hold/release enforced server-side.** `0012`: `_submit_gates`
+  helper consolidates the approval/credit/QC submit gates; a
+  `production_batches` submit requires `qc_status='released'` + `qc_by` set +
+  `qc_by <> created_by` (SoD). `QcActionBar` now requires a reject reason and
+  blocks the creator from self-signing.
+
+Also fixed a migration-blocking bug: the `tablesDB` shim wasn't translating
+`$createdAt`/`$id`/`$updatedAt` in **queries** (only in row output), so every
+document list view failed with "The service is temporarily unavailable"
+(`document-repo.list` sorts by `$createdAt`). `tables.ts` now maps them for
+every operator; `tables.test.ts` added.
+
+UI: primary nav moved from a left sidebar to a **top bar with per-module
+dropdowns** (`TopNav.tsx` + `NAV_GROUPS` in `nav.ts`); hamburger panel below `lg`.
+
+Migrations are now 0001–0012. Aging buckets (0-30/31-60/61-90/90+) were already
 built in `accounting/domain/aging.ts`.
 
-Remaining backlog (see `docs/IMPLEMENTATION_PLAN.md` §5): Story 4.3 query-level
-branch scoping (RLS SELECT tightening), Story 2.7 QC hold/release depth, Phase
-4.1 Excel I/O, CRM portal-account reactivate route.
+Remaining backlog (see `docs/IMPLEMENTATION_PLAN.md` §5): Phase 4.1 Excel I/O
+(export/import facade), CRM portal-account reactivate route.
 
 ## Gates (this session): `pnpm typecheck` · `pnpm lint` (16 pre-existing
-router.tsx fast-refresh warns) · `pnpm test` **659 / 85 files** · `pnpm build`.
+router.tsx fast-refresh warns) · `pnpm test` **663 / 86 files** · `pnpm build`.
 
 ## MCP
 `.mcp.json` has the Supabase HTTP MCP (`project_ref=ajrevsyyudfjrwiifekj`).
