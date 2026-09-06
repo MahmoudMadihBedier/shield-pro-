@@ -385,6 +385,12 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Admin-only CRM portal account lifecycle (create / reset / revoke). Verifies
+# the caller's JWT itself and additionally checks a portal-admin role, so the
+# platform gate stays on.
+[functions.portal-account]
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

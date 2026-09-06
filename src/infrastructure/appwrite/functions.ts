@@ -305,7 +305,7 @@ const DISPATCH: Record<string, Dispatch> = {
   [ServerRoute.portalInvoices]: {
     kind: 'rpc',
     fn: 'portal_invoices',
-    args: (p) => ({ p_page: p.page ?? 1, p_page_size: p.pageSize ?? 20 }),
+    args: (p) => ({ p_page: p.page ?? 0, p_page_size: p.pageSize ?? null }),
   },
   [ServerRoute.portalInvoiceDetail]: {
     kind: 'rpc',
@@ -315,7 +315,7 @@ const DISPATCH: Record<string, Dispatch> = {
   [ServerRoute.portalReceipts]: {
     kind: 'rpc',
     fn: 'portal_receipts',
-    args: (p) => ({ p_page: p.page ?? 1, p_page_size: p.pageSize ?? 20 }),
+    args: (p) => ({ p_page: p.page ?? 0, p_page_size: p.pageSize ?? null }),
   },
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
