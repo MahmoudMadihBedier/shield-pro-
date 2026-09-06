@@ -178,14 +178,48 @@ function tableSql(def: TableDef): string {
 // RLS policies per kind
 // ---------------------------------------------------------------------------
 
+/**
+ * Branch-scoped SELECT predicate per table (Plan §4.3). Global-scope roles see
+ * everything; branch roles see only their branch / warehouse / reps. `true`
+ * ⇒ keep the staff-wide read (catalog + reference + oversight tables). Mirrors
+ * `src/core/rbac.ts` and the `_can_read_*` helpers emitted in the header.
+ */
+function readScope(def: TableDef): string {
+  const cols = new Set(def.columns.map((c) => c.key))
+  if (def.id === 'stock_ledger_entries' || def.id === 'bin_balances') {
+    return 'public._can_read_warehouse(warehouse_id)'
+  }
+  if (def.id === 'rep_stock_ledger' || def.id === 'rep_cash_ledger') {
+    return 'public._can_read_rep(rep_user_id)'
+  }
+  const KEEP_OPEN = new Set([
+    'branches',
+    'products',
+    'product_bom',
+    'raw_materials',
+    'suppliers',
+    'approval_rules',
+    'incentive_rules',
+    'naming_series_counters',
+    'users',
+    'approval_rule_log',
+    'fraud_flags',
+    'audit_log',
+    'attendance_records',
+  ])
+  if (KEEP_OPEN.has(def.id)) return 'true'
+  if (cols.has('branch_id')) return 'public._can_read_branch(branch_id)'
+  return 'true'
+}
+
 function rlsSql(def: TableDef): string {
   const t = `public."${def.id}"`
   const kind = classify(def)
   const lines: string[] = [`-- RLS: ${def.id} (${kind})`]
 
-  // everyone signed in can read every table (staff-wide read; branch/row
-  // scoping tightened later — Plan §4.3). The exceptions override below.
-  const readAll = `CREATE POLICY "${def.id}_read" ON ${t} FOR SELECT TO authenticated USING (true);`
+  // Staff read, branch-scoped where the table carries a branch/warehouse/rep
+  // key (Plan §4.3). Global-scope roles bypass the filter (see readScope).
+  const readAll = `CREATE POLICY "${def.id}_read" ON ${t} FOR SELECT TO authenticated USING (${readScope(def)});`
 
   switch (kind) {
     case 'master':
@@ -277,6 +311,39 @@ create or replace function public.user_branch_id() returns text
   language sql stable security definer set search_path = public as $$
   select nullif(u.branch_id, '') from public.users u
   where u.auth_user_id = auth.uid()::text limit 1
+$$;
+
+-- ----- branch-scope read helpers (Plan §4.3) -------------------------------
+-- Global-scope roles (mirror src/core/rbac.ts GLOBAL_SCOPE_ROLES) see all rows;
+-- branch roles see only their own branch / warehouse / reps.
+create or replace function public._has_global_scope() returns boolean
+  language sql stable security definer set search_path = public as $$
+  select public.has_role('system_admin')
+      or public.has_role('chief_accountant')
+      or public.has_role('main_warehouse_manager')
+$$;
+
+create or replace function public._can_read_branch(p_branch text) returns boolean
+  language sql stable security definer set search_path = public as $$
+  select public._has_global_scope()
+      or p_branch is null or p_branch = ''
+      or p_branch = public.user_branch_id()
+$$;
+
+create or replace function public._can_read_warehouse(p_wh text) returns boolean
+  language sql stable security definer set search_path = public as $$
+  select public._has_global_scope()
+      or p_wh is null or p_wh = ''
+      or exists (select 1 from public.warehouses w
+                 where w.id = p_wh and w.branch_id = public.user_branch_id())
+$$;
+
+create or replace function public._can_read_rep(p_rep text) returns boolean
+  language sql stable security definer set search_path = public as $$
+  select public._has_global_scope()
+      or p_rep = auth.uid()::text
+      or exists (select 1 from public.users u
+                 where u.auth_user_id = p_rep and u.branch_id = public.user_branch_id())
 $$;
 
 `
