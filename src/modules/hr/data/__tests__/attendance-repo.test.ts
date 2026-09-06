@@ -1,4 +1,4 @@
-import { AppwriteException } from 'appwrite'
+import { AppwriteException } from '@/infrastructure/appwrite/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { mockListRows, mockCreateRow, mockUpdateRow } = vi.hoisted(() => ({
@@ -8,7 +8,7 @@ const { mockListRows, mockCreateRow, mockUpdateRow } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/infrastructure/appwrite/services', async () => {
-  const { ID, Query } = await import('appwrite')
+  const { ID, Query } = await import('@/infrastructure/appwrite/testing')
   return {
     tablesDB: { listRows: mockListRows, createRow: mockCreateRow, updateRow: mockUpdateRow },
     ID,

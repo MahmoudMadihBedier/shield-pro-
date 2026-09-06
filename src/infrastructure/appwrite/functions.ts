@@ -1,27 +1,22 @@
 /**
- * Data layer for `shield-server`, the single Appwrite Function that owns
- * document identity and lifecycle. The client never allocates a sequence or
- * flips `doc_status` itself — it calls a route on this Function and gets a
- * `Result` back.
+ * Data layer for the server-side logic that owns document identity and
+ * lifecycle. The client never allocates a sequence or flips `doc_status`
+ * itself — it calls a Postgres `SECURITY DEFINER` function (`supabase.rpc`), or
+ * an Edge Function for the few operations that need the auth admin API, and
+ * gets a `Result` back.
  *
- * Each operation is a URL path on the one Function (see `functions/server`).
- * Wire envelope (`functions/common/handler.ts`):
- *   success → `{ ok: true,  data: <payload> }`
- *   failure → `{ ok: false, error: { code, message } }`
+ * `ServerRoute` keys are retained as stable identifiers; `DISPATCH` binds each
+ * to its RPC / Edge Function name and argument shape.
  */
-import { ExecutionMethod } from 'appwrite'
-
 import type { ApprovalAction, ApprovalContext } from '@/core/approval'
-import { appError, type AppError, type AppErrorCode } from '@/core/errors'
+import { appError, type AppError } from '@/core/errors'
 import type { FraudCandidate } from '@/core/fraud'
 import type { GlLine } from '@/core/ledger'
 import type { ReferenceEntity } from '@/core/reference-id'
 import { err, ok, type Result } from '@/core/result'
 
+import { supabase } from './client'
 import { mapAppwriteError } from './errors'
-import { functions } from './services'
-
-export const SERVER_FUNCTION_ID = 'shield-server'
 
 export const ServerRoute = {
   allocateReferenceId: '/allocate-reference-id',
@@ -234,66 +229,126 @@ export interface PortalReceiptListResult {
   total: number
 }
 
-const KNOWN_CODES: ReadonlySet<AppErrorCode> = new Set<AppErrorCode>([
-  'network',
-  'unauthorized',
-  'forbidden',
-  'not_found',
-  'validation',
-  'conflict',
-  'rate_limited',
-  'server',
-  'unknown',
-])
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Dispatch =
+  | { kind: 'rpc'; fn: string; args: (p: any) => Record<string, unknown> }
+  | { kind: 'edge'; fn: string; body: (p: any) => Record<string, unknown> }
 
-function toAppErrorCode(code: unknown): AppErrorCode {
-  return typeof code === 'string' && KNOWN_CODES.has(code as AppErrorCode)
-    ? (code as AppErrorCode)
-    : 'unknown'
+/** Bind each logical route to a Postgres RPC or an Edge Function. */
+const DISPATCH: Record<string, Dispatch> = {
+  [ServerRoute.allocateReferenceId]: {
+    kind: 'rpc',
+    fn: 'allocate_reference_id',
+    args: (p) => ({ p_entity: p.entity }),
+  },
+  [ServerRoute.submitDocument]: {
+    kind: 'rpc',
+    fn: 'submit_document',
+    args: (p) => ({ p_table: p.table, p_row_id: p.rowId }),
+  },
+  [ServerRoute.cancelDocument]: {
+    kind: 'rpc',
+    fn: 'cancel_document',
+    args: (p) => ({ p_table: p.table, p_row_id: p.rowId, p_reason: p.reason }),
+  },
+  [ServerRoute.postStockLedger]: {
+    kind: 'rpc',
+    fn: 'post_stock_ledger',
+    args: (p) => ({ p_payload: p }),
+  },
+  [ServerRoute.postGl]: { kind: 'rpc', fn: 'post_gl', args: (p) => ({ p_payload: p }) },
+  [ServerRoute.segregationGuard]: {
+    kind: 'rpc',
+    fn: 'segregation_guard',
+    args: (p) => ({ p_table: p.table, p_row_id: p.rowId }),
+  },
+  [ServerRoute.fraudScan]: {
+    kind: 'rpc',
+    fn: 'fraud_scan',
+    args: (p) => ({ p_lookback_hours: p.lookbackHours ?? null }),
+  },
+  [ServerRoute.reviewFraudFlag]: {
+    kind: 'rpc',
+    fn: 'review_fraud_flag',
+    args: (p) => ({ p_flag_id: p.flagId, p_status: p.status }),
+  },
+  [ServerRoute.evaluateApproval]: {
+    kind: 'rpc',
+    fn: 'evaluate_approval',
+    args: (p) => ({ p_payload: p }),
+  },
+  [ServerRoute.decideApproval]: {
+    kind: 'rpc',
+    fn: 'decide_approval',
+    args: (p) => ({
+      p_request_id: p.approvalRequestId,
+      p_decision: p.decision,
+      p_reason: p.reason ?? null,
+    }),
+  },
+  [ServerRoute.createPortalAccount]: {
+    kind: 'edge',
+    fn: 'portal-account',
+    body: (p) => ({ action: 'create', customerId: p.customerId }),
+  },
+  [ServerRoute.resetPortalPin]: {
+    kind: 'edge',
+    fn: 'portal-account',
+    body: (p) => ({ action: 'reset', customerId: p.customerId }),
+  },
+  [ServerRoute.revokePortalAccess]: {
+    kind: 'edge',
+    fn: 'portal-account',
+    body: (p) => ({ action: 'revoke', customerId: p.customerId }),
+  },
+  [ServerRoute.portalMe]: { kind: 'rpc', fn: 'portal_me', args: () => ({}) },
+  [ServerRoute.portalInvoices]: {
+    kind: 'rpc',
+    fn: 'portal_invoices',
+    args: (p) => ({ p_page: p.page ?? 0, p_page_size: p.pageSize ?? null }),
+  },
+  [ServerRoute.portalInvoiceDetail]: {
+    kind: 'rpc',
+    fn: 'portal_invoice_detail',
+    args: (p) => ({ p_invoice_id: p.invoiceId }),
+  },
+  [ServerRoute.portalReceipts]: {
+    kind: 'rpc',
+    fn: 'portal_receipts',
+    args: (p) => ({ p_page: p.page ?? 0, p_page_size: p.pageSize ?? null }),
+  },
 }
-
-interface WireFailure {
-  ok: false
-  error: { code?: string; message?: string }
-}
-interface WireSuccess<T> {
-  ok: true
-  data: T
-}
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 async function invoke<T>(path: string, payload: unknown): Promise<Result<T>> {
-  let body: string
+  const d = DISPATCH[path]
+  if (!d) {
+    return err(
+      appError('unknown', 'This operation is not available.', { detail: `no binding: ${path}` }),
+    )
+  }
   try {
-    const execution = await functions.createExecution({
-      functionId: SERVER_FUNCTION_ID,
-      body: JSON.stringify(payload),
-      method: ExecutionMethod.POST,
-      xpath: path,
-      headers: { 'content-type': 'application/json' },
-    })
-    body = execution.responseBody
+    if (d.kind === 'rpc') {
+      const { data, error } = await supabase.rpc(d.fn, d.args(payload ?? {}))
+      if (error) return err(mapAppwriteError(error))
+      return ok(data as T)
+    }
+    const { data, error } = await supabase.functions.invoke(d.fn, { body: d.body(payload ?? {}) })
+    if (error) return err(mapAppwriteError(error))
+    if (
+      data &&
+      typeof data === 'object' &&
+      'error' in data &&
+      (data as { error?: unknown }).error
+    ) {
+      return err(
+        appError('server', String((data as { error: unknown }).error) || 'The operation failed.'),
+      )
+    }
+    return ok(data as T)
   } catch (e) {
     return err(mapAppwriteError(e))
   }
-
-  let parsed: WireSuccess<T> | WireFailure
-  try {
-    parsed = JSON.parse(body || '{}') as WireSuccess<T> | WireFailure
-  } catch {
-    return err(
-      appError('server', 'The server returned an unreadable response. Please try again.', {
-        detail: body.slice(0, 500),
-      }),
-    )
-  }
-
-  if (!parsed || typeof parsed !== 'object' || !('ok' in parsed)) {
-    return err(appError('server', 'The server returned an unexpected response. Please try again.'))
-  }
-  if (parsed.ok) return ok(parsed.data)
-
-  const message = parsed.error?.message ?? 'The operation could not be completed. Please try again.'
-  return err(appError(toAppErrorCode(parsed.error?.code), message))
 }
 
 /** Reserve the next gap-free `<PREFIX>-<YYYY>-<00000>` for an entity. */

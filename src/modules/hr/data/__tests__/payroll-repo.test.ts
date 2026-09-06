@@ -11,7 +11,7 @@ const { mockListRows, mockGetRow, mockCreateRow, mockUpdateRow, mockAllocateRefe
 )
 
 vi.mock('@/infrastructure/appwrite/services', async () => {
-  const { Query } = await import('appwrite')
+  const { Query } = await import('@/infrastructure/appwrite/testing')
   return {
     Query,
     ID: { unique: () => 'generated-id' },

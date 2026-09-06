@@ -117,61 +117,74 @@ Each business module (admin, purchasing, manufacturing, inventory, sales, accoun
 
 ---
 
-# Section C — Appwrite Configuration
+# Section C — Supabase Configuration
 
-> Appwrite fully replaces Supabase for this project. See `docs/APPWRITE_SETUP.md`
-> for the full backend architecture and `docs/IMPLEMENTATION_PLAN.md` for the
+> The backend is **Supabase** (Postgres + Auth + RLS + PostgREST + RPC +
+> Realtime + Storage + Edge Functions). It replaced Appwrite in the
+> `feat/appwrite-scaffold` branch — the `src/infrastructure/appwrite/` folder
+> name is kept only so import paths stayed stable. See `docs/SUPABASE_SETUP.md`
+> for the backend architecture and `docs/IMPLEMENTATION_PLAN.md` for the
 > ERPNext-modelled domain design.
 
 ## Project Details
-- **Project name**: `shield-pro`
-- **Project ID**: `6a95b631003d4163dc97`
-- **Endpoint**: `https://fra.cloud.appwrite.io/v1` (Appwrite Cloud, Frankfurt)
-- **Web SDK**: `appwrite` `^26`
+- **Project ref**: `ajrevsyyudfjrwiifekj`
+- **URL**: `https://ajrevsyyudfjrwiifekj.supabase.co` (Supabase Cloud)
+- **Client SDK**: `@supabase/supabase-js` `^2`
 
 ## Environment Variables
-`VITE_APPWRITE_ENDPOINT`, `VITE_APPWRITE_PROJECT_ID`, `VITE_APPWRITE_PROJECT_NAME`
-live in `.env` (**committed** — they are non-secret public client config that
-ships in the browser bundle by design). Read + Zod-validate them **only** in
+`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` live in `.env`
+(**committed** — non-secret public client config that ships in the browser
+bundle by design, like a Firebase config). Read + Zod-validate them **only** in
 `src/shared/config.ts`; never touch `import.meta.env` elsewhere.
-- Real secrets (Appwrite **API key** for provisioning/CI/Functions, OAuth
+- Real secrets (`SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD`, OAuth
   secrets) go in `.env.local` (git-ignored) and Vercel/CI secrets — never
   committed, never in the client bundle.
 
 ## Client Usage
-- One browser client: `src/infrastructure/appwrite/client.ts` (endpoint + project
-  from `config`). Service singletons (`account`, `tablesDB`, `storage`,
-  `functions`, `teams`) come from `src/infrastructure/appwrite/services.ts`.
-- All data-layer operations go through these — no direct `fetch` to Appwrite REST.
-- Raw errors are mapped to `AppError` in `src/infrastructure/appwrite/errors.ts`.
+- One browser client: `src/infrastructure/appwrite/client.ts` exports
+  `supabase` (+ a `client` alias). A shim layer keeps the old surface:
+  `tablesDB` (`src/infrastructure/appwrite/tables.ts` → PostgREST) and
+  `Query` / `ID` (`.../query.ts` → Appwrite-shaped query descriptors), both
+  re-exported from `.../services.ts`.
+- All data-layer operations go through these — no direct `fetch` to the REST API.
+- Raw errors (`PostgrestError` / `AuthError`) are mapped to `AppError` in
+  `src/infrastructure/appwrite/errors.ts` (`mapAppwriteError`, name kept).
 
 ## Authentication
-- Staff auth via Appwrite **Auth** (email + password). No custom auth logic.
-- Roles (`src/core/rbac.ts`, 11 roles) are modelled as **Teams** or user labels;
-  branch binding (`branch_id`) is set **exclusively** by the System Admin.
+- Staff auth via Supabase **Auth** (email + password) —
+  `src/infrastructure/appwrite/auth.ts`. No custom auth logic.
+- Roles (`src/core/rbac.ts`, 11 roles) live as a space/comma-separated slug
+  string in `public.users.roles`; `branch_id` is set **exclusively** by the
+  System Admin. RLS helpers `has_role()` / `user_roles()` / `user_branch_id()`
+  read the caller's `public.users` row by `auth_user_id = auth.uid()`.
 - The CRM client portal is hardened separately — see plan Phase 3.
 
 ## Database & Access Control
-- One database `shield_pro`; table ids registered in
+- One database (schema `public`); table ids registered in
   `src/infrastructure/appwrite/collections.ts`.
 - Movement/financial documents carry `reference_id`, `doc_status` (0 Draft / 1
   Submitted / 2 Cancelled), `created_by`, `branch_id`, `amended_from`.
-- **Immutable ledgers** (`stock_ledger_entries`, `general_ledger_entries`,
-  `rep_stock_ledger`, `rep_cash_ledger`) and **submitted documents** have **no
-  client write permission** — the only writers are Appwrite **Functions**.
+- Every table has **RLS enabled**. Master data: read-all / write `system_admin`.
+  Documents: clients may INSERT a Draft they own; no client UPDATE/DELETE.
+  **Immutable ledgers** (`stock_ledger_entries`, `general_ledger_entries`,
+  `rep_stock_ledger`, `rep_cash_ledger`, `bin_balances`) and **control tables**
+  are read-only to clients — the only writers are `SECURITY DEFINER` functions.
 - Segregation of duties, tiered approvals, sequence allocation, ledger posting
-  and branch-scope enforcement all live in Functions (`functions/`), never in
-  client code.
+  and branch-scope enforcement all live in Postgres RPCs
+  (`supabase/migrations/0002`–`0005`) and the `portal-account` Edge Function —
+  never in client code. Every state-changing RPC appends to `audit_log`.
 
 ## Schema Management
-- Schema is code: `scripts/appwrite/provision.ts` (idempotent, `node-appwrite`
-  + API key from `.env.local`) creates every database, table, attribute, index
-  and permission. Never hand-edit schema in the Appwrite console.
-- Every state-changing Function appends to `audit_log` — no exceptions.
+- Schema is code: edit `scripts/supabase/schema.ts`, run `pnpm gen:schema` to
+  regenerate `supabase/migrations/0001_init.sql`, then `pnpm provision`
+  (`supabase db push --include-all`). Server logic lives in the hand-written
+  `0002`–`0005` migrations. Never hand-edit schema in the Supabase dashboard.
 
 ## CLI
 ```bash
-npx appwrite login
-npx appwrite deploy function     # deploy functions/*
-pnpm tsx scripts/appwrite/provision.ts
+npx supabase login
+pnpm gen:schema                 # regenerate 0001_init.sql from schema.ts
+pnpm provision                  # supabase db push --include-all
+pnpm fn:deploy                  # supabase functions deploy --use-api
+pnpm migrate:data -- --commit   # one-time Appwrite→Supabase data load
 ```

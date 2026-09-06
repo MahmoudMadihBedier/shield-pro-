@@ -1,10 +1,10 @@
-import { AppwriteException } from 'appwrite'
+import { AppwriteException } from '@/infrastructure/appwrite/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { mockUpdateRow } = vi.hoisted(() => ({ mockUpdateRow: vi.fn() }))
 
 vi.mock('@/infrastructure/appwrite/services', async () => {
-  const { Query } = await import('appwrite')
+  const { Query } = await import('@/infrastructure/appwrite/testing')
   return {
     Query,
     ID: { unique: () => 'generated-id' },
