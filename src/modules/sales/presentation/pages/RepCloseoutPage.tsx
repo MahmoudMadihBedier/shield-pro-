@@ -14,7 +14,7 @@ import type { AppError } from '@/core/errors'
 import { formatCurrency, formatDateTime, formatNumber } from '@/shared/formatters'
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
-import { closeoutOutcomeStatus, reconcileCloseout } from '../../domain/closeout'
+import { reconcileCloseout } from '../../domain/closeout'
 import { canActOnSales, canManageSales } from '../../domain/permissions'
 import {
   closeoutActualSchema,
@@ -27,6 +27,8 @@ import {
 import { CloseoutSheet, DocStatusPill } from '../components'
 import {
   optionLabelMap,
+  useBuildCloseoutExpected,
+  useConfirmCloseout,
   useProductOptions,
   useRepCashLedger,
   useRepCloseout,
@@ -63,6 +65,8 @@ export function RepCloseoutPage() {
 
   const query = useRepCloseout(id)
   const actions = useRepCloseoutActions()
+  const buildExpected = useBuildCloseoutExpected()
+  const confirm = useConfirmCloseout()
   const products = useProductOptions()
   const reps = useRepOptions()
   const productLabel = useMemo(() => optionLabelMap(products.data), [products.data])
@@ -80,7 +84,11 @@ export function RepCloseoutPage() {
   const reconciliation = useMemo(() => reconcileCloseout(expected, actual), [expected, actual])
 
   const isEditable = row?.status === 'open'
-  const busy = actions.updateDraft.isPending || actions.submit.isPending
+  const busy =
+    actions.updateDraft.isPending ||
+    actions.submit.isPending ||
+    buildExpected.isPending ||
+    confirm.isPending
 
   const stockLedger = useRepStockLedger({
     repUserId: row && row.status === 'confirmed' ? row.rep_user_id : undefined,
@@ -136,21 +144,28 @@ export function RepCloseoutPage() {
     }
   }
 
+  const autoComputeExpected = async () => {
+    if (!row) return
+    setActionError(null)
+    try {
+      const bag = await buildExpected.mutateAsync({
+        repUserId: row.rep_user_id,
+        businessDate: row.business_date,
+      })
+      setDraftExpected(bag)
+    } catch (e) {
+      setActionError((e as AppError)?.message ?? 'تعذّر احتساب المتوقع.')
+    }
+  }
+
   const confirmCloseout = async () => {
     if (!row) return
     setActionError(null)
-    const outcome = closeoutOutcomeStatus(reconciliation)
     try {
-      await actions.updateDraft.mutateAsync({
-        id: row.$id,
-        patch: {
-          stock_variance: reconciliation.stock_variance,
-          cash_variance: reconciliation.cash_variance,
-          status: outcome,
-          confirmed_by: principal?.userId ?? null,
-        },
-      })
-      await actions.submit.mutateAsync(row.$id).catch(() => undefined)
+      // The server recomputes stock/cash variance from the stored expected vs
+      // actual, sets confirmed | flagged, submits, and notifies Admins on a flag.
+      await confirm.mutateAsync(row.$id)
+      await query.refetch()
     } catch (e) {
       setActionError((e as AppError)?.message ?? 'تعذّر التأكيد.')
     }
@@ -200,6 +215,11 @@ export function RepCloseoutPage() {
 
       {isEditable ? (
         <Card className="flex flex-wrap gap-2">
+          {canManage ? (
+            <Button variant="secondary" disabled={busy} onClick={() => void autoComputeExpected()}>
+              احتساب المتوقع تلقائيًا من حركة اليوم
+            </Button>
+          ) : null}
           <Button variant="secondary" disabled={busy || !canAct} onClick={() => void save()}>
             حفظ
           </Button>

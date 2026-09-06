@@ -29,6 +29,8 @@ export const ServerRoute = {
   reviewFraudFlag: '/review-fraud-flag',
   evaluateApproval: '/evaluate-approval',
   decideApproval: '/decide-approval',
+  buildRepCloseoutExpected: '/rep-closeout/build-expected',
+  confirmRepCloseout: '/rep-closeout/confirm',
   // CRM client portal (Phase 3) — see `functions/routes/portal-account.ts` and
   // `functions/routes/portal-data.ts`.
   createPortalAccount: '/portal-account/create',
@@ -286,6 +288,16 @@ const DISPATCH: Record<string, Dispatch> = {
       p_reason: p.reason ?? null,
     }),
   },
+  [ServerRoute.buildRepCloseoutExpected]: {
+    kind: 'rpc',
+    fn: 'build_rep_closeout_expected',
+    args: (p) => ({ p_rep_user_id: p.repUserId, p_business_date: p.businessDate }),
+  },
+  [ServerRoute.confirmRepCloseout]: {
+    kind: 'rpc',
+    fn: 'confirm_rep_closeout',
+    args: (p) => ({ p_row_id: p.rowId }),
+  },
   [ServerRoute.createPortalAccount]: {
     kind: 'edge',
     fn: 'portal-account',
@@ -436,6 +448,53 @@ export function decideApprovalRequest(
   payload: DecideApprovalPayload,
 ): Promise<Result<DecideApprovalResult>> {
   return invoke<DecideApprovalResult>(ServerRoute.decideApproval, payload)
+}
+
+// --- Rep daily close-out (Story 2.4) --------------------------------------
+
+/** The `{ products, cash }` bag `rep_closeouts.expected` stores; shape matches
+ *  `@/modules/sales/domain/schemas`'s `CloseoutExpected` (validated there). */
+export interface RepCloseoutExpectedResult {
+  products: Array<{
+    product_id: string
+    issued: number
+    sold: number
+    returned: number
+    remaining: number
+  }>
+  cash: Array<{ method: string; amount: number }>
+}
+
+export interface RepCloseoutConfirmResult {
+  status: 'confirmed' | 'flagged'
+  stockVariance: number
+  cashVariance: number
+  flags: string[]
+}
+
+/**
+ * Assemble the close-out `expected` bag for one rep on one business date from
+ * that day's issued / sold / returned movement and cash by method — so the
+ * account manager never hand-types it.
+ */
+export function buildRepCloseoutExpected(
+  repUserId: string,
+  businessDate: string,
+): Promise<Result<RepCloseoutExpectedResult>> {
+  return invoke<RepCloseoutExpectedResult>(ServerRoute.buildRepCloseoutExpected, {
+    repUserId,
+    businessDate,
+  })
+}
+
+/**
+ * Confirm a submitted close-out: the server recomputes stock/cash variance
+ * from the stored `expected` vs `actual`, sets `confirmed` or `flagged`, stamps
+ * `confirmed_by`, submits the document, and notifies the System Admins on a
+ * flagged result.
+ */
+export function confirmRepCloseout(rowId: string): Promise<Result<RepCloseoutConfirmResult>> {
+  return invoke<RepCloseoutConfirmResult>(ServerRoute.confirmRepCloseout, { rowId })
 }
 
 // --- CRM client portal (Phase 3) -------------------------------------------
