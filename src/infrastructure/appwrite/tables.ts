@@ -108,13 +108,26 @@ function parseQueries(queries: string[] = []): ParsedQuery[] {
   })
 }
 
+/** Appwrite system-field names the app still uses in queries → Postgres columns. */
+const SYSTEM_ATTR: Record<string, string> = {
+  $id: 'id',
+  $createdAt: 'created_at',
+  $updatedAt: 'updated_at',
+  $sequence: 'id',
+}
+
+function col(attribute: string | undefined): string | undefined {
+  if (attribute === undefined) return undefined
+  return SYSTEM_ATTR[attribute] ?? attribute
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function applyQueries(builder: any, parsed: ParsedQuery[]) {
   let limit: number | undefined
   let offset: number | undefined
   let b = builder
   for (const p of parsed) {
-    const a = p.attribute
+    const a = col(p.attribute)
     const v = p.values ?? []
     switch (p.method) {
       case 'equal':
@@ -155,10 +168,10 @@ function applyQueries(builder: any, parsed: ParsedQuery[]) {
         b = b.not(a, 'is', null)
         break
       case 'orderAsc':
-        b = b.order(a === 'id' ? 'id' : a, { ascending: true })
+        b = b.order(a, { ascending: true })
         break
       case 'orderDesc':
-        b = b.order(a === 'id' ? 'id' : a, { ascending: false })
+        b = b.order(a, { ascending: false })
         break
       case 'limit':
         limit = Number(v[0])
@@ -178,7 +191,7 @@ function applyQueries(builder: any, parsed: ParsedQuery[]) {
             .map((s) => {
               const inner = JSON.parse(s) as ParsedQuery
               const iv = inner.values ?? []
-              return `${inner.attribute}.eq.${String(iv[0])}`
+              return `${col(inner.attribute)}.eq.${String(iv[0])}`
             })
             .join(','),
         )
@@ -202,7 +215,10 @@ export const tablesDB = {
     const parsed = parseQueries(params.queries)
     const selectQ = parsed.find((p) => p.method === 'select')
     const cols = selectQ
-      ? (selectQ.values as string[]).filter((c) => c !== '*').join(',') || '*'
+      ? (selectQ.values as string[])
+          .filter((c) => c !== '*')
+          .map((c) => col(c) ?? c)
+          .join(',') || '*'
       : '*'
     const base = supabase.from(params.tableId).select(cols, { count: 'exact' })
     const { data, error, count } = await applyQueries(base, parsed)
