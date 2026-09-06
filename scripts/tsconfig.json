@@ -17,5 +17,5 @@
     "erasableSyntaxOnly": true,
     "resolveJsonModule": true
   },
-  "include": ["appwrite/**/*.ts"]
+  "include": ["appwrite/**/*.ts", "supabase/**/*.ts"]
 }
