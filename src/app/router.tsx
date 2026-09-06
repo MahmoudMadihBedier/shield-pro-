@@ -63,6 +63,9 @@ const CustomersListPage = lazy(() =>
 const CustomerDetailPage = lazy(() =>
   import('@/modules/admin').then((m) => ({ default: m.CustomerDetailPage })),
 )
+const DataImportPage = lazy(() =>
+  import('@/modules/admin').then((m) => ({ default: m.DataImportPage })),
+)
 
 const NO_ADMIN_ACCESS = (
   <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
@@ -152,6 +155,7 @@ export const router = createBrowserRouter([
       { path: 'admin/suppliers', element: <AdminRoute><SuppliersListPage /></AdminRoute> },
       { path: 'admin/customers', element: <AdminRoute><CustomersListPage /></AdminRoute> },
       { path: 'admin/customers/:id', element: <AdminRoute><CustomerDetailPage /></AdminRoute> },
+      { path: 'admin/import', element: <AdminRoute><DataImportPage /></AdminRoute> },
 
       // Business modules — each ships its own lazy+Suspense route objects; role
       // gating for these lives in-page (SubmitCancelBar etc.) and server-side.

@@ -17,6 +17,7 @@ export { ProductsListPage } from './presentation/pages/ProductsListPage'
 export { ProductDetailPage } from './presentation/pages/ProductDetailPage'
 export { CustomersListPage } from './presentation/pages/CustomersListPage'
 export { CustomerDetailPage } from './presentation/pages/CustomerDetailPage'
+export { DataImportPage } from './presentation/pages/DataImportPage'
 
 // --- domain (imported by other modules) ---------------------------------
 export * from './domain/schemas'

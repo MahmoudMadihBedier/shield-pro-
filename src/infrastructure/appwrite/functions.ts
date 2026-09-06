@@ -33,6 +33,7 @@ export const ServerRoute = {
   confirmRepCloseout: '/rep-closeout/confirm',
   checkCustomerCredit: '/credit/check',
   recordCreditOverride: '/credit/override',
+  importRawMaterialPrices: '/import/raw-material-prices',
   // CRM client portal (Phase 3) — see `functions/routes/portal-account.ts` and
   // `functions/routes/portal-data.ts`.
   createPortalAccount: '/portal-account/create',
@@ -310,6 +311,11 @@ const DISPATCH: Record<string, Dispatch> = {
     fn: 'record_credit_override',
     args: (p) => ({ p_invoice_ref: p.invoiceRef, p_reason: p.reason }),
   },
+  [ServerRoute.importRawMaterialPrices]: {
+    kind: 'rpc',
+    fn: 'import_raw_material_prices',
+    args: (p) => ({ p_rows: p.rows }),
+  },
   [ServerRoute.createPortalAccount]: {
     kind: 'edge',
     fn: 'portal-account',
@@ -543,6 +549,22 @@ export function recordCreditOverride(
   reason: string,
 ): Promise<Result<CreditOverrideResult>> {
   return invoke<CreditOverrideResult>(ServerRoute.recordCreditOverride, { invoiceRef, reason })
+}
+
+// --- Bulk import (Phase 4.1) --------------------------------------------
+
+export interface PriceImportResult {
+  applied: number
+  skipped: number
+  missing: string[]
+}
+
+/** System-Admin-only: update `raw_materials.purchase_price` by `code` from a
+ *  parsed price list. Unknown codes and invalid prices are skipped, not fatal. */
+export function importRawMaterialPrices(
+  rows: ReadonlyArray<{ code: string; purchase_price: number }>,
+): Promise<Result<PriceImportResult>> {
+  return invoke<PriceImportResult>(ServerRoute.importRawMaterialPrices, { rows })
 }
 
 // --- CRM client portal (Phase 3) -------------------------------------------

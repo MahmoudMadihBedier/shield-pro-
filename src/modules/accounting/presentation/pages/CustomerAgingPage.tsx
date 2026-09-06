@@ -1,11 +1,23 @@
 import { useMemo, useState } from 'react'
 
 import { formatCurrency, formatDate } from '@/shared/formatters'
+import { ExportButton } from '@/shared/excel'
 import { Card, PageHeader } from '@/shared/ui'
 
 import { RECEIVABLE_INVOICE_METHODS } from '../../domain/aging'
 import { AgingTable } from '../components'
 import { useCustomerAging, useCustomerLedger } from '../hooks'
+
+const AGING_EXPORT_COLUMNS = [
+  { key: 'customer', header: 'العميل / Customer' },
+  { key: 'outstanding', header: 'المستحق / Outstanding' },
+  { key: 'creditLimit', header: 'حد الائتمان / Credit limit' },
+  { key: 'b0', header: '0-30' },
+  { key: 'b1', header: '31-60' },
+  { key: 'b2', header: '61-90' },
+  { key: 'b3', header: '90+' },
+  { key: 'oldestDays', header: 'أقدم دين (يوم) / Oldest days' },
+] as const
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -20,12 +32,34 @@ export function CustomerAgingPage() {
   const ledger = useCustomerLedger(drillCustomer)
   const drillRow = (aging.data ?? []).find((r) => r.customerId === drillCustomer)
 
+  const exportRows = useMemo(
+    () =>
+      (aging.data ?? []).map((r) => ({
+        customer: r.customerName,
+        outstanding: r.outstanding,
+        creditLimit: r.creditLimit,
+        b0: r.buckets['0-30'],
+        b1: r.buckets['31-60'],
+        b2: r.buckets['61-90'],
+        b3: r.buckets['90+'],
+        oldestDays: r.oldestDays,
+      })),
+    [aging.data],
+  )
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="أعمار الديون"
         titleEn="Customer aging"
         description="الفواتير المعتمدة الائتمانية فقط (credit / partial / post-dated cheque)."
+        actions={
+          <ExportButton
+            rows={exportRows}
+            columns={AGING_EXPORT_COLUMNS}
+            fileName={`customer-aging-${asOfInput}`}
+          />
+        }
       />
 
       <Card className="flex flex-wrap items-end gap-3">
