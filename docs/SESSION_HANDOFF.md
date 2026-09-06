@@ -1,3 +1,75 @@
+# Session handoff — 2026-09-06 (Appwrite → Supabase migration)
+
+**The backend is now Supabase.** Appwrite is fully removed from the codebase.
+Branch `feat/appwrite-scaffold` (name kept), all committed, not pushed.
+
+## What moved
+
+| Was (Appwrite) | Now (Supabase) |
+|---|---|
+| `scripts/appwrite/provision.ts` + console | `scripts/supabase/schema.ts` → `pnpm gen:schema` → `supabase/migrations/0001_init.sql` → `pnpm provision` (`supabase db push`) |
+| collection/row permissions | RLS on every table (generated in `0001`) + `has_role()`/`user_roles()`/`user_branch_id()` SQL helpers reading `public.users` by `auth_user_id = auth.uid()` |
+| `functions/` (`shield-server`, 19 routes) | Postgres `SECURITY DEFINER` RPCs in `supabase/migrations/0002`–`0005` + one Edge Function `supabase/functions/portal-account` (deployed) |
+| Appwrite Auth + Teams | Supabase Auth (email+password); roles stay a slug string in `public.users.roles` |
+| Appwrite Realtime | `supabase.channel()` `postgres_changes` on `public.notifications` |
+| `appwrite` / `node-appwrite` SDKs | `@supabase/supabase-js` `^2` |
+
+`src/infrastructure/appwrite/` **keeps its name** (path stability). It now holds:
+`client.ts` (exports `supabase`), `query.ts` (`Query`/`ID` → Appwrite-shaped
+JSON descriptors), `tables.ts` (`tablesDB` shim → PostgREST + `$id`↔`id`
+mapping), `services.ts`, `errors.ts` (`mapAppwriteError` for
+`PostgrestError`/`AuthError`), `auth.ts`, `functions.ts` (routes → `rpc()` /
+Edge), `testing.ts` (test-only `AppwriteException`/`Query` shim).
+
+## RPC inventory (all applied to the remote, auth-guards smoke-tested)
+
+`allocate_reference_id`, `submit_document`, `cancel_document`,
+`segregation_guard` (0002) · `post_stock_ledger`, `post_gl`, `decide_approval`,
+`review_fraud_flag` (0003) · `evaluate_approval`, `fraud_scan` (0004) ·
+`portal_me` / `portal_invoices` / `portal_invoice_detail` / `portal_receipts`
+(0005). `0004`'s two re-express `src/core/approval.ts` + `src/core/fraud.ts` in
+SQL — keep them in lockstep with the TS spec.
+
+## Data migration (Phase 5)
+
+Appwrite's API key is **billing-locked (HTTP 402)** — export was done through
+the Appwrite console (MCP) and frozen into
+`scripts/supabase/appwrite-export.json`. The project had **only master data**,
+no transactional rows. Loaded into Supabase (`pnpm migrate:data -- --commit`):
+branches 4, warehouses 5, suppliers 4, raw_materials 4, products 2,
+product_bom 4, customers 2, users 12 (profiles). `naming_series_counters`
+comes from the `0002` seed.
+
+### STILL TO DO
+1. **Staff auth accounts** — not created yet. Run
+   `pnpm migrate:data -- --commit --accounts '<password>'` to create the 11
+   Supabase Auth users (`admin@shieldpro.local` + 10 role emails) and rewrite
+   `public.users.auth_user_id`. Waiting on the password to use.
+2. **Rotate** the DB password + service-role key (were in chat history) once
+   the user is settled on Supabase.
+3. **Disconnect Appwrite** — user action (billing). Nothing in the repo needs it.
+4. **pgTAP tests** for the `0002`–`0005` RPCs — the 145 deleted `functions/`
+   unit tests have no replacement yet (647 tests pass, was 792).
+5. Full **runtime** verification against real data (sign in as a migrated
+   staff account, click through the modules) — the shim is structurally
+   verified (typecheck + 647 tests) but not exercised end-to-end on Supabase.
+6. `mapAppwriteError` / the `appwrite/` folder name — rename in a later pass.
+
+## Gates (this session): `pnpm typecheck` · `pnpm lint` (16 pre-existing
+router.tsx fast-refresh warns) · `pnpm test` **647 / 83 files** · `pnpm build`.
+
+## MCP
+`.mcp.json` has the Supabase HTTP MCP (`project_ref=ajrevsyyudfjrwiifekj`).
+The Appwrite MCP (console OAuth) still works read-only and was how the data
+export happened despite the billing lock.
+
+---
+
+Everything below is pre-migration history — the Appwrite specifics are no
+longer accurate, kept for the domain/wiring context only.
+
+---
+
 # Session handoff — 2026-09-05 (Wave 4 complete)
 
 **Wave 4 done on top of everything below:** HR (attendance/incentives/payroll
