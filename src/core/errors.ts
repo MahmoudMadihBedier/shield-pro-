@@ -17,6 +17,7 @@ export type AppErrorCode =
   | 'validation' // input failed a schema / business rule
   | 'conflict' // state changed underneath us / duplicate
   | 'rate_limited'
+  | 'pending_approval' // action is held awaiting a manual approval decision
   | 'server' // 5xx from the backend
   | 'unknown'
 

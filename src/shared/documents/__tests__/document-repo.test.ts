@@ -11,6 +11,7 @@ const updateRow = vi.fn()
 const allocateReferenceId = vi.fn()
 const submitDocument = vi.fn()
 const cancelDocument = vi.fn()
+const evaluateApproval = vi.fn()
 
 vi.mock('@/infrastructure/appwrite/services', () => ({
   tablesDB: {
@@ -37,6 +38,7 @@ vi.mock('@/infrastructure/appwrite/functions', () => ({
   allocateReferenceId: (...a: unknown[]) => allocateReferenceId(...a),
   submitDocument: (...a: unknown[]) => submitDocument(...a),
   cancelDocument: (...a: unknown[]) => cancelDocument(...a),
+  evaluateApproval: (...a: unknown[]) => evaluateApproval(...a),
 }))
 
 const { makeDocumentRepo } = await import('../document-repo')
@@ -151,14 +153,72 @@ describe('makeDocumentRepo', () => {
   })
 
   describe('submit / cancel', () => {
-    it('delegates to the shield-server function routes with the table id', async () => {
+    const draftRow = {
+      $id: 'row-1',
+      reference_id: 'PO-2026-1',
+      doc_status: 0,
+      created_by: 'u',
+      supplier_id: 's',
+    }
+
+    it('runs the approval engine, then delegates to submit-document on auto_approve', async () => {
+      getRow.mockResolvedValue(draftRow)
+      evaluateApproval.mockResolvedValue(
+        ok({ action: 'auto_approve', ruleId: null, approvalRequestId: 'req-1' }),
+      )
       submitDocument.mockResolvedValue(ok({ referenceId: 'PO-2026-1', docStatus: 1 }))
-      cancelDocument.mockResolvedValue(ok({ referenceId: 'PO-2026-1', docStatus: 2 }))
+
+      const res = await repo().submit('row-1')
+
+      expect(evaluateApproval).toHaveBeenCalledWith({
+        movementType: 'purchase_orders',
+        entityRef: 'PO-2026-1',
+        context: {},
+      })
+      expect(submitDocument).toHaveBeenCalledWith('purchase_orders', 'row-1')
+      expect(res.ok).toBe(true)
+    })
+
+    it('forwards the row total to the approval context', async () => {
+      getRow.mockResolvedValue({ ...draftRow, net_total: 1250 })
+      evaluateApproval.mockResolvedValue(
+        ok({ action: 'auto_approve', ruleId: null, approvalRequestId: 'req-1' }),
+      )
+      submitDocument.mockResolvedValue(ok({ referenceId: 'PO-2026-1', docStatus: 1 }))
 
       await repo().submit('row-1')
-      await repo().cancel('row-1', 'duplicate')
 
-      expect(submitDocument).toHaveBeenCalledWith('purchase_orders', 'row-1')
+      expect(evaluateApproval).toHaveBeenCalledWith(
+        expect.objectContaining({ context: { amount: 1250 } }),
+      )
+    })
+
+    it('returns a pending_approval error and does NOT submit on force_manual', async () => {
+      getRow.mockResolvedValue(draftRow)
+      evaluateApproval.mockResolvedValue(
+        ok({ action: 'force_manual', ruleId: 'rule-9', approvalRequestId: 'req-7' }),
+      )
+
+      const res = await repo().submit('row-1')
+
+      expect(res.ok).toBe(false)
+      if (!res.ok) expect(res.error.code).toBe('pending_approval')
+      expect(submitDocument).not.toHaveBeenCalled()
+    })
+
+    it('propagates an approval-engine failure without submitting', async () => {
+      getRow.mockResolvedValue(draftRow)
+      evaluateApproval.mockResolvedValue(err(appError('server', 'engine down')))
+
+      const res = await repo().submit('row-1')
+
+      expect(res.ok).toBe(false)
+      expect(submitDocument).not.toHaveBeenCalled()
+    })
+
+    it('delegates cancel to the cancel-document route with the table id', async () => {
+      cancelDocument.mockResolvedValue(ok({ referenceId: 'PO-2026-1', docStatus: 2 }))
+      await repo().cancel('row-1', 'duplicate')
       expect(cancelDocument).toHaveBeenCalledWith('purchase_orders', 'row-1', 'duplicate')
     })
   })
