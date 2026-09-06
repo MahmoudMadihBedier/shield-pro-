@@ -98,14 +98,27 @@ every operator; `tables.test.ts` added.
 UI: primary nav moved from a left sidebar to a **top bar with per-module
 dropdowns** (`TopNav.tsx` + `NAV_GROUPS` in `nav.ts`); hamburger panel below `lg`.
 
-Migrations are now 0001–0012. Aging buckets (0-30/31-60/61-90/90+) were already
-built in `accounting/domain/aging.ts`.
+- **Phase 4.1 v1 — CSV import/export facade.** `src/core/csv.ts` (canonical
+  `toCsv` + new `parseCsv`); `src/shared/excel/` (download wiring, generic
+  `<ExportButton>`, reusable `<CsvImportPanel>` — pick/paste → per-row Zod
+  validation → preview → Apply). Export wired into **Customer Aging** and
+  **Stock on Hand**. Importer: `0013` `import_raw_material_prices` (System
+  Admin only, by `code`, audited) behind a new `/admin/import` page
+  (`DataImportPage`) in the Admin nav. `reports/domain/csv.ts` re-exports
+  `@/core/csv` — one implementation. Remaining 4.1: more export surfaces
+  (P&L / production-waste / rep cash-up), opening-stock + bank-statement
+  importers.
 
-Remaining backlog (see `docs/IMPLEMENTATION_PLAN.md` §5): Phase 4.1 Excel I/O
-(export/import facade), CRM portal-account reactivate route.
+Migrations are now 0001–0013. Aging buckets were already built in
+`accounting/domain/aging.ts`.
 
-## Gates (this session): `pnpm typecheck` · `pnpm lint` (16 pre-existing
-router.tsx fast-refresh warns) · `pnpm test` **663 / 86 files** · `pnpm build`.
+Remaining backlog (see `docs/IMPLEMENTATION_PLAN.md` §5): finish Phase 4.1
+(more exports + 2 more importers), Phase 4.2 server-side report aggregation.
+Operational: rotate the DB password + service-role key, then disconnect
+Appwrite.
+
+## Gates (this session): `pnpm typecheck` · `pnpm lint` (17 pre-existing
+router.tsx fast-refresh warns) · `pnpm test` **668 / 87 files** · `pnpm build`.
 
 ## MCP
 `.mcp.json` has the Supabase HTTP MCP (`project_ref=ajrevsyyudfjrwiifekj`).
