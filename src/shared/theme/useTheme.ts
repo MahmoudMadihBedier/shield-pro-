@@ -1,10 +1,13 @@
 /**
- * Light / dark / system theme control. The pre-paint script in `index.html`
- * sets the initial `data-theme`; this hook keeps it in sync with the user's
- * choice (persisted in `localStorage`) and with the OS setting while on
- * "system". Presentation only — no app state, no backend.
+ * Light / dark / system theme. Cross-cutting client-only UI state, so it lives
+ * in a Zustand store (CLAUDE.md B.1). The pre-paint script in `index.html` sets
+ * the initial `data-theme`; this store then owns it — persists the choice,
+ * resolves "system" against the OS, and reconciles the `<html>` attribute on
+ * load (in case the stored value was stale / invalid).
+ *
+ * Presentation only — no app data, no backend.
  */
-import { useCallback, useEffect, useSyncExternalStore } from 'react'
+import { create } from 'zustand'
 
 export type ThemeChoice = 'light' | 'dark' | 'system'
 export type EffectiveTheme = 'light' | 'dark'
@@ -21,7 +24,11 @@ function readChoice(): ThemeChoice {
 }
 
 function systemPrefersDark(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  )
 }
 
 function resolve(choice: ThemeChoice): EffectiveTheme {
@@ -29,60 +36,70 @@ function resolve(choice: ThemeChoice): EffectiveTheme {
   return choice
 }
 
-function apply(choice: ThemeChoice): void {
-  if (typeof document === 'undefined') return
-  document.documentElement.dataset.theme = resolve(choice)
+function applyToDom(effective: EffectiveTheme): void {
+  if (typeof document !== 'undefined') document.documentElement.dataset.theme = effective
 }
 
-// --- tiny external store so every consumer re-renders on a change -----------
-const listeners = new Set<() => void>()
-function emit() {
-  for (const l of listeners) l()
-}
-function subscribe(cb: () => void) {
-  listeners.add(cb)
-  return () => listeners.delete(cb)
-}
-
-export interface UseThemeResult {
-  /** The user's stored preference. */
+interface ThemeStore {
   choice: ThemeChoice
-  /** What is actually applied right now. */
   effective: EffectiveTheme
   setChoice: (next: ThemeChoice) => void
   /** Cycle light → dark → system. */
   cycle: () => void
+  /** Re-resolve from the current choice + OS and re-apply (OS-change listener). */
+  syncFromSystem: () => void
 }
 
-export function useTheme(): UseThemeResult {
-  const choice = useSyncExternalStore(subscribe, readChoice, () => 'system' as ThemeChoice)
+const initialChoice = readChoice()
+const initialEffective = resolve(initialChoice)
+applyToDom(initialEffective) // reconcile the pre-paint attribute with the sanitised value
 
-  const setChoice = useCallback((next: ThemeChoice) => {
+export const useThemeStore = create<ThemeStore>((set, get) => ({
+  choice: initialChoice,
+  effective: initialEffective,
+
+  setChoice: (next) => {
     try {
       localStorage.setItem(STORAGE_KEY, next)
     } catch {
-      /* ignore — private mode / disabled storage */
+      /* private mode / storage disabled — in-memory only */
     }
-    apply(next)
-    emit()
-  }, [])
+    const effective = resolve(next)
+    applyToDom(effective)
+    set({ choice: next, effective })
+  },
 
-  const cycle = useCallback(() => {
+  cycle: () => {
     const order: ThemeChoice[] = ['light', 'dark', 'system']
-    setChoice(order[(order.indexOf(readChoice()) + 1) % order.length]!)
-  }, [setChoice])
+    get().setChoice(order[(order.indexOf(get().choice) + 1) % order.length]!)
+  },
 
-  // While on "system", follow OS changes live.
-  useEffect(() => {
-    if (choice !== 'system') return
-    const mql = window.matchMedia('(prefers-color-scheme: dark)')
-    const onChange = () => {
-      apply('system')
-      emit()
-    }
-    mql.addEventListener('change', onChange)
-    return () => mql.removeEventListener('change', onChange)
-  }, [choice])
+  syncFromSystem: () => {
+    const effective = resolve(get().choice)
+    applyToDom(effective)
+    set({ effective })
+  },
+}))
 
-  return { choice, effective: resolve(choice), setChoice, cycle }
+// Follow OS appearance changes (only shifts `effective` while choice === 'system').
+if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+  window
+    .matchMedia('(prefers-color-scheme: dark)')
+    .addEventListener('change', () => useThemeStore.getState().syncFromSystem())
+}
+
+export interface UseThemeResult {
+  choice: ThemeChoice
+  effective: EffectiveTheme
+  setChoice: (next: ThemeChoice) => void
+  cycle: () => void
+}
+
+/** Convenience selector hook over {@link useThemeStore}. */
+export function useTheme(): UseThemeResult {
+  const choice = useThemeStore((s) => s.choice)
+  const effective = useThemeStore((s) => s.effective)
+  const setChoice = useThemeStore((s) => s.setChoice)
+  const cycle = useThemeStore((s) => s.cycle)
+  return { choice, effective, setChoice, cycle }
 }

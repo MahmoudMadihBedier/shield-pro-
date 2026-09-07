@@ -3,6 +3,7 @@ import { useCallback, useMemo, useRef, type ReactNode } from 'react'
 
 import type { AppError } from '@/core/errors'
 import { formatNumber } from '@/shared/formatters'
+import { EmptyState, Skeleton } from '@/shared/ui'
 
 import type { ColumnAlign, ColumnDef, PaginationState, SortState } from './types'
 
@@ -168,7 +169,7 @@ export function DataTable<Row>({
             <div key={rowIdx} className="grid items-center" style={{ gridTemplateColumns }}>
               {columns.map((col) => (
                 <div key={col.id} className="px-3 py-3.5">
-                  <div className="h-3.5 w-2/3 animate-pulse rounded bg-[var(--surface-hover)]" />
+                  <Skeleton className="h-3.5 w-2/3" />
                 </div>
               ))}
             </div>
@@ -210,27 +211,8 @@ export function DataTable<Row>({
 
     if (rows.length === 0) {
       return (
-        <div
-          data-testid="dt-empty"
-          role="status"
-          className="flex flex-col items-center gap-3 px-4 py-14 text-center"
-        >
-          <span className="grid size-11 place-items-center rounded-full bg-[var(--surface-hover)] text-[var(--text-subtle)]">
-            <svg
-              viewBox="0 0 24 24"
-              className="size-6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-            >
-              <path
-                d="M4 13h4l2 3h4l2-3h4M4 13V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6M4 13v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <p className="text-sm text-[var(--text-muted)]">{emptyMessage ?? 'لا توجد بيانات'}</p>
+        <div data-testid="dt-empty" role="status">
+          <EmptyState title={emptyMessage ?? 'لا توجد بيانات'} />
         </div>
       )
     }

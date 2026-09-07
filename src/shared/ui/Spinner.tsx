@@ -5,12 +5,15 @@ export interface SpinnerProps {
   label?: string
 }
 
-/** Indeterminate loading spinner. */
+/**
+ * Indeterminate loading spinner. Inherits `currentColor` — set a text colour on
+ * the element or a parent (e.g. `text-brand-600`) to tint it.
+ */
 export function Spinner({ className = 'size-4', label }: SpinnerProps) {
   return (
     <svg
       viewBox="0 0 16 16"
-      className={`animate-spin text-brand-600 dark:text-brand-400 ${className}`}
+      className={`animate-spin ${className}`}
       fill="none"
       role={label ? 'status' : undefined}
       aria-label={label}

@@ -17,25 +17,28 @@ export function AppLayout() {
   return (
     <div className="flex min-h-full flex-col">
       <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--surface)]/85 backdrop-blur-md">
-        <div className="relative mx-auto flex h-14 max-w-[1440px] items-center gap-3 px-4 sm:px-6">
-          <BrandMark />
-
-          {principal ? (
-            <div className="ms-1 hidden min-w-0 flex-1 lg:block">
-              <TopNav />
-            </div>
-          ) : (
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6">
+          {/* Row 1: brand + utilities */}
+          <div className="flex h-14 items-center gap-3">
+            <BrandMark />
             <div className="flex-1" />
-          )}
-
-          {principal ? (
-            <div className="flex shrink-0 items-center gap-2">
-              <GlobalSearch />
-              <NotificationBell />
-              <UserMenu />
-              <div className="lg:hidden">
-                <TopNav mobileOnly />
+            {principal ? (
+              <div className="flex shrink-0 items-center gap-2">
+                <GlobalSearch />
+                <NotificationBell />
+                <UserMenu />
+                <div className="lg:hidden">
+                  <TopNav mobileOnly />
+                </div>
               </div>
+            ) : null}
+          </div>
+
+          {/* Row 2: module nav — its own full-width row so dropdowns overflow
+              freely and the bar can wrap on narrow desktops. */}
+          {principal ? (
+            <div className="hidden border-t border-[var(--border)] py-1.5 lg:block">
+              <TopNav />
             </div>
           ) : null}
         </div>

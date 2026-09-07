@@ -12,10 +12,12 @@ const LABEL_BY_PATH: Map<string, string> = new Map(
   NAV_ITEMS.map((item) => [item.to.replace(/\/$/, ''), item.label]),
 )
 
-const ID_LIKE = /^[0-9a-f]{8,}$|^\d+$|-/i
+// A record id: a long hex/uuid blob, or a run of 3+ digits. Hyphenated word
+// slugs like `purchase-orders` must NOT match — they get title-cased instead.
+const ID_LIKE = /^[0-9a-f]{8,}(-[0-9a-f]+)*$|^\d{3,}$/i
 
 function humanize(segment: string): string {
-  if (ID_LIKE.test(segment) && !LABEL_BY_PATH.has(segment)) {
+  if (ID_LIKE.test(segment)) {
     return segment.length > 10 ? `#${segment.slice(0, 6)}…` : `#${segment}`
   }
   return segment

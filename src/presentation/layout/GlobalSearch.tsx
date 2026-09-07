@@ -61,11 +61,16 @@ export function GlobalSearch() {
     setQuery('')
     setActive(0)
     setOpen(true)
-    queueMicrotask(() => inputRef.current?.focus())
   }, [])
 
+  // Open shortcuts + a global Escape while open (so it closes even if the
+  // input never received focus).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (open && e.key === 'Escape') {
+        setOpen(false)
+        return
+      }
       const tag = (e.target as HTMLElement)?.tagName
       const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
       if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing)) {
@@ -75,7 +80,12 @@ export function GlobalSearch() {
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [openPalette])
+  }, [open, openPalette])
+
+  // Focus the field once it has actually mounted.
+  useEffect(() => {
+    if (open) inputRef.current?.focus()
+  }, [open])
 
   const choose = (item: NavItem | undefined) => {
     if (!item) return
