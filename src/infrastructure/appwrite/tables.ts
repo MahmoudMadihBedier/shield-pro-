@@ -220,7 +220,12 @@ export const tablesDB = {
           .map((c) => col(c) ?? c)
           .join(',') || '*'
       : '*'
-    const base = supabase.from(params.tableId).select(cols, { count: 'exact' })
+    // `Query.noCount()` opts out of the per-request exact COUNT(*) — for bulk
+    // reads that page through a table and never look at `total`.
+    const wantCount = !parsed.some((p) => p.method === 'noCount')
+    const base = supabase
+      .from(params.tableId)
+      .select(cols, wantCount ? { count: 'exact' } : undefined)
     const { data, error, count } = await applyQueries(base, parsed)
     if (error) throwFrom(error, `list ${params.tableId}`)
     return {

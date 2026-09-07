@@ -4,6 +4,13 @@
  * shared `<ExportButton>` / `<CsvImportPanel>` UI.
  */
 export { toCsv, parseCsv, type CsvColumn } from '@/core/csv'
-export { downloadText, downloadCsv, readFileText } from './download'
+export {
+  recordsToSheet,
+  type XlsxSheet,
+  type XlsxCell,
+  type RecordsToSheetOptions,
+} from '@/core/xlsx'
+export { downloadText, downloadBlob, downloadCsv, readFileText } from './download'
+export { buildXlsx, downloadXlsx } from './xlsx'
 export { ExportButton, type ExportButtonProps } from './ExportButton'
 export { CsvImportPanel, type CsvImportPanelProps } from './CsvImportPanel'
