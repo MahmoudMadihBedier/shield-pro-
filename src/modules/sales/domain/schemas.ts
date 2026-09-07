@@ -18,6 +18,10 @@
  */
 import { z, type ZodType } from 'zod'
 
+import { GEO_REGEX } from '@/core/geo'
+
+export { GEO_REGEX }
+
 import { documentEnvelopeSchema } from '@/core/document'
 
 // ---------------------------------------------------------------------------
@@ -203,7 +207,7 @@ export const salesInvoiceRowSchema = documentRowSchema.extend({
 export type SalesInvoiceRow = z.infer<typeof salesInvoiceRowSchema>
 
 /** `"lat,lng"` — two comma-separated floats (mirrors admin's customer geo). */
-export const GEO_REGEX = /^-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?$/
+/** `"lat,lng"` — two comma-separated floats. From `@/core/geo` (re-exported above). */
 
 export const salesInvoiceDraftSchema = z.object({
   customer_id: z.string().min(1, 'اختر العميل'),
