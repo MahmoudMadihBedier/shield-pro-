@@ -27,12 +27,14 @@ export function ConnectionStatus() {
   }[state]
 
   return (
-    <div className="rounded-xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-zinc-900">
+    <div className="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
       <div className="flex items-center gap-3">
-        <span className={`inline-block h-3 w-3 shrink-0 rounded-full ${dot}`} />
-        <span className="font-medium">{label}</span>
+        <span className={`inline-block size-2.5 shrink-0 rounded-full ${dot}`} />
+        <span className="font-medium text-[var(--text)]">{label}</span>
         {state === 'online' && data ? (
-          <span className="text-sm text-zinc-500">· {formatRelativeLatency(data.latencyMs)}</span>
+          <span className="text-sm text-[var(--text-muted)]">
+            · {formatRelativeLatency(data.latencyMs)}
+          </span>
         ) : null}
       </div>
 
@@ -41,14 +43,16 @@ export function ConnectionStatus() {
       ) : null}
 
       {state === 'online' && data ? (
-        <p className="mt-2 text-sm text-zinc-500">Last checked {formatDateTime(data.checkedAt)}</p>
+        <p className="mt-2 text-sm text-[var(--text-muted)]">
+          Last checked {formatDateTime(data.checkedAt)}
+        </p>
       ) : null}
 
       <button
         type="button"
         onClick={() => void refetch()}
         disabled={isFetching}
-        className="mt-4 inline-flex items-center rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+        className="mt-4 inline-flex h-8 items-center rounded-lg bg-brand-600 px-3 text-xs font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-400"
       >
         {isFetching ? 'Pinging…' : 'Ping now'}
       </button>

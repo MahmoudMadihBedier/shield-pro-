@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useFormContext } from 'react-hook-form'
 
 const CONTROL_CLASS =
-  'w-full rounded-lg border border-black/15 bg-transparent px-3 py-2 text-sm outline-none transition focus:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/15'
+  'w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] text-[var(--text)] px-3 py-2 text-sm outline-none transition-colors placeholder:text-[var(--text-subtle)] hover:border-brand-400/60 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/25 disabled:cursor-not-allowed disabled:opacity-50'
 
 interface BaseFieldProps {
   name: string
@@ -23,11 +23,20 @@ function useFieldError(name: string): string | undefined {
   return typeof entry?.message === 'string' ? entry.message : undefined
 }
 
-function FieldLabel({ label, labelEn }: { label: string; labelEn?: string }) {
+function FieldLabel({
+  label,
+  labelEn,
+  required,
+}: {
+  label: string
+  labelEn?: string
+  required?: boolean
+}) {
   return (
-    <span className="mb-1 block text-start text-zinc-600 dark:text-zinc-400">
+    <span className="mb-1 block text-start text-xs font-medium text-[var(--text-muted)]">
       {label}
-      {labelEn ? <span className="text-zinc-400"> / {labelEn}</span> : null}
+      {labelEn ? <span className="font-normal text-[var(--text-subtle)]"> / {labelEn}</span> : null}
+      {required ? <span className="text-red-500"> *</span> : null}
     </span>
   )
 }
@@ -36,10 +45,13 @@ function FieldMessages({ hint, error }: { hint?: string; error?: string }) {
   return (
     <>
       {hint && !error ? (
-        <span className="mt-1 block text-start text-xs text-zinc-400">{hint}</span>
+        <span className="mt-1 block text-start text-xs text-[var(--text-subtle)]">{hint}</span>
       ) : null}
       {error ? (
-        <span role="alert" className="mt-1 block text-start text-xs text-red-600">
+        <span
+          role="alert"
+          className="mt-1 block text-start text-xs font-medium text-red-600 dark:text-red-400"
+        >
           {error}
         </span>
       ) : null}
@@ -53,19 +65,29 @@ function Field({
   label,
   labelEn,
   hint,
+  required,
   children,
 }: {
   name: string
   label: string
   labelEn?: string
   hint?: string
+  required?: boolean
   children: ReactNode
 }) {
   const error = useFieldError(name)
   return (
     <label className="block text-sm">
-      <FieldLabel label={label} labelEn={labelEn} />
-      {children}
+      <FieldLabel label={label} labelEn={labelEn} required={required} />
+      <div
+        className={
+          error
+            ? '[&_input]:border-red-500 [&_input]:focus:ring-red-500/25 [&_select]:border-red-500 [&_textarea]:border-red-500'
+            : undefined
+        }
+      >
+        {children}
+      </div>
       <FieldMessages hint={hint} error={error} />
     </label>
   )
@@ -93,7 +115,7 @@ export function TextField({
 }: TextFieldProps) {
   const { register } = useFormContext()
   return (
-    <Field name={name} label={label} labelEn={labelEn} hint={hint}>
+    <Field name={name} label={label} labelEn={labelEn} hint={hint} required={required}>
       <input
         type={type}
         dir={dir}
@@ -125,7 +147,7 @@ export function TextAreaField({
 }: TextAreaFieldProps) {
   const { register } = useFormContext()
   return (
-    <Field name={name} label={label} labelEn={labelEn} hint={hint}>
+    <Field name={name} label={label} labelEn={labelEn} hint={hint} required={required}>
       <textarea
         rows={rows}
         placeholder={placeholder}
@@ -159,7 +181,7 @@ export function NumberField({
 }: NumberFieldProps) {
   const { register } = useFormContext()
   return (
-    <Field name={name} label={label} labelEn={labelEn} hint={hint}>
+    <Field name={name} label={label} labelEn={labelEn} hint={hint} required={required}>
       {/* digits stay LTR even inside an RTL form; the label above is RTL */}
       <input
         type="number"
@@ -200,7 +222,7 @@ export function SelectField({
 }: SelectFieldProps) {
   const { register } = useFormContext()
   return (
-    <Field name={name} label={label} labelEn={labelEn} hint={hint}>
+    <Field name={name} label={label} labelEn={labelEn} hint={hint} required={required}>
       <select
         disabled={disabled}
         aria-required={required}
@@ -236,12 +258,12 @@ export function CheckboxField({ name, label, labelEn, hint, disabled }: Checkbox
         <input
           type="checkbox"
           disabled={disabled}
-          className="h-4 w-4 rounded border-black/25 dark:border-white/25"
+          className="size-4 rounded border-[var(--border-strong)] text-brand-600 accent-brand-600 focus:ring-2 focus:ring-brand-500/25 disabled:opacity-50"
           {...register(name)}
         />
-        <span className="text-zinc-600 dark:text-zinc-400">
+        <span className="text-[var(--text-muted)]">
           {label}
-          {labelEn ? <span className="text-zinc-400"> / {labelEn}</span> : null}
+          {labelEn ? <span className="text-[var(--text-subtle)]"> / {labelEn}</span> : null}
         </span>
       </label>
       <FieldMessages hint={hint} error={error} />
@@ -266,7 +288,7 @@ export function DateField({
 }: DateFieldProps) {
   const { register } = useFormContext()
   return (
-    <Field name={name} label={label} labelEn={labelEn} hint={hint}>
+    <Field name={name} label={label} labelEn={labelEn} hint={hint} required={required}>
       <input
         type="date"
         dir="ltr"

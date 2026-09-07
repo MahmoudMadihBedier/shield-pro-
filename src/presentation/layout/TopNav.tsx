@@ -1,7 +1,7 @@
 /**
- * Primary navigation as a top bar (replaces the left sidebar). Module groups
- * with sub-routes open a dropdown; single-route groups are plain links. Below
- * `lg` the whole thing collapses to a hamburger panel.
+ * Primary navigation as a top bar. Module groups with sub-routes open a
+ * dropdown; single-route groups are plain links. `mobileOnly` renders just the
+ * hamburger + slide-down panel (used inside the compact header on < lg).
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
@@ -19,8 +19,12 @@ function isGroupActive(pathname: string, to: string): boolean {
   return pathname === to || pathname.startsWith(`${to}/`)
 }
 
-/** A row inside a dropdown / the mobile panel. `onNavigate` fires on click so
- *  the containing menu can close itself from the event that caused the change. */
+const ACTIVE_TRIGGER =
+  'bg-brand-50 font-medium text-brand-700 dark:bg-brand-950/50 dark:text-brand-300'
+const IDLE_TRIGGER =
+  'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]'
+
+/** A row inside a dropdown / the mobile panel. */
 function MenuLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   return (
     <NavLink
@@ -29,15 +33,15 @@ function MenuLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void
       onClick={onNavigate}
       className={({ isActive }) =>
         cx(
-          'block rounded-lg px-3 py-2 text-sm transition',
+          'block rounded-lg px-3 py-2 text-sm transition-colors',
           isActive
-            ? 'bg-black/5 font-medium text-zinc-900 dark:bg-white/10 dark:text-zinc-100'
-            : 'text-zinc-600 hover:bg-black/5 dark:text-zinc-400 dark:hover:bg-white/10',
+            ? 'bg-brand-50 font-medium text-brand-700 dark:bg-brand-950/50 dark:text-brand-300'
+            : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]',
         )
       }
     >
       {item.label}
-      <span className="text-zinc-400"> / {item.labelEn}</span>
+      <span className="text-[var(--text-subtle)]"> / {item.labelEn}</span>
     </NavLink>
   )
 }
@@ -76,10 +80,8 @@ function GroupTrigger({ group }: { group: NavGroup }) {
   }, [open])
 
   const triggerClass = cx(
-    'flex items-center gap-1 rounded-lg px-2.5 py-2 text-sm transition',
-    active
-      ? 'bg-black/5 font-medium text-zinc-900 dark:bg-white/10 dark:text-zinc-100'
-      : 'text-zinc-600 hover:bg-black/5 dark:text-zinc-400 dark:hover:bg-white/10',
+    'flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm transition-colors',
+    active ? ACTIVE_TRIGGER : IDLE_TRIGGER,
   )
 
   if (group.items.length === 0) {
@@ -102,7 +104,10 @@ function GroupTrigger({ group }: { group: NavGroup }) {
         {group.label}
         <svg
           viewBox="0 0 12 12"
-          className={cx('size-3 text-zinc-400 transition-transform', open && 'rotate-180')}
+          className={cx(
+            'size-3 text-[var(--text-subtle)] transition-transform',
+            open && 'rotate-180',
+          )}
           aria-hidden="true"
         >
           <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" />
@@ -112,13 +117,13 @@ function GroupTrigger({ group }: { group: NavGroup }) {
       {open ? (
         <div
           role="menu"
-          className="absolute start-0 z-40 mt-1 min-w-56 rounded-xl border border-black/10 bg-white p-1 shadow-lg dark:border-white/10 dark:bg-zinc-900"
+          className="absolute start-0 z-40 mt-1.5 min-w-56 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg"
         >
           <MenuLink
             item={{ to: group.to, label: group.label, labelEn: group.labelEn, end: group.end }}
             onNavigate={() => setOpen(false)}
           />
-          <div className="my-1 h-px bg-black/5 dark:bg-white/10" />
+          <div className="my-1 h-px bg-[var(--border)]" />
           {group.items.map((item) =>
             gated(item, <MenuLink item={item} onNavigate={() => setOpen(false)} />),
           )}
@@ -136,7 +141,7 @@ function MobileGroup({ group, onNavigate }: { group: NavGroup; onNavigate: () =>
         onNavigate={onNavigate}
       />
       {group.items.length > 0 ? (
-        <div className="ms-3 border-s border-black/10 ps-2 dark:border-white/10">
+        <div className="ms-3 border-s border-[var(--border)] ps-2">
           {group.items.map((item) => gated(item, <MenuLink item={item} onNavigate={onNavigate} />))}
         </div>
       ) : null}
@@ -144,33 +149,53 @@ function MobileGroup({ group, onNavigate }: { group: NavGroup; onNavigate: () =>
   )
 }
 
-export function TopNav() {
+export interface TopNavProps {
+  /** Render only the hamburger + slide-down panel (compact header, < lg). */
+  mobileOnly?: boolean
+}
+
+export function TopNav({ mobileOnly = false }: TopNavProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const closeMobile = () => setMobileOpen(false)
 
+  if (mobileOnly) {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setMobileOpen((v) => !v)}
+          aria-expanded={mobileOpen}
+          aria-label="القائمة الرئيسية"
+          className="grid size-9 place-items-center rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:text-[var(--text)]"
+        >
+          <svg
+            viewBox="0 0 20 20"
+            className="size-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M3 5h14M3 10h14M3 15h14" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        {mobileOpen ? (
+          <div className="absolute inset-x-0 top-full z-40 mt-2 max-h-[70vh] overflow-y-auto border-y border-[var(--border)] bg-[var(--surface)] p-3 shadow-lg">
+            {NAV_GROUPS.map((group) =>
+              gated(group, <MobileGroup key={group.to} group={group} onNavigate={closeMobile} />),
+            )}
+          </div>
+        ) : null}
+      </>
+    )
+  }
+
   return (
-    <>
-      <nav aria-label="التنقل الرئيسي" className="hidden flex-wrap items-center gap-0.5 lg:flex">
-        {NAV_GROUPS.map((group) => gated(group, <GroupTrigger key={group.to} group={group} />))}
-      </nav>
-
-      <button
-        type="button"
-        onClick={() => setMobileOpen((v) => !v)}
-        aria-expanded={mobileOpen}
-        aria-label="القائمة الرئيسية"
-        className="rounded-lg border border-black/10 px-2.5 py-1.5 text-sm lg:hidden dark:border-white/15"
-      >
-        ☰ القائمة
-      </button>
-
-      {mobileOpen ? (
-        <div className="absolute inset-x-0 top-full z-40 mt-2 max-h-[70vh] overflow-y-auto border-y border-black/10 bg-white p-3 shadow-lg lg:hidden dark:border-white/10 dark:bg-zinc-900">
-          {NAV_GROUPS.map((group) =>
-            gated(group, <MobileGroup key={group.to} group={group} onNavigate={closeMobile} />),
-          )}
-        </div>
-      ) : null}
-    </>
+    <nav
+      aria-label="التنقل الرئيسي"
+      className="flex flex-nowrap items-center gap-0.5 overflow-x-auto"
+    >
+      {NAV_GROUPS.map((group) => gated(group, <GroupTrigger key={group.to} group={group} />))}
+    </nav>
   )
 }

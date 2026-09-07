@@ -52,6 +52,12 @@ export const accountingNavItems: NavItem[] = [
     roles: ACCOUNTING_NAV_ROLES,
   },
   {
+    to: '/accounting/pnl',
+    label: 'قائمة الدخل',
+    labelEn: 'Profit & Loss',
+    roles: ACCOUNTING_NAV_ROLES,
+  },
+  {
     to: '/accounting/ledger',
     label: 'دفتر الأستاذ',
     labelEn: 'General ledger',

@@ -35,6 +35,12 @@ const SECTIONS = [
     desc: 'أرصدة الحسابات من دفتر الأستاذ.',
   },
   {
+    to: '/accounting/pnl',
+    ar: 'قائمة الدخل',
+    en: 'Profit & Loss',
+    desc: 'الإيرادات والمصروفات وصافي الربح من الدفاتر الحيّة، قابلة للتصدير.',
+  },
+  {
     to: '/accounting/ledger',
     ar: 'دفتر الأستاذ',
     en: 'General ledger',

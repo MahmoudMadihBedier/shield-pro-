@@ -53,7 +53,7 @@ function SortGlyph({ state }: { state: 'asc' | 'desc' | 'none' }) {
   return (
     <span
       aria-hidden="true"
-      className={`ms-1 text-[0.65em] ${state === 'none' ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-500'}`}
+      className={`ms-1 text-[0.65em] ${state === 'none' ? 'text-zinc-300 dark:text-zinc-600' : 'text-brand-600 dark:text-brand-400'}`}
     >
       {symbol}
     </span>
@@ -123,7 +123,7 @@ export function DataTable<Row>({
     (row: Row) => (
       <div
         role="row"
-        className="grid items-center border-t border-black/5 text-sm dark:border-white/5"
+        className="grid items-center border-t border-[var(--border)] text-sm transition-colors hover:bg-[var(--surface-hover)]"
         style={{ gridTemplateColumns }}
       >
         {columns.map((col) => (
@@ -162,13 +162,13 @@ export function DataTable<Row>({
           data-testid="dt-loading"
           aria-busy="true"
           role="status"
-          className="divide-y divide-black/5 dark:divide-white/5"
+          className="divide-y divide-[var(--border)]"
         >
           {Array.from({ length: 6 }).map((_, rowIdx) => (
             <div key={rowIdx} className="grid items-center" style={{ gridTemplateColumns }}>
               {columns.map((col) => (
-                <div key={col.id} className="px-3 py-3">
-                  <div className="h-3.5 w-2/3 animate-pulse rounded bg-black/10 dark:bg-white/10" />
+                <div key={col.id} className="px-3 py-3.5">
+                  <div className="h-3.5 w-2/3 animate-pulse rounded bg-[var(--surface-hover)]" />
                 </div>
               ))}
             </div>
@@ -185,12 +185,21 @@ export function DataTable<Row>({
           role="alert"
           className="flex flex-col items-center gap-3 px-4 py-12 text-center"
         >
+          <span className="grid size-10 place-items-center rounded-full bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400">
+            <svg viewBox="0 0 20 20" className="size-5" fill="currentColor" aria-hidden="true">
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm1-11a1 1 0 1 0-2 0v4a1 1 0 1 0 2 0V7Zm-1 7a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </span>
           <p className="text-sm text-red-600 dark:text-red-400">{error.message}</p>
           {onRetry ? (
             <button
               type="button"
               onClick={onRetry}
-              className="rounded-lg border border-black/15 px-3 py-1.5 text-sm font-medium hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
+              className="rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-3 py-1.5 text-sm font-medium transition-colors hover:bg-[var(--surface-hover)]"
             >
               إعادة المحاولة
             </button>
@@ -204,9 +213,24 @@ export function DataTable<Row>({
         <div
           data-testid="dt-empty"
           role="status"
-          className="px-4 py-12 text-center text-sm text-zinc-500"
+          className="flex flex-col items-center gap-3 px-4 py-14 text-center"
         >
-          {emptyMessage ?? 'لا توجد بيانات'}
+          <span className="grid size-11 place-items-center rounded-full bg-[var(--surface-hover)] text-[var(--text-subtle)]">
+            <svg
+              viewBox="0 0 24 24"
+              className="size-6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+            >
+              <path
+                d="M4 13h4l2 3h4l2-3h4M4 13V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6M4 13v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <p className="text-sm text-[var(--text-muted)]">{emptyMessage ?? 'لا توجد بيانات'}</p>
         </div>
       )
     }
@@ -254,16 +278,16 @@ export function DataTable<Row>({
   })()
 
   return (
-    <div className="rounded-xl border border-black/10 bg-white text-zinc-900 shadow-sm dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100">
+    <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-sm">
       {toolbar ? (
-        <div className="border-b border-black/5 p-3 dark:border-white/5">{toolbar}</div>
+        <div className="border-b border-[var(--border)] bg-[var(--surface-2)] p-3">{toolbar}</div>
       ) : null}
 
       <div className="overflow-x-auto">
         <div role="table" className="min-w-full">
           <div
             role="row"
-            className="grid border-b border-black/10 bg-black/[0.02] text-xs font-semibold text-zinc-500 dark:border-white/10 dark:bg-white/[0.03]"
+            className="sticky top-0 z-10 grid border-b border-[var(--border)] bg-[var(--surface-2)] text-xs font-semibold text-[var(--text-muted)] backdrop-blur"
             style={{ gridTemplateColumns }}
           >
             {columns.map((col) => {
@@ -285,7 +309,9 @@ export function DataTable<Row>({
                     aria-sort={
                       state === 'asc' ? 'ascending' : state === 'desc' ? 'descending' : 'none'
                     }
-                    className={`${cellCls} font-semibold uppercase tracking-wide hover:text-zinc-800 dark:hover:text-zinc-200`}
+                    className={`${cellCls} font-semibold uppercase tracking-wide transition-colors hover:text-brand-600 dark:hover:text-brand-400 ${
+                      state !== 'none' ? 'text-brand-600 dark:text-brand-400' : ''
+                    }`}
                   >
                     <span className="truncate">{col.header}</span>
                     <SortGlyph state={state} />
@@ -325,7 +351,7 @@ function PaginationFooter({
   const canNext = end < total
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 px-3 py-2.5 text-sm text-zinc-500 dark:border-white/10">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--surface-2)] px-3 py-2.5 text-sm text-[var(--text-muted)]">
       <label className="flex items-center gap-2">
         <span>عدد الصفوف</span>
         <select
@@ -334,7 +360,7 @@ function PaginationFooter({
           onChange={(event) =>
             onPaginationChange?.({ pageIndex: 0, pageSize: Number(event.target.value), total })
           }
-          className="rounded-lg border border-black/15 bg-transparent px-2 py-1 dark:border-white/15"
+          className="rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-2 py-1 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/25"
         >
           {PAGE_SIZE_OPTIONS.map((size) => (
             <option key={size} value={size}>
@@ -355,7 +381,7 @@ function PaginationFooter({
             aria-label="الصفحة السابقة"
             disabled={!canPrev}
             onClick={() => onPaginationChange?.({ pageIndex: pageIndex - 1, pageSize, total })}
-            className="inline-flex items-center rounded-lg border border-black/15 p-1.5 disabled:opacity-40 enabled:hover:bg-black/5 dark:border-white/15 dark:enabled:hover:bg-white/10"
+            className="inline-flex items-center rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] p-1.5 transition-colors disabled:opacity-40 enabled:hover:border-brand-400 enabled:hover:text-brand-600 dark:enabled:hover:text-brand-400"
           >
             <ChevronToStart />
           </button>
@@ -365,7 +391,7 @@ function PaginationFooter({
             aria-label="الصفحة التالية"
             disabled={!canNext}
             onClick={() => onPaginationChange?.({ pageIndex: pageIndex + 1, pageSize, total })}
-            className="inline-flex items-center rounded-lg border border-black/15 p-1.5 disabled:opacity-40 enabled:hover:bg-black/5 dark:border-white/15 dark:enabled:hover:bg-white/10"
+            className="inline-flex items-center rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] p-1.5 transition-colors disabled:opacity-40 enabled:hover:border-brand-400 enabled:hover:text-brand-600 dark:enabled:hover:text-brand-400"
           >
             <ChevronToEnd />
           </button>

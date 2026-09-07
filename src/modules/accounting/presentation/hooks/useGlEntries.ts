@@ -12,7 +12,9 @@ import {
   type GlEntryListPage,
   type GlEntryListParams,
 } from '../../data/gl-repo'
+import { profitAndLoss, type PnlRange } from '../../data/pnl-repo'
 import type { TrialBalance } from '../../domain/gl'
+import type { ProfitAndLoss } from '../../domain/pnl'
 import { accountingKeys } from '../query-keys'
 
 export function useGlEntries(params: GlEntryListParams = {}) {
@@ -44,6 +46,17 @@ export function useTrialBalance(range: Pick<GlEntryListParams, 'from' | 'to' | '
     queryKey: accountingKeys.gl.trialBalance(range),
     queryFn: async () => {
       const res = await trialBalanceRows(range)
+      if (!res.ok) throw res.error
+      return res.value
+    },
+  })
+}
+
+export function useProfitAndLoss(range: PnlRange = {}) {
+  return useQuery<ProfitAndLoss, AppError>({
+    queryKey: accountingKeys.gl.pnl(range),
+    queryFn: async () => {
+      const res = await profitAndLoss(range)
       if (!res.ok) throw res.error
       return res.value
     },

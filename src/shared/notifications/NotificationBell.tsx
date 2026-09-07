@@ -91,9 +91,9 @@ export function NotificationBell() {
       {open ? (
         <div
           role="menu"
-          className="absolute end-0 z-20 mt-2 w-80 rounded-xl border border-black/10 bg-white text-zinc-900 shadow-lg dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100"
+          className="absolute end-0 z-40 mt-2 w-80 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-lg"
         >
-          <div className="flex items-center justify-between gap-2 border-b border-black/5 px-3 py-2 dark:border-white/5">
+          <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface-2)] px-3 py-2">
             <span className="text-sm font-semibold">الإشعارات / Notifications</span>
             <Button
               size="sm"
@@ -110,7 +110,7 @@ export function NotificationBell() {
               <div
                 data-testid="notif-bell-loading"
                 role="status"
-                className="px-3 py-6 text-center text-sm text-zinc-500"
+                className="px-3 py-6 text-center text-sm text-[var(--text-muted)]"
               >
                 جارٍ التحميل… / Loading…
               </div>
@@ -125,7 +125,7 @@ export function NotificationBell() {
               <div
                 data-testid="notif-bell-empty"
                 role="status"
-                className="px-3 py-6 text-center text-sm text-zinc-500"
+                className="px-3 py-6 text-center text-sm text-[var(--text-muted)]"
               >
                 لا توجد إشعارات / No notifications
               </div>
@@ -138,10 +138,8 @@ export function NotificationBell() {
                       onClick={() => {
                         if (!row.is_read) markRead.mutate(row.$id)
                       }}
-                      className={`block w-full px-3 py-2.5 text-start text-sm transition hover:bg-black/5 dark:hover:bg-white/10 ${
-                        row.is_read
-                          ? 'text-zinc-500'
-                          : 'font-medium text-zinc-900 dark:text-zinc-100'
+                      className={`block w-full px-3 py-2.5 text-start text-sm transition hover:bg-[var(--surface-hover)] ${
+                        row.is_read ? 'text-[var(--text-muted)]' : 'font-medium text-[var(--text)]'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -149,11 +147,11 @@ export function NotificationBell() {
                         {!row.is_read ? (
                           <span
                             aria-hidden="true"
-                            className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500"
+                            className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500"
                           />
                         ) : null}
                       </div>
-                      <div className="mt-0.5 flex items-center justify-between gap-2 text-xs text-zinc-400">
+                      <div className="mt-0.5 flex items-center justify-between gap-2 text-xs text-[var(--text-subtle)]">
                         <span>{bilingualKindLabel(row.kind)}</span>
                         <span dir="ltr">{formatDateTime(row.created_at)}</span>
                       </div>
@@ -164,11 +162,11 @@ export function NotificationBell() {
             )}
           </div>
 
-          <div className="border-t border-black/5 px-3 py-2 text-center dark:border-white/5">
+          <div className="border-t border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-center">
             <Link
               to="/notifications"
               onClick={() => setOpen(false)}
-              className="text-sm font-medium text-sky-600 hover:underline dark:text-sky-400"
+              className="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
             >
               عرض الكل / View all
             </Link>

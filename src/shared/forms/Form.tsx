@@ -72,11 +72,23 @@ export function Form<TValues extends FieldValues>({
 export function FormError({ message }: { message?: string | null }) {
   if (!message) return null
   return (
-    <p
+    <div
       role="alert"
-      className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300"
+      className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
     >
-      {message}
-    </p>
+      <svg
+        viewBox="0 0 20 20"
+        className="mt-0.5 size-4 shrink-0"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path
+          fillRule="evenodd"
+          d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm1-11a1 1 0 1 0-2 0v4a1 1 0 1 0 2 0V7Zm-1 7a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"
+          clipRule="evenodd"
+        />
+      </svg>
+      <span>{message}</span>
+    </div>
   )
 }
