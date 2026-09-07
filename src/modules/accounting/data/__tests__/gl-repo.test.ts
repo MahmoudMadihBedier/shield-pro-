@@ -1,12 +1,20 @@
 import { AppwriteException } from '@/infrastructure/appwrite/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockListRows } = vi.hoisted(() => ({ mockListRows: vi.fn() }))
+const { mockListRows, mockFetchTrialBalance } = vi.hoisted(() => ({
+  mockListRows: vi.fn(),
+  mockFetchTrialBalance: vi.fn(),
+}))
 
 vi.mock('@/infrastructure/appwrite/services', async () => {
   const { Query } = await import('@/infrastructure/appwrite/testing')
   return { tablesDB: { listRows: mockListRows }, Query }
 })
+vi.mock('@/infrastructure/appwrite/functions', () => ({
+  fetchTrialBalance: (...a: unknown[]) => mockFetchTrialBalance(...a),
+}))
+
+import { ok } from '@/core/result'
 
 import { accountBalance, listGlEntries, trialBalanceRows } from '../gl-repo'
 
@@ -29,6 +37,7 @@ function glRow(over: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   mockListRows.mockReset()
+  mockFetchTrialBalance.mockReset()
 })
 
 describe('listGlEntries', () => {
@@ -75,38 +84,48 @@ describe('listGlEntries', () => {
   })
 })
 
-describe('accountBalance', () => {
-  it('scans every row for the account and returns Σ debit − Σ credit', async () => {
-    mockListRows.mockResolvedValueOnce({
-      rows: [glRow({ debit: 250, credit: 0 }), glRow({ $id: 'g2', debit: 0, credit: 90 })],
-      total: 2,
-    })
-    const res = await accountBalance('cash')
-    expect(res).toEqual({ ok: true, value: 160 })
-    const queries = ((mockListRows.mock.calls[0]?.[0]?.queries ?? []) as string[]).join(' ')
-    expect(queries).toMatch(/account/)
-  })
-
-  it('returns ok(0) for an account with no entries', async () => {
-    mockListRows.mockResolvedValueOnce({ rows: [], total: 0 })
-    expect(await accountBalance('bank')).toEqual({ ok: true, value: 0 })
-  })
-})
-
 describe('trialBalanceRows', () => {
-  it('reduces scanned rows into a balanced trial balance', async () => {
-    mockListRows.mockResolvedValueOnce({
-      rows: [
-        glRow({ account: 'cash', debit: 250, credit: 0 }),
-        glRow({ $id: 'g2', account: 'accounts_receivable', debit: 0, credit: 250 }),
-      ],
-      total: 2,
-    })
+  it('passes the range to the RPC and marks a matched total as balanced', async () => {
+    mockFetchTrialBalance.mockResolvedValueOnce(
+      ok({
+        rows: [
+          { account: 'accounts_receivable', debit: 0, credit: 250, balance: -250 },
+          { account: 'cash', debit: 250, credit: 0, balance: 250 },
+        ],
+        totalDebit: 250,
+        totalCredit: 250,
+      }),
+    )
     const res = await trialBalanceRows({ from: '2026-08-01T00:00:00.000Z' })
+    expect(mockFetchTrialBalance).toHaveBeenCalledWith('2026-08-01T00:00:00.000Z', null)
     expect(res.ok).toBe(true)
     if (!res.ok) return
     expect(res.value.balanced).toBe(true)
     expect(res.value.totalDebit).toBe(250)
     expect(res.value.rows.map((r) => r.account)).toEqual(['accounts_receivable', 'cash'])
+  })
+
+  it('marks an unbalanced total', async () => {
+    mockFetchTrialBalance.mockResolvedValueOnce(ok({ rows: [], totalDebit: 100, totalCredit: 90 }))
+    const res = await trialBalanceRows()
+    expect(res.ok && res.value.balanced).toBe(false)
+  })
+})
+
+describe('accountBalance', () => {
+  it('returns the account balance from the trial balance', async () => {
+    mockFetchTrialBalance.mockResolvedValueOnce(
+      ok({
+        rows: [{ account: 'cash', debit: 250, credit: 90, balance: 160 }],
+        totalDebit: 250,
+        totalCredit: 90,
+      }),
+    )
+    expect(await accountBalance('cash')).toEqual({ ok: true, value: 160 })
+  })
+
+  it('returns ok(0) for an account with no entries', async () => {
+    mockFetchTrialBalance.mockResolvedValueOnce(ok({ rows: [], totalDebit: 0, totalCredit: 0 }))
+    expect(await accountBalance('bank')).toEqual({ ok: true, value: 0 })
   })
 })

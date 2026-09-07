@@ -35,6 +35,8 @@ export const ServerRoute = {
   recordCreditOverride: '/credit/override',
   importRawMaterialPrices: '/import/raw-material-prices',
   adminSetStatus: '/admin/set-status',
+  trialBalance: '/reports/trial-balance',
+  customerAging: '/reports/customer-aging',
   // CRM client portal (Phase 3) — see `functions/routes/portal-account.ts` and
   // `functions/routes/portal-data.ts`.
   createPortalAccount: '/portal-account/create',
@@ -322,6 +324,16 @@ const DISPATCH: Record<string, Dispatch> = {
     fn: 'admin_set_status',
     args: (p) => ({ p_table: p.table, p_row_id: p.rowId, p_patch: p.patch, p_reason: p.reason }),
   },
+  [ServerRoute.trialBalance]: {
+    kind: 'rpc',
+    fn: 'trial_balance',
+    args: (p) => ({ p_from: p.from ?? null, p_to: p.to ?? null }),
+  },
+  [ServerRoute.customerAging]: {
+    kind: 'rpc',
+    fn: 'customer_aging',
+    args: (p) => ({ p_as_of: p.asOf }),
+  },
   [ServerRoute.createPortalAccount]: {
     kind: 'edge',
     fn: 'portal-account',
@@ -595,6 +607,42 @@ export function adminSetStatus(
   reason: string,
 ): Promise<Result<AdminSetStatusResult>> {
   return invoke<AdminSetStatusResult>(ServerRoute.adminSetStatus, { table, rowId, patch, reason })
+}
+
+// --- Server-side report aggregation (Phase 4.2) ------------------------
+
+export interface TrialBalanceRpcRow {
+  account: string
+  debit: number
+  credit: number
+  balance: number
+}
+export interface TrialBalanceRpc {
+  rows: TrialBalanceRpcRow[]
+  totalDebit: number
+  totalCredit: number
+}
+
+export interface CustomerAgingRpcRow {
+  customerId: string
+  customerName: string
+  outstanding: number
+  creditLimit: number
+  buckets: { '0-30': number; '31-60': number; '61-90': number; '90+': number }
+  oldestDays: number
+}
+
+/** Trial balance aggregated in Postgres over the full GL, branch-scoped. */
+export function fetchTrialBalance(
+  from?: string | null,
+  to?: string | null,
+): Promise<Result<TrialBalanceRpc>> {
+  return invoke<TrialBalanceRpc>(ServerRoute.trialBalance, { from, to })
+}
+
+/** Whole-book customer aging aggregated in Postgres (FIFO receipt application). */
+export function fetchCustomerAging(asOf: string): Promise<Result<CustomerAgingRpcRow[]>> {
+  return invoke<CustomerAgingRpcRow[]>(ServerRoute.customerAging, { asOf })
 }
 
 // --- CRM client portal (Phase 3) -------------------------------------------

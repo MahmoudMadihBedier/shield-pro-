@@ -12,18 +12,17 @@ import { appError } from '@/core/errors'
 import { err, ok, type Result } from '@/core/result'
 import { DATABASE_ID, Tables } from '@/infrastructure/appwrite/collections'
 import { mapAppwriteError } from '@/infrastructure/appwrite/errors'
+import { LEDGER_TOLERANCE } from '@/core/ledger'
+import { fetchTrialBalance } from '@/infrastructure/appwrite/functions'
 import { Query, tablesDB } from '@/infrastructure/appwrite/services'
 
-import { trialBalance, type TrialBalance } from '../domain/gl'
+import { type TrialBalance } from '../domain/gl'
 import { glEntryRowSchema, type GlEntryRow } from '../domain/schemas'
 
 const SHAPE_ERROR =
   'تعذّر قراءة أحد قيود دفتر الأستاذ — البنية غير متوقعة. أبلغ الدعم إذا استمر ذلك.'
 
 const DEFAULT_PAGE_SIZE = 25
-/** Hard cap for the "pull everything then aggregate" reads (balance / TB). */
-const AGGREGATE_SCAN_CAP = 5_000
-const SCAN_PAGE = 100
 
 export interface GlEntryListParams {
   account?: string
@@ -93,33 +92,24 @@ export async function listGlEntries(
   }
 }
 
-/** Pull every GL row matching `filter` (up to the scan cap), oldest first. */
-async function scanGlEntries(
-  filter: Pick<GlEntryListParams, 'account' | 'voucherNo' | 'branchId' | 'from' | 'to'>,
-): Promise<Result<GlEntryRow[]>> {
-  const base = rangeQueries(filter)
-  const collected: GlEntryRow[] = []
-  try {
-    for (let offset = 0; offset < AGGREGATE_SCAN_CAP; offset += SCAN_PAGE) {
-      const res = await tablesDB.listRows({
-        databaseId: DATABASE_ID,
-        tableId: Tables.generalLedger,
-        queries: [
-          ...base,
-          Query.orderAsc('posting_datetime'),
-          Query.limit(SCAN_PAGE),
-          Query.offset(offset),
-        ],
-      })
-      const parsed = parseRows(res.rows as unknown[])
-      if (!parsed.ok) return parsed
-      collected.push(...parsed.value)
-      if (res.rows.length < SCAN_PAGE) break
-    }
-    return ok(collected)
-  } catch (e) {
-    return err(mapAppwriteError(e))
-  }
+/**
+ * Full trial balance over a date range — aggregated in Postgres (`trial_balance`
+ * RPC, migration 0015) over the whole GL, branch-scoped server-side. No
+ * client-side row cap. The `trialBalance` reducer in `../domain/gl` stays the
+ * tested specification.
+ */
+export async function trialBalanceRows(
+  range: Pick<GlEntryListParams, 'from' | 'to'> = {},
+): Promise<Result<TrialBalance>> {
+  const res = await fetchTrialBalance(range.from ?? null, range.to ?? null)
+  if (!res.ok) return res
+  const { rows, totalDebit, totalCredit } = res.value
+  return ok({
+    rows,
+    totalDebit,
+    totalCredit,
+    balanced: Math.abs(totalDebit - totalCredit) <= LEDGER_TOLERANCE,
+  })
 }
 
 /**
@@ -127,17 +117,7 @@ async function scanGlEntries(
  * rows. `0` when the account has no entries.
  */
 export async function accountBalance(account: string): Promise<Result<number>> {
-  const scan = await scanGlEntries({ account })
-  if (!scan.ok) return scan
-  const tb = trialBalance(scan.value)
-  return ok(tb.rows.find((r) => r.account === account)?.balance ?? 0)
-}
-
-/** Full trial balance over a date range, computed by the domain reducer. */
-export async function trialBalanceRows(
-  range: Pick<GlEntryListParams, 'from' | 'to' | 'branchId'> = {},
-): Promise<Result<TrialBalance>> {
-  const scan = await scanGlEntries(range)
-  if (!scan.ok) return scan
-  return ok(trialBalance(scan.value))
+  const tb = await trialBalanceRows()
+  if (!tb.ok) return tb
+  return ok(tb.value.rows.find((r) => r.account === account)?.balance ?? 0)
 }
