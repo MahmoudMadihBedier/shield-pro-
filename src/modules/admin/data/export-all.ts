@@ -15,6 +15,7 @@ import { appError } from '@/core/errors'
 import { ok, type Result } from '@/core/result'
 import { DATABASE_ID, Tables } from '@/infrastructure/appwrite/collections'
 import { mapAppwriteError } from '@/infrastructure/appwrite/errors'
+import { recordDataExport } from '@/infrastructure/appwrite/functions'
 import { Query, tablesDB } from '@/infrastructure/appwrite/services'
 
 /** Every business table, in a sensible reading order (master → docs → ledgers). */
@@ -71,7 +72,12 @@ async function fetchTable(
     const res = await tablesDB.listRows({
       databaseId: DATABASE_ID,
       tableId: table,
-      queries: [Query.orderAsc('$id'), Query.limit(PAGE_SIZE), Query.offset(page * PAGE_SIZE)],
+      queries: [
+        Query.orderAsc('$id'),
+        Query.limit(PAGE_SIZE),
+        Query.offset(page * PAGE_SIZE),
+        Query.noCount(),
+      ],
     })
 
     for (const raw of res.rows) {
@@ -129,6 +135,15 @@ export async function exportAllData(options: ExportAllOptions = {}): Promise<Res
       }
       skipped.push({ table, reason: mapAppwriteError(e).message })
     }
+  }
+
+  // Best-effort audit trail: a bulk read of every customer / ledger / audit row
+  // must leave a trace. Never blocks or fails the export.
+  const rowCount = dumps.reduce((sum, d) => sum + d.rows.length, 0)
+  try {
+    await recordDataExport({ tables: dumps.length, rows: rowCount, skipped: skipped.length })
+  } catch {
+    // swallow — the download proceeds regardless
   }
 
   return ok({ dumps, skipped, takenAt: new Date().toISOString() })

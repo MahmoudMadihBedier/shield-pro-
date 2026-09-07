@@ -33,8 +33,9 @@ export function downloadText(
 /** Trigger a client-side download of raw `bytes` as `fileName`. */
 export function downloadBlob(fileName: string, bytes: Uint8Array, mime: string): void {
   // `new Blob([view])` already copies exactly the view's byteOffset..byteLength
-  // range, so no manual copy is needed.
-  downloadBlobObject(fileName, new Blob([bytes], { type: mime }))
+  // range, so no manual copy is needed. The cast is only to bridge the
+  // `Uint8Array<ArrayBufferLike>` the ZIP lib returns to the DOM `BlobPart` type.
+  downloadBlobObject(fileName, new Blob([bytes as BlobPart], { type: mime }))
 }
 
 /** Build a CSV (BOM + `toCsv`) and download it as `<fileName>.csv`. */

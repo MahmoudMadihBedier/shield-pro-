@@ -22,6 +22,14 @@ describe('escapeXml', () => {
     const raw = `keep\tthis\nand\rthis${String.fromCharCode(0)}${String.fromCharCode(7)}drop`
     expect(escapeXml(raw)).toBe('keep\tthis\nand\rthisdrop')
   })
+
+  it('drops lone surrogates and U+FFFE / U+FFFF (would make Excel reject the file)', () => {
+    expect(escapeXml(`a\uD83Db`)).toBe('ab') // lone high surrogate
+    const fffe = String.fromCharCode(0xfffe)
+    const ffff = String.fromCharCode(0xffff)
+    expect(escapeXml(`x${fffe}y${ffff}z`)).toBe('xyz')
+    expect(escapeXml('ok 😀 emoji')).toBe('ok 😀 emoji') // a *paired* surrogate survives
+  })
 })
 
 describe('sanitizeSheetName', () => {

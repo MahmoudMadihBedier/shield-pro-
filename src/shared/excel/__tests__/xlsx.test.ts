@@ -1,18 +1,22 @@
 import { strFromU8, unzipSync } from 'fflate'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 
 import { recordsToSheet } from '@/core/xlsx'
 
 import { buildXlsx } from '../xlsx'
 
 describe('buildXlsx', () => {
-  const bytes = buildXlsx([
-    recordsToSheet('customers', [
-      { id: 'c1', name: 'شركة النور', balance: 1200.5 },
-      { id: 'c2', name: 'Acme <Ltd>', balance: 0 },
-    ]),
-    recordsToSheet('branches', [{ id: 'b1', name: 'منوف' }]),
-  ])
+  let bytes: Uint8Array
+
+  beforeAll(async () => {
+    bytes = await buildXlsx([
+      recordsToSheet('customers', [
+        { id: 'c1', name: 'شركة النور', balance: 1200.5 },
+        { id: 'c2', name: 'Acme <Ltd>', balance: 0 },
+      ]),
+      recordsToSheet('branches', [{ id: 'b1', name: 'منوف' }]),
+    ])
+  })
 
   it('produces a real ZIP (PK magic bytes)', () => {
     expect(bytes[0]).toBe(0x50)
