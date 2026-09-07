@@ -9,7 +9,7 @@ export {
   useCapitalContribution,
   useCapitalContributionActions,
 } from './useAccountingDocuments'
-export { useGlEntries, useAccountBalance, useTrialBalance } from './useGlEntries'
+export { useGlEntries, useAccountBalance, useTrialBalance, useProfitAndLoss } from './useGlEntries'
 export { useCustomerAging, useCustomerLedger, type CustomerLedger } from './useCustomerAging'
 export {
   useCustomerOptions,

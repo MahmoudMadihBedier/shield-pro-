@@ -42,6 +42,9 @@ const CustomerAgingPage = lazy(() =>
 const TrialBalancePage = lazy(() =>
   import('./pages').then((m) => ({ default: m.TrialBalancePage })),
 )
+const ProfitAndLossPage = lazy(() =>
+  import('./pages').then((m) => ({ default: m.ProfitAndLossPage })),
+)
 const GeneralLedgerPage = lazy(() =>
   import('./pages').then((m) => ({ default: m.GeneralLedgerPage })),
 )
@@ -148,6 +151,14 @@ export const accountingRoutes: RouteObject[] = [
     element: (
       <Lazy>
         <TrialBalancePage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'accounting/pnl',
+    element: (
+      <Lazy>
+        <ProfitAndLossPage />
       </Lazy>
     ),
   },

@@ -13,6 +13,7 @@ export const accountingKeys = {
     list: (params: unknown) => ['accounting', 'gl', 'list', params] as const,
     balance: (account: string) => ['accounting', 'gl', 'balance', account] as const,
     trialBalance: (params: unknown) => ['accounting', 'gl', 'trial-balance', params] as const,
+    pnl: (params: unknown) => ['accounting', 'gl', 'pnl', params] as const,
   },
 
   aging: {
