@@ -70,6 +70,7 @@ export const FIELD_LABELS: Record<AdminEntity, Record<string, Label>> = {
     kind: { ar: 'النوع', en: 'Kind' },
     branch_id: { ar: 'الفرع', en: 'Branch' },
     owner_user_id: { ar: 'المسؤول', en: 'Owner' },
+    geo: { ar: 'الموقع الجغرافي', en: 'Geolocation' },
     is_active: { ar: 'نشط', en: 'Active' },
   },
   user: {

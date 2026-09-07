@@ -27,6 +27,15 @@ const PaymentVoucherFormPage = lazy(() =>
 const PaymentVoucherDetailPage = lazy(() =>
   import('./pages').then((m) => ({ default: m.PaymentVoucherDetailPage })),
 )
+const CapitalContributionsPage = lazy(() =>
+  import('./pages').then((m) => ({ default: m.CapitalContributionsPage })),
+)
+const CapitalContributionFormPage = lazy(() =>
+  import('./pages').then((m) => ({ default: m.CapitalContributionFormPage })),
+)
+const CapitalContributionDetailPage = lazy(() =>
+  import('./pages').then((m) => ({ default: m.CapitalContributionDetailPage })),
+)
 const CustomerAgingPage = lazy(() =>
   import('./pages').then((m) => ({ default: m.CustomerAgingPage })),
 )
@@ -99,6 +108,30 @@ export const accountingRoutes: RouteObject[] = [
     element: (
       <Lazy>
         <PaymentVoucherDetailPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'accounting/capital',
+    element: (
+      <Lazy>
+        <CapitalContributionsPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'accounting/capital/new',
+    element: (
+      <Lazy>
+        <CapitalContributionFormPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'accounting/capital/:id',
+    element: (
+      <Lazy>
+        <CapitalContributionDetailPage />
       </Lazy>
     ),
   },

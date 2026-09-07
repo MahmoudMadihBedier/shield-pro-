@@ -34,6 +34,7 @@ export const Tables = {
   stockCountSessions: 'stock_count_sessions',
   repCloseouts: 'rep_closeouts',
   payrollRuns: 'payroll_runs',
+  capitalContributions: 'capital_contributions',
 
   // ---- HR (master data + logs, System Admin / branch accountant owned) ----
   attendanceRecords: 'attendance_records',

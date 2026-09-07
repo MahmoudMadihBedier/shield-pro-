@@ -10,7 +10,7 @@ import {
   type DocumentListParams,
 } from '@/shared/documents'
 
-import { paymentVouchersRepo, receiptsRepo } from '../../data/repos'
+import { capitalContributionsRepo, paymentVouchersRepo, receiptsRepo } from '../../data/repos'
 
 // --- receipts (collections) ---------------------------------------------
 
@@ -29,3 +29,13 @@ export const usePaymentVoucherList = (params: DocumentListParams = {}) =>
 export const usePaymentVoucher = (id: string | undefined) => useDocument(paymentVouchersRepo, id)
 
 export const usePaymentVoucherActions = () => useDocumentActions(paymentVouchersRepo)
+
+// --- capital contributions --------------------------------------------
+
+export const useCapitalContributionList = (params: DocumentListParams = {}) =>
+  useDocumentList(capitalContributionsRepo, params)
+
+export const useCapitalContribution = (id: string | undefined) =>
+  useDocument(capitalContributionsRepo, id)
+
+export const useCapitalContributionActions = () => useDocumentActions(capitalContributionsRepo)

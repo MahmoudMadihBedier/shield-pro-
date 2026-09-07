@@ -26,6 +26,8 @@ export const GlAccount = {
   Treasury: 'treasury',
   Income: 'income',
   Expense: 'expense',
+  SalesReturns: 'sales_returns',
+  OwnersCapital: 'owners_capital',
   Other: 'other',
 } as const
 
@@ -66,6 +68,24 @@ export function voucherToGlLines(
     voucher.direction === 'receipt'
       ? [DEBIT(treasury, voucher.amount), CREDIT(GlAccount.Other, voucher.amount)]
       : [DEBIT(GlAccount.Expense, voucher.amount), CREDIT(treasury, voucher.amount)]
+  assertBalanced(lines)
+  return lines
+}
+
+/**
+ * An owner / investor capital contribution — cash or an existing asset:
+ *   Dr <asset_account>   (cash, or a fixed-asset account for a car/property/…)
+ *   Cr Owner's capital   (equity)
+ */
+export function capitalToGlLines(contribution: {
+  amount: number
+  asset_account: string
+}): GlLine[] {
+  const asset = contribution.asset_account.trim() || GlAccount.Cash
+  const lines = [
+    DEBIT(asset, contribution.amount),
+    CREDIT(GlAccount.OwnersCapital, contribution.amount),
+  ]
   assertBalanced(lines)
   return lines
 }

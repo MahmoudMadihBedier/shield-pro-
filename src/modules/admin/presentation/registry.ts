@@ -196,9 +196,17 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
       { name: 'kind', kind: 'select', required: true, options: warehouseKindOptions },
       { name: 'branch_id', kind: 'relation', relationTo: 'branch' },
       { name: 'owner_user_id', kind: 'text' },
+      { name: 'geo', kind: 'geo' },
       { name: 'is_active', kind: 'checkbox' },
     ],
-    emptyInput: { name: '', kind: 'main', branch_id: '', owner_user_id: '', is_active: true },
+    emptyInput: {
+      name: '',
+      kind: 'main',
+      branch_id: '',
+      owner_user_id: '',
+      geo: '',
+      is_active: true,
+    },
   }),
 
   user: define({

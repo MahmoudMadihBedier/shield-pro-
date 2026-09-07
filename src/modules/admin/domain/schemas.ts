@@ -62,9 +62,15 @@ const reqText = (max: number, label: string) =>
 /** Row-side optional string: Appwrite returns `null` for an unset attribute. */
 const rowOptStr = z.string().nullish()
 /** Row-side boolean with a schema default — older rows may omit it. */
-const rowBool = z.boolean().nullish().transform((v) => v ?? true)
+const rowBool = z
+  .boolean()
+  .nullish()
+  .transform((v) => v ?? true)
 /** Row-side numeric with a schema default of 0. */
-const rowNum0 = z.number().nullish().transform((v) => v ?? 0)
+const rowNum0 = z
+  .number()
+  .nullish()
+  .transform((v) => v ?? 0)
 
 // ---------------------------------------------------------------------------
 // Enums (mirror scripts/appwrite/schema.ts)
@@ -118,6 +124,7 @@ export const warehouseRowSchema = z.object({
   kind: warehouseKindSchema,
   branch_id: rowOptStr,
   owner_user_id: rowOptStr,
+  geo: rowOptStr,
   is_active: rowBool,
 })
 export const warehouseInputSchema = z.object({
@@ -125,6 +132,7 @@ export const warehouseInputSchema = z.object({
   kind: warehouseKindSchema,
   branch_id: optText(36),
   owner_user_id: optText(36),
+  geo: optText(64),
   is_active: z.boolean(),
 })
 export type Warehouse = z.infer<typeof warehouseRowSchema>
@@ -295,10 +303,7 @@ export const customerInputSchema = z.object({
   geo: z
     .string({ error: 'الموقع الجغرافي مطلوب' })
     .trim()
-    .regex(
-      GEO_REGEX,
-      'الموقع يجب أن يكون إحداثيين مفصولين بفاصلة، مثل: 30.0444,31.2357',
-    ),
+    .regex(GEO_REGEX, 'الموقع يجب أن يكون إحداثيين مفصولين بفاصلة، مثل: 30.0444,31.2357'),
   discount_pct: percent('نسبة الخصم'),
   credit_limit: nonNegative('حد الائتمان'),
   payment_terms_days: z

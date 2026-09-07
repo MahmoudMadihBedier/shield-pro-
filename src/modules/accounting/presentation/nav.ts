@@ -34,6 +34,12 @@ export const accountingNavItems: NavItem[] = [
     roles: ACCOUNTING_NAV_ROLES,
   },
   {
+    to: '/accounting/capital',
+    label: 'رأس المال',
+    labelEn: 'Capital',
+    roles: ACCOUNTING_NAV_ROLES,
+  },
+  {
     to: '/accounting/aging',
     label: 'أعمار الديون',
     labelEn: 'Customer aging',
