@@ -40,58 +40,92 @@ export function LoginPage() {
   })
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-5">
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-sm space-y-4 rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900"
-      >
-        <div>
-          <h1 className="text-lg font-bold">
-            {APP_NAME_AR} <span className="text-zinc-400">/ {APP_NAME}</span>
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">Sign in to continue</p>
+    <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] px-5">
+      <div className="w-full max-w-sm">
+        <div className="mb-6 flex flex-col items-center gap-3 text-center">
+          <span className="grid size-12 place-items-center rounded-xl bg-brand-600 text-white shadow-md">
+            <svg viewBox="0 0 24 24" className="size-7" fill="none" aria-hidden="true">
+              <path
+                d="M12 2.5 4.5 5.2v6.1c0 4.7 3.2 8.2 7.5 10.2 4.3-2 7.5-5.5 7.5-10.2V5.2L12 2.5Z"
+                fill="currentColor"
+                fillOpacity="0.2"
+              />
+              <path
+                d="M12 2.5 4.5 5.2v6.1c0 4.7 3.2 8.2 7.5 10.2 4.3-2 7.5-5.5 7.5-10.2V5.2L12 2.5Z"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinejoin="round"
+              />
+              <path
+                d="m8.5 12 2.4 2.4L15.8 9.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">{APP_NAME_AR}</h1>
+            <p className="text-sm text-[var(--text-muted)]">{APP_NAME} · تسجيل الدخول للمتابعة</p>
+          </div>
         </div>
 
-        <label className="block text-sm">
-          <span className="mb-1 block text-zinc-600 dark:text-zinc-400">Email</span>
-          <input
-            type="email"
-            autoComplete="username"
-            className="w-full rounded-lg border border-black/15 bg-transparent px-3 py-2 outline-none focus:border-zinc-500 dark:border-white/15"
-            {...register('email')}
-          />
-          {errors.email ? (
-            <span className="mt-1 block text-xs text-red-600">{errors.email.message}</span>
-          ) : null}
-        </label>
-
-        <label className="block text-sm">
-          <span className="mb-1 block text-zinc-600 dark:text-zinc-400">Password</span>
-          <input
-            type="password"
-            autoComplete="current-password"
-            className="w-full rounded-lg border border-black/15 bg-transparent px-3 py-2 outline-none focus:border-zinc-500 dark:border-white/15"
-            {...register('password')}
-          />
-          {errors.password ? (
-            <span className="mt-1 block text-xs text-red-600">{errors.password.message}</span>
-          ) : null}
-        </label>
-
-        {errors.root ? (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
-            {errors.root.message}
-          </p>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+        <form
+          onSubmit={onSubmit}
+          className="space-y-4 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm"
         >
-          {isSubmitting ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
+          <label className="block text-sm">
+            <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">
+              البريد الإلكتروني / Email
+            </span>
+            <input
+              type="email"
+              dir="ltr"
+              autoComplete="username"
+              className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-3 py-2 text-start text-sm outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/25"
+              {...register('email')}
+            />
+            {errors.email ? (
+              <span className="mt-1 block text-xs font-medium text-red-600">
+                {errors.email.message}
+              </span>
+            ) : null}
+          </label>
+
+          <label className="block text-sm">
+            <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">
+              كلمة المرور / Password
+            </span>
+            <input
+              type="password"
+              dir="ltr"
+              autoComplete="current-password"
+              className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-3 py-2 text-start text-sm outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/25"
+              {...register('password')}
+            />
+            {errors.password ? (
+              <span className="mt-1 block text-xs font-medium text-red-600">
+                {errors.password.message}
+              </span>
+            ) : null}
+          </label>
+
+          {errors.root ? (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+              {errors.root.message}
+            </p>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand-600 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-400"
+          >
+            {isSubmitting ? 'جارٍ تسجيل الدخول…' : 'تسجيل الدخول'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

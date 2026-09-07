@@ -1,12 +1,26 @@
 import type { HTMLAttributes } from 'react'
 
-export type CardProps = HTMLAttributes<HTMLDivElement>
+export interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  /** Adds hover elevation + pointer affordance (for clickable cards). */
+  interactive?: boolean
+  /** Drop the default inner padding (e.g. when the card wraps a table). */
+  flush?: boolean
+}
 
-/** Shared surface container matching the app's panel styling. */
-export function Card({ className, ...rest }: CardProps) {
+/** Shared surface container — the app's panel styling, theme-token driven. */
+export function Card({ className, interactive = false, flush = false, ...rest }: CardProps) {
   return (
     <div
-      className={`rounded-xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-zinc-900 ${className ?? ''}`}
+      className={[
+        'rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] shadow-sm',
+        flush ? '' : 'p-5',
+        interactive
+          ? 'cursor-pointer transition hover:border-[var(--border-strong)] hover:shadow-md'
+          : '',
+        className ?? '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       {...rest}
     />
   )

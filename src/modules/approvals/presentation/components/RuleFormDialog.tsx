@@ -54,9 +54,9 @@ function OptionalPredicateNumberField({
     formState: { errors },
   } = useFormContext<ApprovalRuleInput>()
   const [, field] = name.split('.')
-  const error = (errors.predicate as Record<string, { message?: string } | undefined> | undefined)?.[
-    field ?? ''
-  ]?.message
+  const error = (
+    errors.predicate as Record<string, { message?: string } | undefined> | undefined
+  )?.[field ?? '']?.message
 
   return (
     <label className="block text-sm">
@@ -72,7 +72,8 @@ function OptionalPredicateNumberField({
         placeholder="—"
         className={`${CONTROL_CLASS} text-start`}
         {...register(name, {
-          setValueAs: (v: unknown) => (v === '' || v === null || v === undefined ? undefined : Number(v)),
+          setValueAs: (v: unknown) =>
+            v === '' || v === null || v === undefined ? undefined : Number(v),
         })}
       />
       {error ? (
@@ -126,18 +127,18 @@ export function RuleFormDialog({ open, mode, row, onClose }: RuleFormDialogProps
       onClick={(event) => {
         if (event.target === ref.current) onClose()
       }}
-      className="m-auto w-[min(36rem,92vw)] rounded-2xl border border-black/10 bg-white p-0 text-zinc-900 backdrop:bg-black/40 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100"
+      className="m-auto w-[min(36rem,92vw)] rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] p-0 text-[var(--text)] shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-sm"
     >
-      <div className="flex items-start justify-between gap-4 border-b border-black/10 p-4 dark:border-white/10">
+      <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface-2)] p-4">
         <h3 className="text-base font-semibold">
           {title}
-          <span className="text-zinc-400"> / {titleEn}</span>
+          <span className="text-[var(--text-subtle)]"> / {titleEn}</span>
         </h3>
         <button
           type="button"
           onClick={onClose}
           aria-label="إغلاق"
-          className="rounded-lg px-2 py-0.5 text-lg leading-none text-zinc-500 hover:bg-black/5 dark:hover:bg-white/10"
+          className="rounded-lg px-2 py-0.5 text-lg leading-none text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]"
         >
           ×
         </button>
