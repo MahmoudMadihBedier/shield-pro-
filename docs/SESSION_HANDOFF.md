@@ -164,17 +164,29 @@ Migrations are now 0001–0020.
 Customer approval is now reachable from the **customers list** too — an inline
 "اعتماد" button per pending row (not just the detail page).
 
-Remaining backlog: finish Phase 4.1 (P&L / production-waste / rep-cash-up
-exports; opening-stock + bank-statement importers); Phase 4.2 could extend to
-the dashboard KPIs + rep performance. Operational: rotate the DB password +
-service-role key, then disconnect Appwrite.
+- **Profit & Loss statement (`/accounting/pnl`, Phase 4.2 + 4.1).**
+  `src/modules/accounting/domain/pnl.ts` re-classifies the `trial_balance` RPC
+  rows (0015, branch-scoped server-side — **no new backend call**) into P&L
+  sections → Revenue − Returns = Net revenue − COGS = Gross profit − OpEx =
+  Operating profit ± Other = **Net profit** + margin. `data/pnl-repo.ts`
+  Zod-checks the RPC payload. Sectioned page + date range + CSV/Excel export
+  (`profitAndLossToRows` emits deductions negative so the column foots).
+  `classifyAccount` is conservative: only sales-side deductions count as
+  contra-revenue; unknown / balance-sheet / purchase-side accounts are left
+  off the statement until a real chart of accounts lands.
+
+Remaining backlog: Phase 4.1 still wants production-waste / rep-cash-up /
+customer-statement exports + opening-stock + bank-statement importers; Phase
+4.2 could add inventory valuation, payroll cost, supplier performance, cash
+position. Operational: rotate the DB password + service-role key, then
+disconnect Appwrite.
 
 Note: commit `88bda05` (the export feature's first commit) was auto-generated
 by tooling without the `Co-Authored-By` / `Claude-Session` trailers; the
 follow-up `cf6830d` has them.
 
 ## Gates (this session): `pnpm typecheck` · `pnpm lint` (17 pre-existing
-router.tsx fast-refresh warns) · `pnpm test` **692 / 91 files** · `pnpm build`.
+router.tsx fast-refresh warns) · `pnpm test` **700 / 92 files** · `pnpm build`.
 
 ## MCP
 `.mcp.json` has the Supabase HTTP MCP (`project_ref=ajrevsyyudfjrwiifekj`).
