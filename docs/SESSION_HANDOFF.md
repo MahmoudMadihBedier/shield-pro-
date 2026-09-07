@@ -150,15 +150,31 @@ dropdowns** (`TopNav.tsx` + `NAV_GROUPS` in `nav.ts`); hamburger panel below `lg
      `useBranchOptions` moved to `@/modules/admin` (single source of truth) —
      sales + purchasing re-export them.
 
-Migrations are now 0001–0019.
+- **Full-database export (`/admin/export`, System Admin).** One button →
+  single `.xlsx`, one sheet per table (all 38: master + documents + ledgers +
+  control) + a `_manifest` sheet. Self-contained OOXML writer: pure XML parts
+  in `src/core/xlsx.ts`, `fflate` zips them in `src/shared/excel/xlsx.ts`
+  (only new dep — tiny ZIP lib). `src/modules/admin/data/export-all.ts` pages
+  every table (`Query.noCount()`, 1000/page, 100k cap, per-table error
+  isolation) and calls `record_data_export` (migration 0020) to append an
+  `audit_log` row. Live per-table progress + cancel + off-thread zip.
+
+Migrations are now 0001–0020.
+
+Customer approval is now reachable from the **customers list** too — an inline
+"اعتماد" button per pending row (not just the detail page).
 
 Remaining backlog: finish Phase 4.1 (P&L / production-waste / rep-cash-up
 exports; opening-stock + bank-statement importers); Phase 4.2 could extend to
 the dashboard KPIs + rep performance. Operational: rotate the DB password +
 service-role key, then disconnect Appwrite.
 
+Note: commit `88bda05` (the export feature's first commit) was auto-generated
+by tooling without the `Co-Authored-By` / `Claude-Session` trailers; the
+follow-up `cf6830d` has them.
+
 ## Gates (this session): `pnpm typecheck` · `pnpm lint` (17 pre-existing
-router.tsx fast-refresh warns) · `pnpm test` **679 / 89 files** · `pnpm build`.
+router.tsx fast-refresh warns) · `pnpm test` **692 / 91 files** · `pnpm build`.
 
 ## MCP
 `.mcp.json` has the Supabase HTTP MCP (`project_ref=ajrevsyyudfjrwiifekj`).
