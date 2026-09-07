@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ReturnLine } from '../schemas'
-import { returnToStockMoves } from '../to-ledger'
+import { returnToGlLines, returnToStockMoves } from '../to-ledger'
 
 describe('returnToStockMoves', () => {
   it('turns each line into one positive move into the given warehouse', () => {
@@ -40,5 +40,14 @@ describe('returnToStockMoves', () => {
 
   it('returns an empty list for no lines', () => {
     expect(returnToStockMoves({ lines: [] }, 'wh-main')).toEqual([])
+  })
+})
+
+describe('returnToGlLines', () => {
+  it('is a balanced Dr sales_returns / Cr accounts_receivable pair', () => {
+    expect(returnToGlLines(300)).toEqual([
+      { account: 'sales_returns', debit: 300, credit: 0 },
+      { account: 'accounts_receivable', debit: 0, credit: 300 },
+    ])
   })
 })

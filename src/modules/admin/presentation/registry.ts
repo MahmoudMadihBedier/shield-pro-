@@ -85,13 +85,7 @@ export interface AdminInputMap {
 // Descriptors
 // ---------------------------------------------------------------------------
 
-export type CellFormat =
-  | 'text'
-  | 'number'
-  | 'currency'
-  | 'bool'
-  | 'warehouseKind'
-  | 'approvalState'
+export type CellFormat = 'text' | 'number' | 'currency' | 'bool' | 'warehouseKind' | 'approvalState'
 
 export interface ColumnDescriptor {
   field: string
@@ -100,7 +94,7 @@ export interface ColumnDescriptor {
   align?: 'start' | 'end' | 'center'
 }
 
-export type FieldKind = 'text' | 'textarea' | 'number' | 'checkbox' | 'select' | 'relation'
+export type FieldKind = 'text' | 'textarea' | 'number' | 'checkbox' | 'select' | 'relation' | 'geo'
 
 export interface FieldDescriptor {
   name: string
@@ -202,9 +196,17 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
       { name: 'kind', kind: 'select', required: true, options: warehouseKindOptions },
       { name: 'branch_id', kind: 'relation', relationTo: 'branch' },
       { name: 'owner_user_id', kind: 'text' },
+      { name: 'geo', kind: 'geo' },
       { name: 'is_active', kind: 'checkbox' },
     ],
-    emptyInput: { name: '', kind: 'main', branch_id: '', owner_user_id: '', is_active: true },
+    emptyInput: {
+      name: '',
+      kind: 'main',
+      branch_id: '',
+      owner_user_id: '',
+      geo: '',
+      is_active: true,
+    },
   }),
 
   user: define({
@@ -333,11 +335,7 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
     defaultSort: { field: 'name', dir: 'asc' },
     canRemove: true,
     searchPlaceholder: 'ابحث بالاسم…',
-    columns: [
-      { field: 'name', sortable: true },
-      { field: 'contact' },
-      { field: 'phone' },
-    ],
+    columns: [{ field: 'name', sortable: true }, { field: 'contact' }, { field: 'phone' }],
     fields: [
       { name: 'name', kind: 'text', required: true },
       { name: 'contact', kind: 'text' },
@@ -367,7 +365,7 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
       { name: 'name', kind: 'text', required: true },
       { name: 'phone', kind: 'text' },
       { name: 'branch_id', kind: 'relation', relationTo: 'branch', required: true },
-      { name: 'geo', kind: 'text', required: true, placeholder: '30.0444,31.2357' },
+      { name: 'geo', kind: 'geo', required: true },
       { name: 'discount_pct', kind: 'number', min: 0, max: 100 },
       { name: 'credit_limit', kind: 'number', min: 0 },
       { name: 'payment_terms_days', kind: 'number', min: 0, step: 1 },
@@ -387,8 +385,4 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
 
 export type AdminRegistry = typeof ADMIN_REGISTRY
 
-export {
-  ADMIN_LIST_ENTITIES,
-  ADMIN_ENTITY_SLUG,
-  type AdminListEntity,
-} from '../nav'
+export { ADMIN_LIST_ENTITIES, ADMIN_ENTITY_SLUG, type AdminListEntity } from '../nav'

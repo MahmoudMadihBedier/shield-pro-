@@ -35,6 +35,7 @@ describe('SUBMITTABLE_DOC_TABLES', () => {
       Tables.stockCountSessions,
       Tables.repCloseouts,
       Tables.payrollRuns,
+      Tables.capitalContributions,
     ].sort()
     expect([...SUBMITTABLE_DOC_TABLES].sort()).toEqual(expected)
   })

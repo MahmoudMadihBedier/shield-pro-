@@ -35,6 +35,7 @@ export const MOVEMENT_TYPE_LABELS: Record<SubmittableDocTable, Label> = {
   stock_count_sessions: { ar: 'جلسة جرد', en: 'Stock count session' },
   rep_closeouts: { ar: 'تقفيل يومي لمندوب', en: 'Rep daily close-out' },
   payroll_runs: { ar: 'صرف رواتب', en: 'Payroll run' },
+  capital_contributions: { ar: 'إدخال رأس مال', en: 'Capital contribution' },
 }
 
 export function movementTypeLabel(movementType: string): Label {

@@ -1,34 +1,37 @@
 /**
- * `"lat,lng"` text input plus a "use my location" button
- * (`navigator.geolocation`). Binds to a React Hook Form field by `name`; the
- * invoice `geo` is mandatory at issue time (`scripts/appwrite/schema.ts` — the
- * column is required).
+ * `"lat,lng"` field bound to a React Hook Form field by `name`, with a
+ * "use my location" button (device geolocation) and a "open in Google Maps"
+ * link once a valid value is present. Used for sales-invoice, customer and
+ * warehouse location capture.
  */
 import { useState } from 'react'
 import { useFormContext } from 'react-hook-form'
 
-import { isValidGeo } from '../../domain/geo'
+import { googleMapsUrl, isValidGeo } from '@/core/geo'
 
 const CONTROL =
   'w-full rounded-lg border border-black/15 bg-transparent px-3 py-2 text-sm outline-none transition focus:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/15'
 
-export interface GeoCaptureFieldProps {
+export interface GeoFieldProps {
   name: string
   label?: string
   labelEn?: string
+  required?: boolean
   disabled?: boolean
 }
 
-export function GeoCaptureField({
+export function GeoField({
   name,
   label = 'الموقع الجغرافي',
   labelEn = 'Geolocation',
+  required = false,
   disabled = false,
-}: GeoCaptureFieldProps) {
+}: GeoFieldProps) {
   const { register, setValue, watch, formState } = useFormContext()
   const value = (watch(name) as string | undefined) ?? ''
   const fieldError = formState.errors[name]
   const errorMessage = typeof fieldError?.message === 'string' ? fieldError.message : undefined
+  const mapsUrl = googleMapsUrl(value)
 
   const [busy, setBusy] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
@@ -66,7 +69,7 @@ export function GeoCaptureField({
           inputMode="text"
           placeholder="30.0444,31.2357"
           disabled={disabled}
-          aria-required
+          aria-required={required}
           className={`${CONTROL} text-start`}
           {...register(name)}
         />
@@ -79,7 +82,16 @@ export function GeoCaptureField({
           {busy ? 'جارٍ التحديد…' : 'استخدم موقعي'}
         </button>
       </div>
-      {value && !isValidGeo(value) && !errorMessage ? (
+      {mapsUrl ? (
+        <a
+          href={mapsUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-1 block text-start text-xs text-blue-600 underline dark:text-blue-400"
+        >
+          عرض على خرائط Google
+        </a>
+      ) : value && !isValidGeo(value) && !errorMessage ? (
         <span className="mt-1 block text-start text-xs text-amber-600">
           الصيغة المتوقعة: إحداثيان مفصولان بفاصلة، مثل 30.0444,31.2357
         </span>

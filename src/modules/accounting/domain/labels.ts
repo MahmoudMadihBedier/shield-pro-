@@ -5,8 +5,10 @@
  */
 import { AGING_BUCKETS, type AgingBucket } from './aging'
 import {
+  CAPITAL_ASSET_TYPES,
   RECEIPT_METHODS,
   VOUCHER_DIRECTIONS,
+  type CapitalAssetType,
   type ReceiptMethod,
   type VoucherDirection,
 } from './schemas'
@@ -43,6 +45,19 @@ export const RECEIPT_METHOD_OPTIONS = RECEIPT_METHODS.map((value) => ({
 export const VOUCHER_DIRECTION_OPTIONS = VOUCHER_DIRECTIONS.map((value) => ({
   value,
   label: `${VOUCHER_DIRECTION_LABELS[value].ar} / ${VOUCHER_DIRECTION_LABELS[value].en}`,
+}))
+
+export const CAPITAL_ASSET_TYPE_LABELS: Record<CapitalAssetType, BilingualLabel> = {
+  cash: { ar: 'نقد', en: 'Cash' },
+  vehicle: { ar: 'مركبة', en: 'Vehicle' },
+  property: { ar: 'عقار', en: 'Property' },
+  equipment: { ar: 'معدات', en: 'Equipment' },
+  other: { ar: 'أخرى', en: 'Other' },
+}
+
+export const CAPITAL_ASSET_TYPE_OPTIONS = CAPITAL_ASSET_TYPES.map((value) => ({
+  value,
+  label: `${CAPITAL_ASSET_TYPE_LABELS[value].ar} / ${CAPITAL_ASSET_TYPE_LABELS[value].en}`,
 }))
 
 export const AGING_BUCKET_ORDER: readonly AgingBucket[] = AGING_BUCKETS

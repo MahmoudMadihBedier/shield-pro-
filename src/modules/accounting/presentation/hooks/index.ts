@@ -5,6 +5,9 @@ export {
   usePaymentVoucherList,
   usePaymentVoucher,
   usePaymentVoucherActions,
+  useCapitalContributionList,
+  useCapitalContribution,
+  useCapitalContributionActions,
 } from './useAccountingDocuments'
 export { useGlEntries, useAccountBalance, useTrialBalance } from './useGlEntries'
 export { useCustomerAging, useCustomerLedger, type CustomerLedger } from './useCustomerAging'

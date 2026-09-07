@@ -20,3 +20,4 @@ export {
   type TextAreaFieldProps,
   type TextFieldProps,
 } from './fields'
+export { GeoField, type GeoFieldProps } from './GeoField'

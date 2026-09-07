@@ -6,7 +6,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import type { AppError } from '@/core/errors'
-import { productsRepo, warehousesRepo } from '@/modules/admin'
+import { customersRepo, productsRepo, warehousesRepo } from '@/modules/admin'
 
 import { returnsKeys } from '../query-keys'
 
@@ -40,6 +40,25 @@ export function useProductOptions() {
       const result = await productsRepo.list({
         ...OPTION_PAGE,
         sort: { field: 'name', dir: 'asc' },
+      })
+      if (!result.ok) throw result.error
+      return result.value.rows.map((row) => ({
+        value: row.$id,
+        label: `${row.code} — ${row.name}`,
+      }))
+    },
+  })
+}
+
+export function useCustomerOptions() {
+  return useQuery<Option[], AppError>({
+    queryKey: returnsKeys.options.customers(),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const result = await customersRepo.list({
+        ...OPTION_PAGE,
+        sort: { field: 'name', dir: 'asc' },
+        filters: [{ field: 'approval_state', value: 'approved' }],
       })
       if (!result.ok) throw result.error
       return result.value.rows.map((row) => ({

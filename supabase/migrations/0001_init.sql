@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS public."warehouses" (
   "kind" text NOT NULL CHECK ("kind" IN ('raw_store', 'factory_custody', 'main', 'sub', 'rep_custody')),
   "branch_id" text,
   "owner_user_id" text,
+  "geo" text,
   "is_active" boolean DEFAULT true
 );
 CREATE INDEX IF NOT EXISTS "warehouses_kind_idx" ON public."warehouses" ("kind");
@@ -483,8 +484,10 @@ CREATE TABLE IF NOT EXISTS public."return_requests" (
   "posting_datetime" timestamptz NOT NULL,
   "remarks" text,
   "origin_ref" text NOT NULL,
+  "customer_id" text,
   "lines" text,
   "reason" text NOT NULL,
+  "refund_amount" double precision CHECK ("refund_amount" >= 0),
   "status" text DEFAULT 'pending' NOT NULL CHECK ("status" IN ('pending', 'approved', 'rejected')),
   "requested_by" text,
   "approved_by" text,
@@ -494,6 +497,7 @@ CREATE INDEX IF NOT EXISTS "return_requests_branch_idx" ON public."return_reques
 CREATE INDEX IF NOT EXISTS "return_requests_status_idx" ON public."return_requests" ("doc_status");
 CREATE INDEX IF NOT EXISTS "return_requests_posting_idx" ON public."return_requests" ("posting_datetime");
 CREATE INDEX IF NOT EXISTS "returns_origin_idx" ON public."return_requests" ("origin_ref");
+CREATE INDEX IF NOT EXISTS "returns_customer_idx" ON public."return_requests" ("customer_id");
 CREATE TRIGGER "return_requests_set_updated_at" BEFORE UPDATE ON public."return_requests"
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 ALTER TABLE public."return_requests" ENABLE ROW LEVEL SECURITY;
@@ -606,6 +610,32 @@ CREATE INDEX IF NOT EXISTS "payroll_period_idx" ON public."payroll_runs" ("pay_p
 CREATE TRIGGER "payroll_runs_set_updated_at" BEFORE UPDATE ON public."payroll_runs"
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 ALTER TABLE public."payroll_runs" ENABLE ROW LEVEL SECURITY;
+
+-- Capital contributions (document)
+CREATE TABLE IF NOT EXISTS public."capital_contributions" (
+  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  "updated_at" timestamptz NOT NULL DEFAULT now(),
+  "reference_id" text NOT NULL,
+  "doc_status" bigint DEFAULT 0 NOT NULL CHECK ("doc_status" >= 0 AND "doc_status" <= 2),
+  "branch_id" text,
+  "created_by" text NOT NULL,
+  "amended_from" text,
+  "posting_datetime" timestamptz NOT NULL,
+  "remarks" text,
+  "contributor" text NOT NULL,
+  "asset_type" text NOT NULL CHECK ("asset_type" IN ('cash', 'vehicle', 'property', 'equipment', 'other')),
+  "description" text,
+  "amount" double precision NOT NULL CHECK ("amount" >= 0),
+  "asset_account" text NOT NULL,
+  CONSTRAINT "capital_contributions_reference_id_uq" UNIQUE ("reference_id")
+);
+CREATE INDEX IF NOT EXISTS "capital_contributions_branch_idx" ON public."capital_contributions" ("branch_id");
+CREATE INDEX IF NOT EXISTS "capital_contributions_status_idx" ON public."capital_contributions" ("doc_status");
+CREATE INDEX IF NOT EXISTS "capital_contributions_posting_idx" ON public."capital_contributions" ("posting_datetime");
+CREATE TRIGGER "capital_contributions_set_updated_at" BEFORE UPDATE ON public."capital_contributions"
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+ALTER TABLE public."capital_contributions" ENABLE ROW LEVEL SECURITY;
 
 -- Attendance records (attendance)
 CREATE TABLE IF NOT EXISTS public."attendance_records" (
@@ -1029,6 +1059,16 @@ CREATE POLICY "payroll_runs_update_draft" ON public."payroll_runs" FOR UPDATE TO
   USING (doc_status = 0 AND created_by = auth.uid()::text)
   WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
 CREATE POLICY "payroll_runs_admin_override" ON public."payroll_runs" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
+
+-- RLS: capital_contributions (document)
+CREATE POLICY "capital_contributions_read" ON public."capital_contributions" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id));
+CREATE POLICY "capital_contributions_create_draft" ON public."capital_contributions" FOR INSERT TO authenticated
+  WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "capital_contributions_update_draft" ON public."capital_contributions" FOR UPDATE TO authenticated
+  USING (doc_status = 0 AND created_by = auth.uid()::text)
+  WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "capital_contributions_admin_override" ON public."capital_contributions" FOR ALL TO authenticated
   USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: attendance_records (attendance)

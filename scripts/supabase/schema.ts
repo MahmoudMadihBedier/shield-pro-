@@ -184,6 +184,7 @@ export const TABLES: TableDef[] = [
       },
       str('branch_id', 36),
       str('owner_user_id', 36),
+      str('geo', 64),
       { key: 'is_active', type: 'boolean', default: true },
     ],
     [{ key: 'warehouses_kind_idx', type: 'key', columns: ['kind'] }],
@@ -449,8 +450,10 @@ export const TABLES: TableDef[] = [
     'Return requests',
     [
       str('origin_ref', 32, true), // the INV- / TRF- being reversed
+      str('customer_id', 36), // the customer the goods came back from (for INV- returns)
       str('lines', 100000),
       str('reason', 512, true),
+      { key: 'refund_amount', type: 'float', min: 0 }, // amount to credit back to the customer
       {
         key: 'status',
         type: 'enum',
@@ -461,7 +464,10 @@ export const TABLES: TableDef[] = [
       str('requested_by', 36),
       str('approved_by', 36),
     ],
-    [{ key: 'returns_origin_idx', type: 'key', columns: ['origin_ref'] }],
+    [
+      { key: 'returns_origin_idx', type: 'key', columns: ['origin_ref'] },
+      { key: 'returns_customer_idx', type: 'key', columns: ['customer_id'] },
+    ],
   ),
 
   doc(Tables.writeOffs, 'Write-offs / damages', [
@@ -520,6 +526,22 @@ export const TABLES: TableDef[] = [
     ],
     [{ key: 'payroll_period_idx', type: 'key', columns: ['pay_period_start'] }],
   ),
+
+  // Owner / investor capital brought into the business — cash or an existing
+  // asset (vehicle, property, equipment). On submit posts a GL entry: debit the
+  // asset/cash account, credit owner's capital (3000).
+  doc(Tables.capitalContributions, 'Capital contributions', [
+    str('contributor', 128, true),
+    {
+      key: 'asset_type',
+      type: 'enum',
+      elements: ['cash', 'vehicle', 'property', 'equipment', 'other'],
+      required: true,
+    },
+    str('description', 500),
+    { key: 'amount', type: 'float', required: true, min: 0 },
+    str('asset_account', 64, true), // GL account to debit
+  ]),
 
   // ---- HR (System Admin / branch accountant owned) ----
   log(

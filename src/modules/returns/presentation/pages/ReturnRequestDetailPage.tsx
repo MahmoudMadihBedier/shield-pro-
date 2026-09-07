@@ -12,12 +12,23 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { DocStatus } from '@/core/doc-status'
 import type { AppError } from '@/core/errors'
 import { isErr } from '@/core/result'
-import { formatDate, formatNumber } from '@/shared/formatters'
+import { AdminOverridePanel } from '@/shared/documents'
+import { formatCurrency, formatDate, formatNumber } from '@/shared/formatters'
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
-import { postReturnToLedger, type ReturnLedgerPostResult } from '../../data/post-return'
+import {
+  postReturnCreditToGl,
+  postReturnToLedger,
+  type ReturnGlPostResult,
+  type ReturnLedgerPostResult,
+} from '../../data/post-return'
 import { originKind, originWarehouseHint } from '../../domain/origin'
-import { parseReturnLines, type ReturnLine, type ReturnRequestRow, type ReturnStatus } from '../../domain/schemas'
+import {
+  parseReturnLines,
+  type ReturnLine,
+  type ReturnRequestRow,
+  type ReturnStatus,
+} from '../../domain/schemas'
 import { DocStatusPill, ReturnStatusBar, SubmitCancelBar } from '../components'
 import {
   optionLabelMap,
@@ -49,6 +60,7 @@ export function ReturnRequestDetailPage() {
 
   const [actionError, setActionError] = useState<string | null>(null)
   const [ledger, setLedger] = useState<ReturnLedgerPostResult | null>(null)
+  const [glCredit, setGlCredit] = useState<ReturnGlPostResult | null>(null)
 
   const row = query.data
   const busy = updateDraft.isPending || submit.isPending || cancel.isPending
@@ -101,6 +113,12 @@ export function ReturnRequestDetailPage() {
             </div>
             <p className="text-zinc-500">{originWarehouseHint(originKind(row.origin_ref))}</p>
             <p className="text-zinc-600 dark:text-zinc-400">السبب: {row.reason}</p>
+            {row.customer_id || (row.refund_amount ?? 0) > 0 ? (
+              <p className="text-zinc-600 dark:text-zinc-400">
+                العميل: <span dir="ltr">{row.customer_id ?? '—'}</span> — مبلغ الاسترداد:{' '}
+                <strong dir="ltr">{formatCurrency(row.refund_amount ?? 0)}</strong>
+              </p>
+            ) : null}
             <div dir="ltr" className="text-zinc-500">
               {formatDate(row.posting_datetime)}
             </div>
@@ -146,7 +164,9 @@ export function ReturnRequestDetailPage() {
             pending={busy}
             canSubmit={perms.canSubmitOrCancel && row.status === 'approved'}
             canCancel={perms.canSubmitOrCancel}
-            onSubmit={() => void submit.mutateAsync(row.$id).catch((e: AppError) => setActionError(e.message))}
+            onSubmit={() =>
+              void submit.mutateAsync(row.$id).catch((e: AppError) => setActionError(e.message))
+            }
             onCancel={(reason) =>
               void cancel
                 .mutateAsync({ id: row.$id, reason })
@@ -155,8 +175,30 @@ export function ReturnRequestDetailPage() {
           />
 
           {row.doc_status === DocStatus.Submitted ? (
-            <PostToLedgerPanel row={row} canPost={perms.canPost} ledger={ledger} setLedger={setLedger} />
+            <PostToLedgerPanel
+              row={row}
+              canPost={perms.canPost}
+              ledger={ledger}
+              setLedger={setLedger}
+            />
           ) : null}
+
+          {row.doc_status === DocStatus.Submitted &&
+          row.customer_id &&
+          (row.refund_amount ?? 0) > 0 ? (
+            <PostCreditToGlPanel
+              row={row}
+              canPost={perms.canPost}
+              result={glCredit}
+              setResult={setGlCredit}
+            />
+          ) : null}
+
+          <AdminOverridePanel
+            table="return_requests"
+            row={row}
+            onDone={() => void query.refetch()}
+          />
 
           {actionError ? (
             <Card className="text-sm text-red-600 dark:text-red-400">{actionError}</Card>
@@ -211,7 +253,9 @@ function PostToLedgerPanel({
       <h3 className="text-sm font-semibold">اعتماد وترحيل المرتجع إلى دفتر المخزون</h3>
 
       <label className="block text-sm">
-        <span className="mb-1 block text-zinc-600 dark:text-zinc-400">المخزن المستلم / Target warehouse</span>
+        <span className="mb-1 block text-zinc-600 dark:text-zinc-400">
+          المخزن المستلم / Target warehouse
+        </span>
         <select
           value={picked}
           onChange={(e) => setPicked(e.target.value)}
@@ -239,6 +283,55 @@ function PostToLedgerPanel({
       {postLedger.isError ? (
         <p role="alert" className="text-xs text-red-600 dark:text-red-400">
           {postLedger.error.message}
+        </p>
+      ) : null}
+    </Card>
+  )
+}
+
+/** Post the customer credit-note (Dr sales_returns / Cr accounts_receivable) —
+ *  this is what deducts the refund from the customer's outstanding balance. */
+function PostCreditToGlPanel({
+  row,
+  canPost,
+  result,
+  setResult,
+}: {
+  row: ReturnRequestRow
+  canPost: boolean
+  result: ReturnGlPostResult | null
+  setResult: (value: ReturnGlPostResult) => void
+}) {
+  const post = useMutation<ReturnGlPostResult, AppError, void>({
+    mutationFn: async () => {
+      const res = await postReturnCreditToGl(row)
+      if (isErr(res)) throw res.error
+      return res.value
+    },
+    onSuccess: setResult,
+  })
+
+  return (
+    <Card className="space-y-2 text-sm">
+      <h3 className="font-semibold">الأثر المحاسبي على حساب العميل</h3>
+      <p className="text-zinc-500">
+        قيد: مدين «مرتجعات المبيعات» {formatCurrency(row.refund_amount ?? 0)} — دائن «ذمم مدينة»{' '}
+        {formatCurrency(row.refund_amount ?? 0)} (يُخفّض رصيد العميل).
+      </p>
+      {result ? (
+        <p className="text-emerald-700 dark:text-emerald-400">
+          {result.alreadyPosted
+            ? 'سبق ترحيل هذا الأثر — لا تغيير.'
+            : `تم ترحيل ${result.posted?.entries ?? 0} قيد تحت السند ${result.voucherNo}.`}
+        </p>
+      ) : (
+        <Button size="sm" disabled={!canPost || post.isPending} onClick={() => post.mutate()}>
+          {post.isPending ? 'جارٍ الترحيل…' : 'ترحيل الأثر المحاسبي'}
+        </Button>
+      )}
+      {post.isError ? (
+        <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+          {post.error.message}
         </p>
       ) : null}
     </Card>

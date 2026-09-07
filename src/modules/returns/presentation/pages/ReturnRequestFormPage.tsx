@@ -9,12 +9,21 @@ import { useNavigate } from 'react-router-dom'
 
 import { appError } from '@/core/errors'
 import { err, type Result } from '@/core/result'
-import { Form, FormError, TextAreaField } from '@/shared/forms'
+import { Form, FormError, NumberField, SelectField, TextAreaField } from '@/shared/forms'
 import { Button, Card, PageHeader } from '@/shared/ui'
 
-import { serializeReturnLines, returnRequestDraftSchema, type ReturnRequestDraft } from '../../domain/schemas'
+import {
+  serializeReturnLines,
+  returnRequestDraftSchema,
+  type ReturnRequestDraft,
+} from '../../domain/schemas'
 import { OriginRefField, ReturnLineEditor } from '../components'
-import { useProductOptions, useReturnRequestActions, useReturnsPermissions } from '../hooks'
+import {
+  useCustomerOptions,
+  useProductOptions,
+  useReturnRequestActions,
+  useReturnsPermissions,
+} from '../hooks'
 
 function LinesField() {
   const { watch, setValue, formState } = useFormContext<ReturnRequestDraft>()
@@ -40,9 +49,10 @@ export function ReturnRequestFormPage() {
   const navigate = useNavigate()
   const perms = useReturnsPermissions()
   const { createDraft } = useReturnRequestActions()
+  const customers = useCustomerOptions()
 
   const defaultValues = useMemo<ReturnRequestDraft>(
-    () => ({ origin_ref: '', reason: '', lines: [] }),
+    () => ({ origin_ref: '', customer_id: '', reason: '', refund_amount: 0, lines: [] }),
     [],
   )
 
@@ -51,7 +61,9 @@ export function ReturnRequestFormPage() {
       const row = await createDraft.mutateAsync({
         fields: {
           origin_ref: values.origin_ref,
+          customer_id: values.customer_id?.trim() ? values.customer_id.trim() : null,
           reason: values.reason,
+          refund_amount: values.refund_amount ?? 0,
           lines: serializeReturnLines(values.lines),
           status: 'pending',
           requested_by: perms.principal?.userId ?? null,
@@ -89,6 +101,23 @@ export function ReturnRequestFormPage() {
             {({ formError, isSubmitting }) => (
               <div className="space-y-4">
                 <OriginRefField name="origin_ref" />
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <SelectField
+                    name="customer_id"
+                    label="العميل (للمرتجعات من فاتورة)"
+                    labelEn="Customer (for invoice returns)"
+                    placeholder={customers.isLoading ? 'جارٍ التحميل…' : 'اختر العميل…'}
+                    options={customers.data ?? []}
+                  />
+                  <NumberField
+                    name="refund_amount"
+                    label="مبلغ الاسترداد"
+                    labelEn="Refund amount"
+                    min={0}
+                    hint="المبلغ الذي يُخصم من حساب العميل عند ترحيل الأثر المحاسبي"
+                  />
+                </div>
 
                 <TextAreaField name="reason" label="السبب" labelEn="Reason" required rows={2} />
 

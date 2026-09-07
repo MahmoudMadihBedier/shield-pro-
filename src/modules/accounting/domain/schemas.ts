@@ -74,6 +74,20 @@ export const VOUCHER_DIRECTIONS = ['receipt', 'payment'] as const
 export const voucherDirectionSchema = z.enum(VOUCHER_DIRECTIONS)
 export type VoucherDirection = z.infer<typeof voucherDirectionSchema>
 
+/** `capital_contributions.asset_type` — what the owner brought in. */
+export const CAPITAL_ASSET_TYPES = ['cash', 'vehicle', 'property', 'equipment', 'other'] as const
+export const capitalAssetTypeSchema = z.enum(CAPITAL_ASSET_TYPES)
+export type CapitalAssetType = z.infer<typeof capitalAssetTypeSchema>
+
+/** Default GL account to debit per asset type (an editable suggestion). */
+export const DEFAULT_ASSET_ACCOUNT: Record<CapitalAssetType, string> = {
+  cash: 'cash',
+  vehicle: 'fixed_assets_vehicles',
+  property: 'fixed_assets_property',
+  equipment: 'fixed_assets_equipment',
+  other: 'fixed_assets_other',
+}
+
 /** `sales_invoices.payment_method` — the full enum from `schema.ts`. */
 export const INVOICE_PAYMENT_METHODS = [
   'cash',
@@ -160,6 +174,42 @@ export const paymentVoucherFormSchema = z.object({
 export type PaymentVoucher = z.infer<typeof paymentVoucherRowSchema>
 export type PaymentVoucherDraft = z.infer<typeof paymentVoucherDraftSchema>
 export type PaymentVoucherForm = z.infer<typeof paymentVoucherFormSchema>
+
+// ---------------------------------------------------------------------------
+// capital_contributions (owner / investor capital — cash or existing assets)
+// ---------------------------------------------------------------------------
+
+export const capitalContributionRowSchema = z.object({
+  ...systemFields,
+  ...documentEnvelope,
+  contributor: z.string(),
+  asset_type: capitalAssetTypeSchema,
+  description: rowOptStr,
+  amount: rowNum0,
+  asset_account: z.string(),
+})
+
+/** Fields written by `capitalContributionsRepo.createDraft` / `updateDraft`. */
+export const capitalContributionDraftSchema = z.object({
+  contributor: z.string().min(1),
+  asset_type: capitalAssetTypeSchema,
+  description: z.string().nullish(),
+  amount: z.number().positive(),
+  asset_account: z.string().min(1),
+})
+
+/** What the capital-contribution create form submits. */
+export const capitalContributionFormSchema = z.object({
+  contributor: z.string().trim().min(1, 'اسم المساهم مطلوب').max(128, 'الاسم طويل جدًا'),
+  asset_type: capitalAssetTypeSchema,
+  description: z.string().trim().max(500, 'الوصف طويل جدًا').optional(),
+  amount: z.number({ error: 'أدخل القيمة' }).positive('أدخل قيمة موجبة'),
+  asset_account: z.string().trim().min(1, 'حساب الأصل مطلوب').max(64, 'اسم الحساب طويل جدًا'),
+})
+
+export type CapitalContribution = z.infer<typeof capitalContributionRowSchema>
+export type CapitalContributionDraft = z.infer<typeof capitalContributionDraftSchema>
+export type CapitalContributionForm = z.infer<typeof capitalContributionFormSchema>
 
 // ---------------------------------------------------------------------------
 // general_ledger_entries (read-only — the only writer is an Appwrite Function)

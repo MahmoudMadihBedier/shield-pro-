@@ -12,6 +12,7 @@ import {
   CheckboxField,
   Form,
   FormError,
+  GeoField,
   NumberField,
   SelectField,
   TextField,
@@ -81,15 +82,16 @@ function RelationField({
       required={descriptor.required}
       disabled={isLoading}
       options={options}
-      placeholder={
-        isError ? 'تعذّر تحميل الخيارات' : isLoading ? 'جارٍ التحميل…' : 'اختر…'
-      }
+      placeholder={isError ? 'تعذّر تحميل الخيارات' : isLoading ? 'جارٍ التحميل…' : 'اختر…'}
     />
   )
 }
 
 function renderField(entity: AdminEntity, descriptor: FieldDescriptor) {
-  const labels = FIELD_LABELS[entity][descriptor.name] ?? { ar: descriptor.name, en: descriptor.name }
+  const labels = FIELD_LABELS[entity][descriptor.name] ?? {
+    ar: descriptor.name,
+    en: descriptor.name,
+  }
   const common = {
     name: descriptor.name,
     label: labels.ar,
@@ -126,6 +128,16 @@ function renderField(entity: AdminEntity, descriptor: FieldDescriptor) {
           descriptor={descriptor}
           label={labels.ar}
           labelEn={labels.en}
+        />
+      )
+    case 'geo':
+      return (
+        <GeoField
+          key={descriptor.name}
+          name={descriptor.name}
+          label={labels.ar}
+          labelEn={labels.en}
+          required={descriptor.required}
         />
       )
     default:

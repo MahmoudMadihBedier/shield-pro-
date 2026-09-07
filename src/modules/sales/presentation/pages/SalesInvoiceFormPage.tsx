@@ -24,7 +24,8 @@ import {
   serializeJsonArray,
   type SalesInvoiceDraft,
 } from '../../domain/schemas'
-import { GeoCaptureField, InvoiceLineEditor, PaymentPanel } from '../components'
+import { InvoiceLineEditor, PaymentPanel } from '../components'
+import { GeoField } from '@/shared/forms'
 import {
   useCustomerCreditCheck,
   useCustomerOptions,
@@ -158,7 +159,7 @@ export function SalesInvoiceFormPage() {
 
                 <CreditCheckBridge />
 
-                <GeoCaptureField name="geo" />
+                <GeoField name="geo" required />
 
                 <FormError message={formError} />
 

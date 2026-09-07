@@ -14,9 +14,14 @@
  */
 import { appError } from '@/core/errors'
 import { err, ok, type Result } from '@/core/result'
-import { postStockLedger, type PostStockLedgerResult } from '@/infrastructure/appwrite/functions'
+import {
+  postGl,
+  postStockLedger,
+  type PostGlResult,
+  type PostStockLedgerResult,
+} from '@/infrastructure/appwrite/functions'
 
-import { returnToStockMoves } from '../domain/to-ledger'
+import { returnToGlLines, returnToStockMoves } from '../domain/to-ledger'
 import { parseReturnLines, type ReturnRequestRow } from '../domain/schemas'
 
 export const ReturnsVoucherType = {
@@ -51,6 +56,45 @@ export async function postReturnToLedger(
     voucherNo: returnRequest.reference_id,
     postingDatetime: returnRequest.posting_datetime,
     moves,
+  })
+
+  if (result.ok) {
+    return ok({ voucherNo: returnRequest.reference_id, alreadyPosted: false, posted: result.value })
+  }
+  if (result.error.code === 'conflict') {
+    return ok({ voucherNo: returnRequest.reference_id, alreadyPosted: true, posted: null })
+  }
+  return err(result.error)
+}
+
+export interface ReturnGlPostResult {
+  voucherNo: string
+  alreadyPosted: boolean
+  posted: PostGlResult | null
+}
+
+/**
+ * Post the customer credit-note for a return (Dr sales_returns / Cr AR) — this
+ * is what "deducts the amount from the customer's account". Requires
+ * `customer_id` and a positive `refund_amount` on the document. Idempotent by
+ * `voucher_no` (the return's `reference_id`).
+ */
+export async function postReturnCreditToGl(
+  returnRequest: ReturnRequestRow,
+): Promise<Result<ReturnGlPostResult>> {
+  const refund = returnRequest.refund_amount ?? 0
+  if (!returnRequest.customer_id || refund <= 0) {
+    return err(
+      appError('validation', 'حدّد العميل ومبلغ الاسترداد على المستند قبل ترحيل الأثر المحاسبي.'),
+    )
+  }
+
+  const result = await postGl({
+    voucherType: 'ReturnRequest',
+    voucherNo: returnRequest.reference_id,
+    postingDatetime: returnRequest.posting_datetime,
+    branchId: returnRequest.branch_id,
+    lines: returnToGlLines(refund),
   })
 
   if (result.ok) {

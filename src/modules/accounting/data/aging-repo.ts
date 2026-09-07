@@ -17,10 +17,10 @@ import { appError } from '@/core/errors'
 import { err, ok, type Result } from '@/core/result'
 import { DATABASE_ID, Tables } from '@/infrastructure/appwrite/collections'
 import { mapAppwriteError } from '@/infrastructure/appwrite/errors'
-import { customersRepo } from '@/modules/admin'
+import { fetchCustomerAging } from '@/infrastructure/appwrite/functions'
 import { Query, tablesDB } from '@/infrastructure/appwrite/services'
 
-import { customerAging, type CustomerAging } from '../domain/aging'
+import { type CustomerAging } from '../domain/aging'
 import {
   invoiceForAgingSchema,
   receiptRowSchema,
@@ -108,11 +108,6 @@ export function listReceiptsForCustomer(customerId: string): Promise<Result<Rece
   )
 }
 
-/** All Submitted `receipts` (every customer) — for the whole-book report. */
-function listAllSubmittedReceipts(): Promise<Result<Receipt[]>> {
-  return scanTable(Tables.receipts, [Query.equal('doc_status', DocStatus.Submitted)], parseReceipt)
-}
-
 /** One customer's aging enriched with display name and credit limit. */
 export interface CustomerAgingRow extends CustomerAging {
   customerName: string
@@ -120,30 +115,22 @@ export interface CustomerAgingRow extends CustomerAging {
 }
 
 /**
- * Whole-book aging as of `asOf`. Joins customers + invoices + receipts and runs
- * the domain reducer. Customers with no receivable activity are omitted.
+ * Whole-book aging as of `asOf`. Aggregated in Postgres (`customer_aging` RPC,
+ * migration 0015) over the full ledger — no client-side row cap — and
+ * branch-scoped server-side. The pure `customerAging` reducer in
+ * `../domain/aging` stays the tested specification.
  */
 export async function customerAgingReport(asOf: Date): Promise<Result<CustomerAgingRow[]>> {
-  const [invoices, receipts, customers] = await Promise.all([
-    listSubmittedInvoices(),
-    listAllSubmittedReceipts(),
-    customersRepo.list({ page: 0, pageSize: 500, sort: { field: 'name', dir: 'asc' } }),
-  ])
-  if (!invoices.ok) return invoices
-  if (!receipts.ok) return receipts
-  if (!customers.ok) return customers
-
-  const byId = new Map(customers.value.rows.map((c) => [c.$id, c]))
-  const aged = customerAging(invoices.value, receipts.value, asOf)
-
+  const res = await fetchCustomerAging(asOf.toISOString())
+  if (!res.ok) return res
   return ok(
-    aged.map((row) => {
-      const customer = byId.get(row.customerId)
-      return {
-        ...row,
-        customerName: customer?.name ?? row.customerId,
-        creditLimit: customer?.credit_limit ?? 0,
-      }
-    }),
+    res.value.map((r) => ({
+      customerId: r.customerId,
+      customerName: r.customerName,
+      outstanding: r.outstanding,
+      creditLimit: r.creditLimit,
+      buckets: r.buckets,
+      oldestDays: r.oldestDays,
+    })),
   )
 }

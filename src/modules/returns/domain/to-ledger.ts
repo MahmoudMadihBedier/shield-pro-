@@ -40,3 +40,27 @@ export function returnToStockMoves(
     qtyChange: line.qty,
   }))
 }
+
+/** GL account ids for the return credit-note (strings — no cross-module import). */
+export const RETURN_GL_ACCOUNT = {
+  SalesReturns: 'sales_returns',
+  AccountsReceivable: 'accounts_receivable',
+} as const
+
+export interface GlLine {
+  account: string
+  debit: number
+  credit: number
+}
+
+/**
+ * The credit-note entry for a customer return (reduces what the customer owes):
+ *   Dr Sales returns      refundAmount
+ *   Cr Accounts receivable refundAmount
+ */
+export function returnToGlLines(refundAmount: number): GlLine[] {
+  return [
+    { account: RETURN_GL_ACCOUNT.SalesReturns, debit: refundAmount, credit: 0 },
+    { account: RETURN_GL_ACCOUNT.AccountsReceivable, debit: 0, credit: refundAmount },
+  ]
+}
