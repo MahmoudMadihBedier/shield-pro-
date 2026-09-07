@@ -9,7 +9,12 @@ import { useNavigate } from 'react-router-dom'
 
 import { DocStatus } from '@/core/doc-status'
 import { formatDate } from '@/shared/formatters'
-import { DataTable, useDebouncedValue, type ColumnDef, type PaginationState } from '@/shared/data-table'
+import {
+  DataTable,
+  useDebouncedValue,
+  type ColumnDef,
+  type PaginationState,
+} from '@/shared/data-table'
 import { Badge, Button, PageHeader } from '@/shared/ui'
 
 import type { ReturnRequestRow, ReturnStatus } from '../../domain/schemas'
@@ -25,12 +30,13 @@ const DOC_STATUS_TABS = [
   { key: 'cancelled', label: 'ملغي / Cancelled', value: DocStatus.Cancelled },
 ] as const
 
-const STATUS_TABS: ReadonlyArray<{ key: string; label: string; value: ReturnStatus | undefined }> = [
-  { key: 'all', label: 'كل الحالات', value: undefined },
-  { key: 'pending', label: 'قيد الانتظار', value: 'pending' },
-  { key: 'approved', label: 'مقبول', value: 'approved' },
-  { key: 'rejected', label: 'مرفوض', value: 'rejected' },
-]
+const STATUS_TABS: ReadonlyArray<{ key: string; label: string; value: ReturnStatus | undefined }> =
+  [
+    { key: 'all', label: 'كل الحالات', value: undefined },
+    { key: 'pending', label: 'قيد الانتظار', value: 'pending' },
+    { key: 'approved', label: 'مقبول', value: 'approved' },
+    { key: 'rejected', label: 'مرفوض', value: 'rejected' },
+  ]
 
 const STATUS_TONE: Record<ReturnStatus, 'warning' | 'success' | 'danger'> = {
   pending: 'warning',
@@ -110,7 +116,11 @@ export function ReturnRequestListPage() {
         align: 'end',
         width: '7rem',
         cell: (r) => (
-          <Button size="sm" variant="secondary" onClick={() => navigate(`/returns/requests/${r.$id}`)}>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => navigate(`/returns/requests/${r.$id}`)}
+          >
             فتح
           </Button>
         ),
@@ -124,7 +134,9 @@ export function ReturnRequestListPage() {
       <PageHeader
         title="طلبات المرتجعات"
         titleEn="Return requests"
-        actions={<Button onClick={() => navigate('/returns/requests/new')}>+ طلب مرتجع جديد</Button>}
+        actions={
+          <Button onClick={() => navigate('/returns/requests/new')}>+ طلب مرتجع جديد</Button>
+        }
       />
 
       <div className="flex flex-wrap items-center gap-2">

@@ -94,9 +94,13 @@ function parseJsonArray<T>(raw: string | null | undefined, schema: ZodType<T>): 
 export const returnRequestRowSchema = documentRowSchema.extend({
   /** The `INV-` / `TRF-` / `SR-` reference being reversed. */
   origin_ref: z.string(),
+  /** The customer the goods came back from (for `INV-` returns). */
+  customer_id: rowOptStr,
   /** Raw JSON — parse with `parseReturnLines(row.lines)`. */
   lines: z.string(),
   reason: z.string(),
+  /** Amount credited back to the customer's account. */
+  refund_amount: z.number().nullish(),
   status: returnStatusSchema,
   requested_by: rowOptStr,
   approved_by: rowOptStr,
@@ -105,7 +109,9 @@ export type ReturnRequestRow = z.infer<typeof returnRequestRowSchema>
 
 export const returnRequestDraftSchema = z.object({
   origin_ref: z.string().trim().min(1, 'أدخل مرجع المستند الأصلي'),
+  customer_id: z.string().trim().optional(),
   reason: z.string().trim().min(1, 'سبب الإرجاع مطلوب').max(512, 'السبب طويل جدًا'),
+  refund_amount: z.number().min(0, 'المبلغ يجب ألا يكون سالبًا').optional(),
   lines: z.array(returnLineSchema).min(1, 'أضف صنفًا واحدًا على الأقل'),
 })
 export type ReturnRequestDraft = z.infer<typeof returnRequestDraftSchema>
@@ -117,8 +123,10 @@ export type ReturnRequestDraft = z.infer<typeof returnRequestDraftSchema>
  */
 export type ReturnRequestWriteFields = {
   origin_ref: string
+  customer_id?: string | null
   lines: string
   reason: string
+  refund_amount?: number | null
   status: ReturnStatus
   requested_by?: string | null
   approved_by?: string | null

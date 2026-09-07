@@ -484,8 +484,10 @@ CREATE TABLE IF NOT EXISTS public."return_requests" (
   "posting_datetime" timestamptz NOT NULL,
   "remarks" text,
   "origin_ref" text NOT NULL,
+  "customer_id" text,
   "lines" text,
   "reason" text NOT NULL,
+  "refund_amount" double precision CHECK ("refund_amount" >= 0),
   "status" text DEFAULT 'pending' NOT NULL CHECK ("status" IN ('pending', 'approved', 'rejected')),
   "requested_by" text,
   "approved_by" text,
@@ -495,6 +497,7 @@ CREATE INDEX IF NOT EXISTS "return_requests_branch_idx" ON public."return_reques
 CREATE INDEX IF NOT EXISTS "return_requests_status_idx" ON public."return_requests" ("doc_status");
 CREATE INDEX IF NOT EXISTS "return_requests_posting_idx" ON public."return_requests" ("posting_datetime");
 CREATE INDEX IF NOT EXISTS "returns_origin_idx" ON public."return_requests" ("origin_ref");
+CREATE INDEX IF NOT EXISTS "returns_customer_idx" ON public."return_requests" ("customer_id");
 CREATE TRIGGER "return_requests_set_updated_at" BEFORE UPDATE ON public."return_requests"
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 ALTER TABLE public."return_requests" ENABLE ROW LEVEL SECURITY;

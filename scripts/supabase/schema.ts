@@ -450,8 +450,10 @@ export const TABLES: TableDef[] = [
     'Return requests',
     [
       str('origin_ref', 32, true), // the INV- / TRF- being reversed
+      str('customer_id', 36), // the customer the goods came back from (for INV- returns)
       str('lines', 100000),
       str('reason', 512, true),
+      { key: 'refund_amount', type: 'float', min: 0 }, // amount to credit back to the customer
       {
         key: 'status',
         type: 'enum',
@@ -462,7 +464,10 @@ export const TABLES: TableDef[] = [
       str('requested_by', 36),
       str('approved_by', 36),
     ],
-    [{ key: 'returns_origin_idx', type: 'key', columns: ['origin_ref'] }],
+    [
+      { key: 'returns_origin_idx', type: 'key', columns: ['origin_ref'] },
+      { key: 'returns_customer_idx', type: 'key', columns: ['customer_id'] },
+    ],
   ),
 
   doc(Tables.writeOffs, 'Write-offs / damages', [

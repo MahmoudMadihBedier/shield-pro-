@@ -10,5 +10,6 @@ export const returnsKeys = {
   options: {
     warehouses: () => ['returns', 'options', 'warehouses'] as const,
     products: () => ['returns', 'options', 'products'] as const,
+    customers: () => ['returns', 'options', 'customers'] as const,
   },
 } as const
