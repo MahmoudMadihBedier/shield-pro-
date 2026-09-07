@@ -126,7 +126,23 @@ dropdowns** (`TopNav.tsx` + `NAV_GROUPS` in `nav.ts`); hamburger panel below `lg
   `gl-repo` / `aging-repo` are gone; the pure domain reducers stay the tested
   spec. `functions.ts` `fetchTrialBalance` / `fetchCustomerAging`.
 
-Migrations are now 0001–0015.
+- **User-request batch (5 items).**
+  1. Customer→sales bug: new customers were stuck `pending_approval` with no way
+     to approve → `CustomerDetailPage` now has an "اعتماد العميل" button
+     (`admin_set_status`, audited).
+  2. `src/core/geo.ts` + shared `<GeoField>` ("use my location" + Google Maps
+     link) wired into the sales-invoice, customer and warehouse forms
+     (`warehouses.geo` added, migration 0016).
+  3. Capital contributions — a new submittable accounting document (owner /
+     investor capital: cash or an existing asset), posts `Dr <asset_account> /
+     Cr owners_capital`. migration 0017; `CapitalContribution` in
+     core/{reference-id,document,access}; 3 pages under "رأس المال".
+  4. Returns fixed — `return_requests.customer_id` + `refund_amount` (migration
+     0018); `customer_aging` + `check_customer_credit` subtract submitted return
+     refunds; form has a customer picker + refund field; detail page posts the
+     `Dr sales_returns / Cr accounts_receivable` credit note.
+
+Migrations are now 0001–0018.
 
 Remaining backlog: finish Phase 4.1 (P&L / production-waste / rep-cash-up
 exports; opening-stock + bank-statement importers); Phase 4.2 could extend to
