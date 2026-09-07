@@ -191,10 +191,7 @@ export function TopNav({ mobileOnly = false }: TopNavProps) {
   }
 
   return (
-    <nav
-      aria-label="التنقل الرئيسي"
-      className="flex flex-nowrap items-center gap-0.5 overflow-x-auto"
-    >
+    <nav aria-label="التنقل الرئيسي" className="flex flex-wrap items-center gap-0.5">
       {NAV_GROUPS.map((group) => gated(group, <GroupTrigger key={group.to} group={group} />))}
     </nav>
   )

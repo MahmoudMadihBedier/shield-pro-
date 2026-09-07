@@ -1,5 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
+import { Spinner } from './Spinner'
+
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
 export type ButtonSize = 'sm' | 'md' | 'lg'
 
@@ -33,20 +35,6 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   leadingIcon?: ReactNode
 }
 
-function Spinner() {
-  return (
-    <svg viewBox="0 0 16 16" className="size-3.5 animate-spin" aria-hidden="true" fill="none">
-      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2" />
-      <path
-        d="M14.5 8A6.5 6.5 0 0 0 8 1.5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
 /** Shared button primitive. RTL-correct (logical spacing) and theme-aware. */
 export function Button({
   variant = 'primary',
@@ -69,7 +57,7 @@ export function Button({
       className={`${BASE} ${VARIANTS[variant]} ${SIZES[size]} ${block ? 'w-full' : ''} ${className ?? ''}`}
       {...rest}
     >
-      {loading ? <Spinner /> : leadingIcon}
+      {loading ? <Spinner className="size-3.5" /> : leadingIcon}
       {children}
     </button>
   )
