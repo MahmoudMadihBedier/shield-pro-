@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/application/auth/context'
 import { appError } from '@/core/errors'
 import { err, ok, type Result } from '@/core/result'
-import { Form, FormError, SelectField } from '@/shared/forms'
+import { Form, FormError, RepBranchEditor, SelectField } from '@/shared/forms'
 import { Button, Card, PageHeader } from '@/shared/ui'
 
 import { formatCurrency } from '@/shared/formatters'
@@ -26,7 +26,9 @@ import {
 } from '../../domain/schemas'
 import { InvoiceLineEditor, PaymentPanel } from '../components'
 import { GeoField } from '@/shared/forms'
+import { pickCompleteReps, serializeReps, type RepAssignment } from '../../domain/schemas'
 import {
+  useBranchOptions,
   useCustomerCreditCheck,
   useCustomerOptions,
   useProductOptions,
@@ -40,6 +42,7 @@ const RECEIVABLE_METHODS: ReadonlySet<string> = new Set(RECEIVABLE_INVOICE_METHO
 const DEFAULTS: SalesInvoiceDraft = {
   customer_id: '',
   rep_user_id: '',
+  reps: [],
   lines: [],
   payment_method: 'cash',
   cash_amount: 0,
@@ -90,6 +93,7 @@ export function SalesInvoiceFormPage() {
           credit_amount: split.value.credit_amount,
           bank_reference: values.bank_reference?.trim() || null,
           geo: values.geo.trim(),
+          reps: serializeReps(pickCompleteReps(values.reps)),
           sold_by: principal?.userId ?? values.rep_user_id,
         },
       })
@@ -159,6 +163,13 @@ export function SalesInvoiceFormPage() {
 
                 <CreditCheckBridge />
 
+                <div>
+                  <span className="mb-1 block text-sm text-zinc-600 dark:text-zinc-400">
+                    مندوبون إضافيون / Additional reps
+                  </span>
+                  <RepsBridge />
+                </div>
+
                 <GeoField name="geo" required />
 
                 <FormError message={formError} />
@@ -201,6 +212,22 @@ function LinesField({
         <span className="mt-1 block text-xs text-red-600">{error}</span>
       ) : null}
     </div>
+  )
+}
+
+/** The multi-rep attribution editor, bound to the `reps` form field. */
+function RepsBridge() {
+  const { watch, setValue } = useFormContext<SalesInvoiceDraft>()
+  const reps = (watch('reps') as RepAssignment[] | undefined) ?? []
+  const repOptions = useRepOptions()
+  const branchOptions = useBranchOptions()
+  return (
+    <RepBranchEditor
+      value={reps}
+      onChange={(next) => setValue('reps', next, { shouldDirty: true, shouldValidate: true })}
+      repOptions={repOptions.data ?? []}
+      branchOptions={branchOptions.data ?? []}
+    />
   )
 }
 

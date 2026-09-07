@@ -2,24 +2,33 @@
  * Create / edit form for a purchase-order Draft. Rendered inside a dialog from
  * the list and detail pages. Uses the shared RHF + Zod form kit only.
  */
-import type { DefaultValues } from 'react-hook-form'
+import { useFormContext, type DefaultValues } from 'react-hook-form'
 
 import { appError } from '@/core/errors'
 import { err, ok, type Result } from '@/core/result'
-import { Form, FormError, SelectField } from '@/shared/forms'
+import { Form, FormError, RepBranchEditor, SelectField } from '@/shared/forms'
 import { Button } from '@/shared/ui'
 
 import { parsePoLines, poTotal, serializeLines } from '../../domain/lines'
 import { PO_FIELD_LABELS } from '../../domain/labels'
 import {
+  parseReps,
+  pickCompleteReps,
   purchaseOrderFormSchema,
+  serializeReps,
   type PurchaseOrder,
   type PurchaseOrderForm as PurchaseOrderFormValues,
+  type RepAssignment,
 } from '../../domain/schemas'
 import { PoLineEditor } from '../components/PoLineEditor'
 import { EMPTY_PO_LINE } from '../components/line-defaults'
 import { usePurchaseOrderActions } from '../hooks/usePurchaseOrders'
-import { useRawMaterialOptions, useSupplierOptions } from '../hooks/usePickerOptions'
+import {
+  useBranchOptions,
+  useRawMaterialOptions,
+  useRepOptions,
+  useSupplierOptions,
+} from '../hooks/usePickerOptions'
 
 export interface PurchaseOrderFormPageProps {
   mode: 'create' | 'edit'
@@ -35,12 +44,14 @@ export function PurchaseOrderFormPage({ mode, order, onDone }: PurchaseOrderForm
   const existingLines = order ? parsePoLines(order.lines) : []
   const defaults: PurchaseOrderFormValues = {
     supplier_id: order?.supplier_id ?? '',
+    reps: order ? parseReps(order.reps) : [],
     lines: existingLines.length > 0 ? existingLines : [{ ...EMPTY_PO_LINE }],
   }
 
   async function handleSubmit(values: PurchaseOrderFormValues): Promise<Result<unknown>> {
     const payload = {
       supplier_id: values.supplier_id,
+      reps: serializeReps(pickCompleteReps(values.reps)),
       lines: serializeLines(values.lines),
       total_value: poTotal(values.lines),
     }
@@ -84,6 +95,13 @@ export function PurchaseOrderFormPage({ mode, order, onDone }: PurchaseOrderForm
             }
           />
 
+          <div>
+            <span className="mb-1 block text-sm text-zinc-600 dark:text-zinc-400">
+              مندوبون إضافيون / Additional reps
+            </span>
+            <RepsBridge />
+          </div>
+
           {rawMaterials.isError ? (
             <p className="text-xs text-red-600 dark:text-red-400">تعذّر تحميل قائمة الخامات.</p>
           ) : (
@@ -106,5 +124,21 @@ export function PurchaseOrderFormPage({ mode, order, onDone }: PurchaseOrderForm
         </>
       )}
     </Form>
+  )
+}
+
+/** The multi-rep attribution editor, bound to the `reps` form field. */
+function RepsBridge() {
+  const { watch, setValue } = useFormContext<PurchaseOrderFormValues>()
+  const reps = (watch('reps') as RepAssignment[] | undefined) ?? []
+  const repOptions = useRepOptions()
+  const branchOptions = useBranchOptions()
+  return (
+    <RepBranchEditor
+      value={reps}
+      onChange={(next) => setValue('reps', next, { shouldDirty: true, shouldValidate: true })}
+      repOptions={repOptions.data ?? []}
+      branchOptions={branchOptions.data ?? []}
+    />
   )
 }

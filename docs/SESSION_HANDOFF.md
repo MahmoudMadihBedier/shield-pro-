@@ -141,8 +141,16 @@ dropdowns** (`TopNav.tsx` + `NAV_GROUPS` in `nav.ts`); hamburger panel below `lg
      0018); `customer_aging` + `check_customer_credit` subtract submitted return
      refunds; form has a customer picker + refund field; detail page posts the
      `Dr sales_returns / Cr accounts_receivable` credit note.
+  5. Multi-rep attribution — optional `{ user_id, branch_id }[]` on sales
+     invoices + purchase orders (`reps` JSON column, migration 0019).
+     `src/core/reps.ts` + shared `<RepBranchEditor>` (rep/branch repeater) on
+     both forms; incomplete editor rows dropped on submit (`pickCompleteReps`,
+     no silent validation dead-end); detail pages show `rep · branch` chips.
+     `rep_user_id` stays the single custody / rep-ledger key. `useRepOptions` /
+     `useBranchOptions` moved to `@/modules/admin` (single source of truth) —
+     sales + purchasing re-export them.
 
-Migrations are now 0001–0018.
+Migrations are now 0001–0019.
 
 Remaining backlog: finish Phase 4.1 (P&L / production-waste / rep-cash-up
 exports; opening-stock + bank-statement importers); Phase 4.2 could extend to
@@ -150,7 +158,7 @@ the dashboard KPIs + rep performance. Operational: rotate the DB password +
 service-role key, then disconnect Appwrite.
 
 ## Gates (this session): `pnpm typecheck` · `pnpm lint` (17 pre-existing
-router.tsx fast-refresh warns) · `pnpm test` **668 / 87 files** · `pnpm build`.
+router.tsx fast-refresh warns) · `pnpm test` **679 / 89 files** · `pnpm build`.
 
 ## MCP
 `.mcp.json` has the Supabase HTTP MCP (`project_ref=ajrevsyyudfjrwiifekj`).

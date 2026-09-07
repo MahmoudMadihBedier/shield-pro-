@@ -11,7 +11,6 @@ export const salesKeys = {
   options: {
     customers: (search: string | null) => ['sales', 'options', 'customers', search] as const,
     products: () => ['sales', 'options', 'products'] as const,
-    reps: () => ['sales', 'options', 'reps'] as const,
     warehouses: (kind: string | null) => ['sales', 'options', 'warehouses', kind] as const,
   },
 

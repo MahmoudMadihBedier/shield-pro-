@@ -21,3 +21,4 @@ export {
   type TextFieldProps,
 } from './fields'
 export { GeoField, type GeoFieldProps } from './GeoField'
+export { RepBranchEditor, type RepBranchEditorProps } from './RepBranchEditor'

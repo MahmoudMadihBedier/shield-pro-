@@ -43,20 +43,12 @@ export {
   productBomRepo,
 } from './data/repos'
 export { usersRepo } from './data/users-repo'
-export type {
-  ListParams,
-  ListFilter,
-  ListSort,
-  ListPage,
-  MasterRepo,
-} from './data/master-repo'
+
+// --- shared picker option hooks ------------------------------------------
+export { useRepOptions, useBranchOptions } from './presentation/options-hooks'
+export type { ListParams, ListFilter, ListSort, ListPage, MasterRepo } from './data/master-repo'
 
 // --- nav ------------------------------------------------------------------
 // Re-exported from the dependency-light `./nav` so the app shell can pull nav
 // metadata without dragging the module's pages into the main bundle.
-export {
-  adminNavItems,
-  ADMIN_ENTITY_SLUG,
-  ADMIN_LIST_ENTITIES,
-  type AdminListEntity,
-} from './nav'
+export { adminNavItems, ADMIN_ENTITY_SLUG, ADMIN_LIST_ENTITIES, type AdminListEntity } from './nav'

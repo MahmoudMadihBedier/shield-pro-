@@ -18,10 +18,16 @@ import { RECEIVABLE_INVOICE_METHODS } from '@/modules/accounting/domain/aging'
 
 import { postInvoiceToLedger, type InvoiceLedgerPosting } from '../../data/post-sales'
 import { canActOnSales, canOverrideCredit } from '../../domain/permissions'
-import { parseInvoiceLines, type InvoiceLine, type SalesInvoiceRow } from '../../domain/schemas'
+import {
+  parseInvoiceLines,
+  parseReps,
+  type InvoiceLine,
+  type SalesInvoiceRow,
+} from '../../domain/schemas'
 import { DocStatusPill, SubmitCancelBar } from '../components'
 import {
   optionLabelMap,
+  useBranchOptions,
   useCustomerCreditCheck,
   useCustomerOptions,
   useProductOptions,
@@ -47,9 +53,11 @@ export function SalesInvoiceDetailPage() {
   const products = useProductOptions()
   const customers = useCustomerOptions()
   const reps = useRepOptions()
+  const branches = useBranchOptions()
   const productLabel = useMemo(() => optionLabelMap(products.data), [products.data])
   const customerLabel = useMemo(() => optionLabelMap(customers.data), [customers.data])
   const repLabel = useMemo(() => optionLabelMap(reps.data), [reps.data])
+  const branchLabel = useMemo(() => optionLabelMap(branches.data), [branches.data])
 
   const isPending =
     actions.submit.isPending || actions.cancel.isPending || actions.createDraft.isPending
@@ -75,6 +83,8 @@ export function SalesInvoiceDetailPage() {
     lines = []
   }
 
+  const additionalReps = parseReps(invoice.reps)
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -93,6 +103,21 @@ export function SalesInvoiceDetailPage() {
         </Row>
         <Row label="العميل">{customerLabel.get(invoice.customer_id) ?? invoice.customer_id}</Row>
         <Row label="المندوب">{repLabel.get(invoice.rep_user_id) ?? invoice.rep_user_id}</Row>
+        {additionalReps.length > 0 ? (
+          <Row label="مندوبون إضافيون / Reps">
+            <span className="flex flex-wrap gap-1">
+              {additionalReps.map((r, i) => (
+                <span
+                  key={`${r.user_id}-${r.branch_id}-${i}`}
+                  className="rounded bg-black/5 px-1.5 py-0.5 text-xs dark:bg-white/10"
+                >
+                  {repLabel.get(r.user_id) ?? r.user_id} ·{' '}
+                  {branchLabel.get(r.branch_id) ?? r.branch_id}
+                </span>
+              ))}
+            </span>
+          </Row>
+        ) : null}
         <Row label="طريقة الدفع">{PAYMENT_METHOD_LABEL[invoice.payment_method]}</Row>
         <Row label="نقدًا / آجل">
           <span dir="ltr">

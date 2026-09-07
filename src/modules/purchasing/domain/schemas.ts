@@ -20,6 +20,10 @@
  */
 import { z } from 'zod'
 
+import { repAssignmentInputSchema } from '@/core/reps'
+
+export { parseReps, pickCompleteReps, serializeReps, type RepAssignment } from '@/core/reps'
+
 // ---------------------------------------------------------------------------
 // Shared primitives (mirror scripts/appwrite/schema.ts column types)
 // ---------------------------------------------------------------------------
@@ -90,6 +94,8 @@ export const purchaseOrderRowSchema = z.object({
   ...systemFields,
   ...documentEnvelope,
   supplier_id: z.string(),
+  /** Raw JSON `[{user_id, branch_id}]` — multi-rep attribution. Parse with `parseReps`. */
+  reps: rowOptStr,
   lines: rowOptStr,
   total_value: rowNum0,
 })
@@ -97,6 +103,7 @@ export const purchaseOrderRowSchema = z.object({
 /** Fields written by `purchaseOrdersRepo.createDraft` / `updateDraft`. */
 export const purchaseOrderDraftSchema = z.object({
   supplier_id: z.string().min(1, 'المورد مطلوب'),
+  reps: z.string().optional(),
   /** Serialized `poLineSchema[]`. */
   lines: z.string(),
   total_value: z.number().nonnegative(),
@@ -105,6 +112,7 @@ export const purchaseOrderDraftSchema = z.object({
 /** What the PO create/edit form submits. */
 export const purchaseOrderFormSchema = z.object({
   supplier_id: z.string().min(1, 'اختر المورد'),
+  reps: z.array(repAssignmentInputSchema).optional(),
   lines: z.array(poLineFormSchema).min(1, 'أضف بندًا واحدًا على الأقل'),
 })
 
