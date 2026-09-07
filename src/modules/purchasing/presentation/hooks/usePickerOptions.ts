@@ -16,6 +16,13 @@ import { purchaseOrdersRepo } from '../../data/repos'
 import type { PurchaseOrder } from '../../domain/schemas'
 import { purchasingKeys } from '../query-keys'
 
+/**
+ * Rep + branch pickers live in the `admin` master-data module (single source of
+ * truth) — re-exported here so the purchasing screens keep their local import
+ * path.
+ */
+export { useRepOptions, useBranchOptions } from '@/modules/admin'
+
 const MAX_ROWS = 100
 
 export function useSupplierOptions() {

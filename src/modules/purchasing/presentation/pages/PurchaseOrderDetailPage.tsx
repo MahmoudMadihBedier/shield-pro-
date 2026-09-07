@@ -13,13 +13,19 @@ import { Button, Card, PageHeader } from '@/shared/ui'
 import { parsePoLines, poTotal } from '../../domain/lines'
 import { PO_FIELD_LABELS, PURCHASING_LABELS } from '../../domain/labels'
 import { canActOnPurchasing } from '../../domain/permissions'
+import { parseReps } from '../../domain/schemas'
 import { Dialog } from '../components/Dialog'
 import { DocStatusPill } from '../components/DocStatusPill'
 import { AdminOverridePanel } from '@/shared/documents'
 
 import { SubmitCancelBar } from '../components/SubmitCancelBar'
 import { usePurchaseOrder, usePurchaseOrderActions } from '../hooks/usePurchaseOrders'
-import { useRawMaterialOptions, useSupplierOptions } from '../hooks/usePickerOptions'
+import {
+  useBranchOptions,
+  useRawMaterialOptions,
+  useRepOptions,
+  useSupplierOptions,
+} from '../hooks/usePickerOptions'
 import { PurchaseOrderFormPage } from './PurchaseOrderFormPage'
 
 export function PurchaseOrderDetailPage() {
@@ -32,11 +38,21 @@ export function PurchaseOrderDetailPage() {
   const actions = usePurchaseOrderActions()
   const suppliers = useSupplierOptions()
   const rawMaterials = useRawMaterialOptions()
+  const repOptions = useRepOptions()
+  const branchOptions = useBranchOptions()
   const [editOpen, setEditOpen] = useState(false)
 
   const rawMaterialNameById = useMemo(
     () => new Map((rawMaterials.data ?? []).map((option) => [option.value, option.label])),
     [rawMaterials.data],
+  )
+  const repNameById = useMemo(
+    () => new Map((repOptions.data ?? []).map((o) => [o.value, o.label])),
+    [repOptions.data],
+  )
+  const branchNameById = useMemo(
+    () => new Map((branchOptions.data ?? []).map((o) => [o.value, o.label])),
+    [branchOptions.data],
   )
 
   if (query.isLoading) {
@@ -58,6 +74,7 @@ export function PurchaseOrderDetailPage() {
   }
 
   const lines = parsePoLines(order.lines)
+  const reps = parseReps(order.reps)
   const supplierName =
     suppliers.data?.find((option) => option.value === order.supplier_id)?.label ?? order.supplier_id
 
@@ -98,6 +115,21 @@ export function PurchaseOrderDetailPage() {
           <span dir="ltr">{formatCurrency(order.total_value ?? poTotal(lines))}</span>
         </Row>
         {order.remarks ? <Row label="ملاحظات">{order.remarks}</Row> : null}
+        {reps.length > 0 ? (
+          <Row label="المندوبون / Reps">
+            <span className="flex flex-wrap gap-1">
+              {reps.map((r, i) => (
+                <span
+                  key={`${r.user_id}-${r.branch_id}-${i}`}
+                  className="rounded bg-black/5 px-1.5 py-0.5 text-xs dark:bg-white/10"
+                >
+                  {repNameById.get(r.user_id) ?? r.user_id} ·{' '}
+                  {branchNameById.get(r.branch_id) ?? r.branch_id}
+                </span>
+              ))}
+            </span>
+          </Row>
+        ) : null}
       </Card>
 
       <Card>

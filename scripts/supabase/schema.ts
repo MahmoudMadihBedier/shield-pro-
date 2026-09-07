@@ -293,6 +293,7 @@ export const TABLES: TableDef[] = [
   // ---- Movement / transaction documents ----
   doc(Tables.purchaseOrders, 'Purchase orders', [
     str('supplier_id', 36, true),
+    str('reps', 100000), // JSON: [{user_id, branch_id}] — attribution
     str('lines', 100000), // JSON: [{raw_material_id, qty, unit_price}]
     { key: 'total_value', type: 'float', default: 0, min: 0 },
   ]),
@@ -392,7 +393,8 @@ export const TABLES: TableDef[] = [
     'Sales invoices',
     [
       str('customer_id', 36, true),
-      str('rep_user_id', 36, true),
+      str('rep_user_id', 36, true), // the primary rep (custody / ledger key)
+      str('reps', 100000), // JSON: [{user_id, branch_id}] — multi-rep attribution
       str('lines', 100000), // JSON: [{product_id, qty, base_price, discount_pct, net_price}]
       { key: 'gross_total', type: 'float', required: true, min: 0 },
       { key: 'discount_total', type: 'float', default: 0, min: 0 },

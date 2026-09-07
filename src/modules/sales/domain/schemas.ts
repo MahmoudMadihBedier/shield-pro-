@@ -19,8 +19,10 @@
 import { z, type ZodType } from 'zod'
 
 import { GEO_REGEX } from '@/core/geo'
+import { repAssignmentInputSchema } from '@/core/reps'
 
 export { GEO_REGEX }
+export { parseReps, pickCompleteReps, serializeReps, type RepAssignment } from '@/core/reps'
 
 import { documentEnvelopeSchema } from '@/core/document'
 
@@ -190,6 +192,8 @@ export const parseCloseoutActual = (raw: string | null | undefined): CloseoutAct
 export const salesInvoiceRowSchema = documentRowSchema.extend({
   customer_id: z.string(),
   rep_user_id: z.string(),
+  /** Raw JSON `[{user_id, branch_id}]` — multi-rep attribution. Parse with `parseReps`. */
+  reps: rowOptStr,
   /** Raw JSON — parse with `parseInvoiceLines(row.lines)`. */
   lines: z.string(),
   gross_total: z.number(),
@@ -212,6 +216,7 @@ export type SalesInvoiceRow = z.infer<typeof salesInvoiceRowSchema>
 export const salesInvoiceDraftSchema = z.object({
   customer_id: z.string().min(1, 'اختر العميل'),
   rep_user_id: z.string().min(1, 'اختر المندوب'),
+  reps: z.array(repAssignmentInputSchema).optional(),
   lines: z.array(invoiceLineSchema).min(1, 'أضف صنفًا واحدًا على الأقل'),
   payment_method: paymentMethodSchema,
   /** Cash portion — only meaningful for `partial`; derived otherwise. */
@@ -227,6 +232,7 @@ export type SalesInvoiceDraft = z.infer<typeof salesInvoiceDraftSchema>
 export type SalesInvoiceWriteFields = {
   customer_id: string
   rep_user_id: string
+  reps?: string | null
   lines: string
   gross_total: number
   discount_total: number

@@ -226,6 +226,7 @@ CREATE TABLE IF NOT EXISTS public."purchase_orders" (
   "posting_datetime" timestamptz NOT NULL,
   "remarks" text,
   "supplier_id" text NOT NULL,
+  "reps" text,
   "lines" text,
   "total_value" double precision DEFAULT 0 CHECK ("total_value" >= 0),
   CONSTRAINT "purchase_orders_reference_id_uq" UNIQUE ("reference_id")
@@ -393,6 +394,7 @@ CREATE TABLE IF NOT EXISTS public."sales_invoices" (
   "remarks" text,
   "customer_id" text NOT NULL,
   "rep_user_id" text NOT NULL,
+  "reps" text,
   "lines" text,
   "gross_total" double precision NOT NULL CHECK ("gross_total" >= 0),
   "discount_total" double precision DEFAULT 0 CHECK ("discount_total" >= 0),

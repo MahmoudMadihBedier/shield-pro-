@@ -9,7 +9,6 @@ import type { AppError } from '@/core/errors'
 import {
   customersRepo,
   productsRepo,
-  usersRepo,
   warehousesRepo,
   type Customer,
   type Product,
@@ -18,8 +17,13 @@ import type { SelectOption } from '@/shared/forms'
 
 import { salesKeys } from '../query-keys'
 
+/**
+ * Rep + branch pickers live in the `admin` master-data module (single source of
+ * truth) — re-exported here so the sales screens keep their local import path.
+ */
+export { useRepOptions, useBranchOptions } from '@/modules/admin'
+
 const OPTION_PAGE = { page: 0, pageSize: 200 } as const
-const SALES_REP_ROLE = 'sales_rep'
 
 export interface CustomerOption extends SelectOption {
   /** The customer's per-customer discount ceiling (`IMPLEMENTATION_PLAN.md` §1). */
@@ -71,22 +75,6 @@ export function useProductOptions() {
           basePrice: row.base_price,
           defaultDiscountPct: row.default_discount_pct,
         }))
-    },
-  })
-}
-
-/** Staff whose `roles` include `sales_rep` (falls back to all active staff). */
-export function useRepOptions() {
-  return useQuery<SelectOption[], AppError>({
-    queryKey: salesKeys.options.reps(),
-    staleTime: 60_000,
-    queryFn: async () => {
-      const res = await usersRepo.list({ ...OPTION_PAGE, sort: { field: 'full_name', dir: 'asc' } })
-      if (!res.ok) throw res.error
-      const active = res.value.rows.filter((row) => row.is_active)
-      const reps = active.filter((row) => (row.roles ?? '').includes(SALES_REP_ROLE))
-      const pool = reps.length > 0 ? reps : active
-      return pool.map((row) => ({ value: row.$id, label: row.full_name }))
     },
   })
 }
