@@ -119,13 +119,19 @@ dropdowns** (`TopNav.tsx` + `NAV_GROUPS` in `nav.ts`); hamburger panel below `lg
   request / production batch / warehouse transfer / rep stock issue detail
   pages. 0001 regenerated to match.
 
-Migrations are now 0001–0014. Aging buckets were already built in
-`accounting/domain/aging.ts`.
+- **Phase 4.2 v1 — server-side report aggregation (0015).** `trial_balance` and
+  `customer_aging` now aggregate in Postgres over the whole GL / receivables
+  (FIFO receipt application via a window function), branch-scoped
+  (`_can_read_branch`). The `AGGREGATE_SCAN_CAP` / 5 000-row client loops in
+  `gl-repo` / `aging-repo` are gone; the pure domain reducers stay the tested
+  spec. `functions.ts` `fetchTrialBalance` / `fetchCustomerAging`.
 
-Remaining backlog (see `docs/IMPLEMENTATION_PLAN.md` §5): finish Phase 4.1
-(more exports + 2 more importers), Phase 4.2 server-side report aggregation.
-Operational: rotate the DB password + service-role key, then disconnect
-Appwrite.
+Migrations are now 0001–0015.
+
+Remaining backlog: finish Phase 4.1 (P&L / production-waste / rep-cash-up
+exports; opening-stock + bank-statement importers); Phase 4.2 could extend to
+the dashboard KPIs + rep performance. Operational: rotate the DB password +
+service-role key, then disconnect Appwrite.
 
 ## Gates (this session): `pnpm typecheck` · `pnpm lint` (17 pre-existing
 router.tsx fast-refresh warns) · `pnpm test` **668 / 87 files** · `pnpm build`.
