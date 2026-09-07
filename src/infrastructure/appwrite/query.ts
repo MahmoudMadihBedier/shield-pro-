@@ -38,6 +38,9 @@ export const Query = {
   select: (attributes: string[]) => enc('select', undefined, attributes),
   or: (queries: string[]) => enc('or', undefined, queries),
   and: (queries: string[]) => enc('and', undefined, queries),
+  /** Shim-only: skip the exact `COUNT(*)` PostgREST runs per request. For bulk
+   *  reads (full export) that never use `total`. Not an Appwrite helper. */
+  noCount: () => enc('noCount', undefined, undefined),
 } as const
 
 /** RFC4122 v4 — the client rarely sets its own row id; the DB defaults one. */

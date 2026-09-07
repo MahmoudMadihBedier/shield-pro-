@@ -51,4 +51,5 @@ export const adminNavItems: readonly NavItem[] = [
     }),
   ),
   { to: '/admin/import', label: 'استيراد البيانات', labelEn: 'Data import', roles: ADMIN_ROLES },
+  { to: '/admin/export', label: 'تصدير كل البيانات', labelEn: 'Export all', roles: ADMIN_ROLES },
 ]

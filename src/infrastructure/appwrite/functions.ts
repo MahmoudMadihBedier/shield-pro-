@@ -35,6 +35,7 @@ export const ServerRoute = {
   recordCreditOverride: '/credit/override',
   importRawMaterialPrices: '/import/raw-material-prices',
   adminSetStatus: '/admin/set-status',
+  recordDataExport: '/admin/record-data-export',
   trialBalance: '/reports/trial-balance',
   customerAging: '/reports/customer-aging',
   // CRM client portal (Phase 3) — see `functions/routes/portal-account.ts` and
@@ -324,6 +325,11 @@ const DISPATCH: Record<string, Dispatch> = {
     fn: 'admin_set_status',
     args: (p) => ({ p_table: p.table, p_row_id: p.rowId, p_patch: p.patch, p_reason: p.reason }),
   },
+  [ServerRoute.recordDataExport]: {
+    kind: 'rpc',
+    fn: 'record_data_export',
+    args: (p) => ({ p_tables: p.tables, p_rows: p.rows, p_skipped: p.skipped }),
+  },
   [ServerRoute.trialBalance]: {
     kind: 'rpc',
     fn: 'trial_balance',
@@ -607,6 +613,19 @@ export function adminSetStatus(
   reason: string,
 ): Promise<Result<AdminSetStatusResult>> {
   return invoke<AdminSetStatusResult>(ServerRoute.adminSetStatus, { table, rowId, patch, reason })
+}
+
+/**
+ * System-Admin-only: append one `audit_log` row recording that a full-database
+ * export was taken (row / table counts only, no data). Best-effort — the caller
+ * ignores failure so a logging hiccup never blocks the download.
+ */
+export function recordDataExport(counts: {
+  tables: number
+  rows: number
+  skipped: number
+}): Promise<Result<null>> {
+  return invoke<null>(ServerRoute.recordDataExport, counts)
 }
 
 // --- Server-side report aggregation (Phase 4.2) ------------------------

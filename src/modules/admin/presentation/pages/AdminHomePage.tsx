@@ -46,6 +46,21 @@ export function AdminHomePage() {
           )
         })}
       </div>
+
+      <div className="flex flex-wrap gap-3 pt-2">
+        <Link
+          to="/admin/import"
+          className="rounded-lg border border-black/15 px-3 py-1.5 text-sm hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
+        >
+          استيراد البيانات / Data import
+        </Link>
+        <Link
+          to="/admin/export"
+          className="rounded-lg border border-black/15 px-3 py-1.5 text-sm hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
+        >
+          تصدير كل البيانات (Excel) / Export all
+        </Link>
+      </div>
     </div>
   )
 }
