@@ -243,7 +243,7 @@ function SaleUnitsCard({
 
   const mutation = useMutation<unknown, AppError, void>({
     mutationFn: async () => {
-      const parsed = saleUnitsInputSchema.safeParse(rows.filter((r) => r.unit))
+      const parsed = saleUnitsInputSchema.safeParse(rows)
       if (!parsed.success) {
         throw appError('validation', parsed.error.issues[0]?.message ?? 'وحدات بيع غير صالحة')
       }

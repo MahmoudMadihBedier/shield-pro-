@@ -186,6 +186,26 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Never leave the business with zero active System Admins (covers two
+    // admins editing each other concurrently).
+    if (!isActive || !roles.includes('system_admin')) {
+      const { data: admins, error: cntErr } = await admin
+        .from('users')
+        .select('id, roles, is_active')
+        .neq('id', userId)
+      if (cntErr) return json({ error: cntErr.message }, 500)
+      const otherActiveAdmins = (admins ?? []).filter(
+        (u) =>
+          u.is_active !== false &&
+          String(u.roles ?? '')
+            .split(/[\s,]+/)
+            .includes('system_admin'),
+      ).length
+      if (otherActiveAdmins === 0) {
+        return json({ error: 'at least one active System Admin must remain' }, 409)
+      }
+    }
+
     const { error: updErr } = await admin
       .from('users')
       .update({
