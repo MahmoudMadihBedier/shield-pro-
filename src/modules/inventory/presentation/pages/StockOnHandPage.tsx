@@ -14,6 +14,7 @@ import {
 } from '@/shared/data-table'
 import { ExportButton } from '@/shared/excel'
 import { PageHeader } from '@/shared/ui'
+import { DocumentLetterhead } from '@/shared/documents'
 
 import {
   optionLabelMap,
@@ -107,6 +108,7 @@ export function StockOnHandPage() {
 
   return (
     <div className="space-y-4">
+      <DocumentLetterhead />
       <PageHeader
         title="الرصيد الحالي"
         titleEn="Stock on hand"

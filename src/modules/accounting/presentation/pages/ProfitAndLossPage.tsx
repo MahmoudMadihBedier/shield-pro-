@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react'
 import { formatCurrency, formatPercent } from '@/shared/formatters'
 import { ExportButton } from '@/shared/excel'
 import { Card, PageHeader } from '@/shared/ui'
+import { DocumentLetterhead } from '@/shared/documents'
 
 import { profitAndLossToRows, type PnlSectionResult } from '../../domain/pnl'
 import { useProfitAndLoss } from '../hooks'
@@ -50,6 +51,7 @@ export function ProfitAndLossPage() {
 
   return (
     <div className="space-y-4">
+      <DocumentLetterhead />
       <PageHeader
         title="قائمة الدخل"
         titleEn="Profit & Loss"

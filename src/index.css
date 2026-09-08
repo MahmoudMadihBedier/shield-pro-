@@ -116,3 +116,87 @@ body {
     transform: translateX(100%);
   }
 }
+
+/*
+ * Print — turn any screen into a clean bill/letterhead. The app header keeps
+ * only the logo; nav, search, notifications, the user menu, breadcrumbs,
+ * footer, and action buttons are dropped. `.no-print` opts an element out;
+ * `.print-only` shows an element only on paper.
+ */
+@media print {
+  :root {
+    --app-bg: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #ffffff;
+    --surface-hover: #ffffff;
+    --border: #d4d4d8;
+    --border-strong: #a1a1aa;
+    --text: #000000;
+    --text-muted: #333333;
+    --text-subtle: #555555;
+    color-scheme: light;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  /* app chrome — components tag themselves with `.no-print` (see AppLayout) */
+  .no-print {
+    display: none !important;
+  }
+
+  header {
+    position: static !important;
+    border-bottom: 1px solid #d4d4d8 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* the logo is black line-art — never invert it on paper (dark-mode users) */
+  img {
+    filter: none !important;
+  }
+
+  /* the whole content column, edge to edge */
+  .max-w-\[1440px\] {
+    max-width: none !important;
+  }
+
+  button:not(.print-keep),
+  a[role='button'] {
+    display: none !important;
+  }
+
+  .print-only {
+    display: revert !important;
+  }
+
+  /* keep cards on one page where possible */
+  .rounded-\[var\(--radius-card\)\] {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+
+  /* filter inputs print as plain text, not form widgets */
+  input,
+  select,
+  textarea {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  table {
+    font-size: 11px;
+  }
+}
+
+.print-only {
+  display: none;
+}

@@ -3,7 +3,7 @@
  * `registry` field descriptors + `<entity>InputSchema`. Uses the shared form
  * kit only (`claude.md` B.6) — no bespoke form state.
  */
-import type { DefaultValues, FieldValues } from 'react-hook-form'
+import { useFormContext, type DefaultValues, type FieldValues } from 'react-hook-form'
 
 import { appError } from '@/core/errors'
 import { err, ok, type Result } from '@/core/result'
@@ -70,10 +70,16 @@ function RelationField({
   labelEn: string
 }) {
   const { data, isLoading, isError } = useRelationOptions(descriptor.relationTo)
+  // The persisted value may point at a now-inactive row the option list no
+  // longer returns — keep it selectable so an unrelated edit can't wipe it.
+  const currentValue = useFormContext().getValues(descriptor.name) as string | undefined
   const options: SelectOption[] = (data ?? []).map((option) => ({
     value: option.value,
     label: option.label,
   }))
+  if (currentValue && !options.some((o) => o.value === currentValue)) {
+    options.unshift({ value: currentValue, label: `${currentValue.slice(0, 8)}… (غير نشط)` })
+  }
   return (
     <SelectField
       name={descriptor.name}

@@ -22,7 +22,21 @@ const RELATION_ENTITY = {
   branch: 'branch',
   supplier: 'supplier',
   rawMaterial: 'rawMaterial',
+  user: 'user',
 } as const
+
+/** The name column differs per entity (users sort by `full_name`). */
+const RELATION_SORT_FIELD: Record<RelationTo, string> = {
+  branch: 'name',
+  supplier: 'name',
+  rawMaterial: 'name',
+  user: 'full_name',
+}
+
+/** Relations whose picker should hide deactivated rows. */
+const RELATION_ACTIVE_FILTER: Partial<Record<RelationTo, true>> = {
+  user: true,
+}
 
 export function useRelationOptions(relationTo: RelationTo | undefined) {
   return useQuery<RelationOption[], AppError>({
@@ -33,8 +47,11 @@ export function useRelationOptions(relationTo: RelationTo | undefined) {
       const entity = RELATION_ENTITY[relationTo as RelationTo]
       const result = await ADMIN_REGISTRY[entity].repo.list({
         page: 0,
-        pageSize: 100,
-        sort: { field: 'name', dir: 'asc' },
+        pageSize: 300,
+        sort: { field: RELATION_SORT_FIELD[relationTo as RelationTo], dir: 'asc' },
+        filters: RELATION_ACTIVE_FILTER[relationTo as RelationTo]
+          ? [{ field: 'is_active', value: 'true' }]
+          : undefined,
       })
       if (!result.ok) throw result.error
       return result.value.rows.map((row) => {

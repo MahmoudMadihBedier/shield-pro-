@@ -11,7 +11,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import type { AppError } from '@/core/errors'
 import { isErr } from '@/core/result'
 import { formatDate, formatNumber } from '@/shared/formatters'
-import { AdminOverridePanel } from '@/shared/documents'
+import { AdminOverridePanel, DocumentLetterhead } from '@/shared/documents'
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
 import { postTransferToLedger, type LedgerPostResult } from '../../data/post-movement'
@@ -89,6 +89,7 @@ export function WarehouseTransferDetailPage() {
 
   return (
     <div className="space-y-4">
+      <DocumentLetterhead reference={row?.reference_id} />
       <PageHeader
         title={`تحويل ${row?.reference_id ?? ''}`}
         titleEn="Warehouse transfer"

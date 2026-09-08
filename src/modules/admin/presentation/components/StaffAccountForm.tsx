@@ -19,6 +19,7 @@ import {
 import { Button } from '@/shared/ui'
 
 import { warehousesRepo } from '../../data/repos'
+import { WAREHOUSE_KIND_LABELS } from '../../domain/labels'
 import { parseRoles, ROLE_OPTIONS } from '../../domain/staff'
 import {
   staffCreateSchema,
@@ -40,19 +41,22 @@ export interface StaffAccountFormProps {
   onDone: () => void
 }
 
-function useSubWarehouseOptions() {
+function useWarehouseOptions() {
   return useQuery({
-    queryKey: ['admin', 'sub-warehouse-options'],
+    queryKey: ['admin', 'warehouse-options', 'all-active'],
     staleTime: 60_000,
     queryFn: async () => {
       const res = await warehousesRepo.list({
         page: 0,
-        pageSize: 100,
+        pageSize: 300,
         sort: { field: 'name', dir: 'asc' },
-        filters: [{ field: 'kind', value: 'sub' }],
+        filters: [{ field: 'is_active', value: 'true' }],
       })
       if (isErr(res)) throw res.error
-      return res.value.rows.map((w) => ({ value: w.$id, label: w.name }))
+      return res.value.rows.map((w) => ({
+        value: w.$id,
+        label: `${w.name} · ${WAREHOUSE_KIND_LABELS[w.kind]?.ar ?? w.kind}`,
+      }))
     },
   })
 }
@@ -92,7 +96,7 @@ function RolesField({
 export function StaffAccountForm({ mode, row, onDone }: StaffAccountFormProps) {
   const queryClient = useQueryClient()
   const branches = useRelationOptions('branch')
-  const subWarehouses = useSubWarehouseOptions()
+  const warehouses = useWarehouseOptions()
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['admin', 'list', 'user'] })
 
   if (mode === 'edit' && row) {
@@ -100,7 +104,7 @@ export function StaffAccountForm({ mode, row, onDone }: StaffAccountFormProps) {
       <EditForm
         row={row}
         branchOptions={branches.data ?? []}
-        subWarehouseOptions={subWarehouses.data ?? []}
+        subWarehouseOptions={warehouses.data ?? []}
         onSaved={() => {
           void invalidate()
           onDone()
@@ -112,7 +116,7 @@ export function StaffAccountForm({ mode, row, onDone }: StaffAccountFormProps) {
   return (
     <CreateForm
       branchOptions={branches.data ?? []}
-      subWarehouseOptions={subWarehouses.data ?? []}
+      subWarehouseOptions={warehouses.data ?? []}
       onSaved={() => {
         void invalidate()
         onDone()
@@ -208,7 +212,7 @@ function CreateForm({
             ))}
           </select>
         </Field>
-        <Field label="المخزن الفرعي / Sub-warehouse" error={errors.sub_warehouse_id?.message}>
+        <Field label="المخزن / Warehouse" error={errors.sub_warehouse_id?.message}>
           <select className={FIELD} {...register('sub_warehouse_id')}>
             <option value="">— بدون —</option>
             {subWarehouseOptions.map((o) => (
@@ -320,7 +324,7 @@ function EditForm({
             ))}
           </select>
         </Field>
-        <Field label="المخزن الفرعي / Sub-warehouse" error={errors.sub_warehouse_id?.message}>
+        <Field label="المخزن / Warehouse" error={errors.sub_warehouse_id?.message}>
           <select className={FIELD} {...register('sub_warehouse_id')}>
             <option value="">— بدون —</option>
             {subWarehouseOptions.map((o) => (

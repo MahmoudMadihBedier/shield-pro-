@@ -109,7 +109,7 @@ export interface FieldDescriptor {
   /** For `kind: 'select'` — a fixed option list. */
   options?: ReadonlyArray<{ value: string; label: string }>
   /** For `kind: 'relation'` — load options from another entity. */
-  relationTo?: 'branch' | 'supplier' | 'rawMaterial'
+  relationTo?: 'branch' | 'supplier' | 'rawMaterial' | 'user'
 }
 
 export interface EntityConfig<K extends AdminEntity> {
@@ -197,7 +197,7 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
       { name: 'name', kind: 'text', required: true },
       { name: 'kind', kind: 'select', required: true, options: warehouseKindOptions },
       { name: 'branch_id', kind: 'relation', relationTo: 'branch' },
-      { name: 'owner_user_id', kind: 'text' },
+      { name: 'owner_user_id', kind: 'relation', relationTo: 'user' },
       { name: 'geo', kind: 'geo' },
       { name: 'is_active', kind: 'checkbox' },
     ],

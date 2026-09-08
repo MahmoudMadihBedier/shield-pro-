@@ -28,7 +28,9 @@ const passwordSchema = z
   .max(72, 'كلمة المرور طويلة جدًا')
 
 /** Edit-form email: blank = keep the current login email unchanged. */
-const optionalEmailSchema = z.union([z.literal(''), emailSchema])
+const optionalEmailSchema = z.union([z.literal(''), emailSchema], {
+  error: 'أدخل بريدًا إلكترونيًا صحيحًا أو اتركه فارغًا',
+})
 
 const fullNameSchema = z.string({ error: 'الاسم الكامل مطلوب' }).trim().min(1).max(128)
 const optId = z.string().trim().max(36).optional()

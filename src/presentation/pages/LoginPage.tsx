@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { useAuth } from '@/application/auth/context'
 import { APP_NAME, APP_NAME_AR } from '@/shared/constants'
+import { Logo } from '@/shared/ui'
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email'),
@@ -43,28 +44,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] px-5">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
-          <span className="grid size-12 place-items-center rounded-xl bg-brand-600 text-white shadow-md">
-            <svg viewBox="0 0 24 24" className="size-7" fill="none" aria-hidden="true">
-              <path
-                d="M12 2.5 4.5 5.2v6.1c0 4.7 3.2 8.2 7.5 10.2 4.3-2 7.5-5.5 7.5-10.2V5.2L12 2.5Z"
-                fill="currentColor"
-                fillOpacity="0.2"
-              />
-              <path
-                d="M12 2.5 4.5 5.2v6.1c0 4.7 3.2 8.2 7.5 10.2 4.3-2 7.5-5.5 7.5-10.2V5.2L12 2.5Z"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinejoin="round"
-              />
-              <path
-                d="m8.5 12 2.4 2.4L15.8 9.5"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
+          <Logo className="h-14" />
           <div>
             <h1 className="text-xl font-bold tracking-tight">{APP_NAME_AR}</h1>
             <p className="text-sm text-[var(--text-muted)]">{APP_NAME} · تسجيل الدخول للمتابعة</p>

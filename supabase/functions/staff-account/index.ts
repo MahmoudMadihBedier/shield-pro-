@@ -178,7 +178,9 @@ Deno.serve(async (req) => {
     if (roles.length === 0) return json({ error: 'at least one valid role is required' }, 400)
     const isActive = payload.isActive !== false
 
-    // Don't let an admin lock themselves out.
+    // Friendly early error for the obvious case. The authoritative, atomic
+    // guarantee is the `enforce_active_system_admin` trigger (migration 0022) —
+    // it also covers two admins editing each other concurrently.
     if (authUserId === callerId && (!isActive || !roles.includes('system_admin'))) {
       return json(
         { error: 'you cannot deactivate your own account or remove your own System Admin role' },
@@ -197,7 +199,13 @@ Deno.serve(async (req) => {
         is_active: isActive,
       })
       .eq('id', userId)
-    if (updErr) return json({ error: updErr.message }, 500)
+    if (updErr) {
+      // The `enforce_active_system_admin` trigger (migrations 0022/0023).
+      if (updErr.code === '23514' || /System Admin must remain/i.test(updErr.message)) {
+        return json({ error: 'at least one active System Admin must remain' }, 409)
+      }
+      return json({ error: updErr.message }, 500)
+    }
 
     if (email) {
       const { error: emailErr } = await admin.auth.admin.updateUserById(authUserId, { email })

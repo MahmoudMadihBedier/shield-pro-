@@ -16,7 +16,7 @@ import { canActOnPurchasing } from '../../domain/permissions'
 import { parseReps } from '../../domain/schemas'
 import { Dialog } from '../components/Dialog'
 import { DocStatusPill } from '../components/DocStatusPill'
-import { AdminOverridePanel } from '@/shared/documents'
+import { AdminOverridePanel, DocumentLetterhead } from '@/shared/documents'
 
 import { SubmitCancelBar } from '../components/SubmitCancelBar'
 import { usePurchaseOrder, usePurchaseOrderActions } from '../hooks/usePurchaseOrders'
@@ -80,6 +80,7 @@ export function PurchaseOrderDetailPage() {
 
   return (
     <div className="space-y-5">
+      <DocumentLetterhead reference={order.reference_id} />
       <PageHeader
         title={`${PURCHASING_LABELS.purchaseOrder.one.ar} ${order.reference_id}`}
         titleEn={PURCHASING_LABELS.purchaseOrder.one.en}

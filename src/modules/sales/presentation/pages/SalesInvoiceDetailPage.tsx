@@ -13,6 +13,7 @@ import { DocStatus } from '@/core/doc-status'
 import type { AppError } from '@/core/errors'
 import { formatCurrency, formatDateTime, formatNumber } from '@/shared/formatters'
 import { Button, Card, PageHeader } from '@/shared/ui'
+import { DocumentLetterhead } from '@/shared/documents'
 
 import { RECEIVABLE_INVOICE_METHODS } from '@/modules/accounting/domain/aging'
 
@@ -88,6 +89,7 @@ export function SalesInvoiceDetailPage() {
 
   return (
     <div className="space-y-5">
+      <DocumentLetterhead reference={invoice.reference_id} />
       <PageHeader
         title={`فاتورة ${invoice.reference_id}`}
         titleEn="Sales invoice"

@@ -12,7 +12,7 @@ import { useAuth } from '@/application/auth/context'
 import { DocStatus } from '@/core/doc-status'
 import type { AppError } from '@/core/errors'
 import { formatDateTime, formatNumber } from '@/shared/formatters'
-import { AdminOverridePanel } from '@/shared/documents'
+import { AdminOverridePanel, DocumentLetterhead } from '@/shared/documents'
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
 import { postRepIssueToLedger, type RepIssueLedgerPosting } from '../../data/post-sales'
@@ -87,6 +87,7 @@ export function RepStockIssueDetailPage() {
 
   return (
     <div className="space-y-5">
+      <DocumentLetterhead reference={issue.reference_id} />
       <PageHeader
         title={`إذن صرف ${issue.reference_id}`}
         titleEn="Rep stock issue"
