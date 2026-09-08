@@ -178,6 +178,14 @@ Deno.serve(async (req) => {
     if (roles.length === 0) return json({ error: 'at least one valid role is required' }, 400)
     const isActive = payload.isActive !== false
 
+    // Don't let an admin lock themselves out.
+    if (authUserId === callerId && (!isActive || !roles.includes('system_admin'))) {
+      return json(
+        { error: 'you cannot deactivate your own account or remove your own System Admin role' },
+        400,
+      )
+    }
+
     const { error: updErr } = await admin
       .from('users')
       .update({

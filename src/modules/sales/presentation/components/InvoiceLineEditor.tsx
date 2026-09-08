@@ -76,7 +76,7 @@ export function InvoiceLineEditor({
       const baseQty = toBaseQty(saleQty, factor)
 
       if (!product) {
-        return { ...merged, qty: baseQty, base_price: 0, net_price: 0 }
+        return { ...merged, qty: baseQty, sale_qty: saleQty, base_price: 0, net_price: 0 }
       }
       const priced = priceInvoiceLine(
         {

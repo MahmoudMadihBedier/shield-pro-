@@ -9,7 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 
 import { queryKeys } from '@/application/query/keys'
 import { useAuth } from '@/application/auth/context'
-import type { AppError } from '@/core/errors'
+import { appError, type AppError } from '@/core/errors'
 import { isErr } from '@/core/result'
 import { isSystemAdmin } from '@/core/rbac'
 import { parseSaleUnits, UNIT_OPTIONS, unitShort, type SaleUnit } from '@/core/uom'
@@ -19,7 +19,7 @@ import { Button, Card, PageHeader } from '@/shared/ui'
 import { productBomRepo, productsRepo, rawMaterialsRepo } from '../../data/repos'
 import { explodeBom } from '../../domain/bom'
 import { FIELD_LABELS, bilingual, type Label } from '../../domain/labels'
-import type { Product, ProductBomLine } from '../../domain/schemas'
+import { saleUnitsInputSchema, type Product, type ProductBomLine } from '../../domain/schemas'
 import { EntityDialog } from '../components/EntityDialog'
 import { MasterFormPanel } from '../components/MasterFormPanel'
 import { useRelationOptions } from '../hooks/useRelationOptions'
@@ -243,10 +243,11 @@ function SaleUnitsCard({
 
   const mutation = useMutation<unknown, AppError, void>({
     mutationFn: async () => {
-      const res = await productsRepo.setSaleUnits(
-        product.$id,
-        rows.filter((r) => r.unit && r.factor > 0),
-      )
+      const parsed = saleUnitsInputSchema.safeParse(rows.filter((r) => r.unit))
+      if (!parsed.success) {
+        throw appError('validation', parsed.error.issues[0]?.message ?? 'وحدات بيع غير صالحة')
+      }
+      const res = await productsRepo.setSaleUnits(product.$id, parsed.data)
       if (isErr(res)) throw res.error
     },
     onSuccess: () => {

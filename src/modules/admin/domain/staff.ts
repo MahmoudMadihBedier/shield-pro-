@@ -27,6 +27,9 @@ const passwordSchema = z
   .min(8, 'كلمة المرور يجب ألا تقل عن 8 أحرف')
   .max(72, 'كلمة المرور طويلة جدًا')
 
+/** Edit-form email: blank = keep the current login email unchanged. */
+const optionalEmailSchema = z.union([z.literal(''), emailSchema])
+
 const fullNameSchema = z.string({ error: 'الاسم الكامل مطلوب' }).trim().min(1).max(128)
 const optId = z.string().trim().max(36).optional()
 const optGrade = z.string().trim().max(64).optional()
@@ -46,7 +49,8 @@ export type StaffCreateInput = z.infer<typeof staffCreateSchema>
 /** Edit an existing account's data / roles / responsibilities. */
 export const staffUpdateSchema = z.object({
   full_name: fullNameSchema,
-  email: emailSchema,
+  /** Blank keeps the current login email; a value changes it. */
+  email: optionalEmailSchema,
   roles: z.array(roleSchema).min(1, 'اختر مسمى وظيفيًا واحدًا على الأقل'),
   branch_id: optId,
   sub_warehouse_id: optId,
