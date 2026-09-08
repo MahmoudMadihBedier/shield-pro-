@@ -7,6 +7,7 @@ import { useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { DocStatus } from '@/core/doc-status'
+import { unitShort } from '@/core/uom'
 import { formatDate, formatQuantity } from '@/shared/formatters'
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
@@ -42,12 +43,18 @@ export function ProductionRequestDetailPage() {
     return (rmId: string) => map.get(rmId) ?? rmId
   }, [rawMaterials.data])
 
-  const productName = useMemo(() => {
-    if (!request) return ''
-    return (
-      (products.data ?? []).find((p) => p.$id === request.product_id)?.name ?? request.product_id
-    )
-  }, [products.data, request])
+  const rawMaterialUnit = useMemo(() => {
+    const map = new Map((rawMaterials.data ?? []).map((rm) => [rm.$id, rm.uom]))
+    return (rmId: string) => unitShort(map.get(rmId))
+  }, [rawMaterials.data])
+
+  const product = useMemo(
+    () =>
+      request ? ((products.data ?? []).find((p) => p.$id === request.product_id) ?? null) : null,
+    [products.data, request],
+  )
+  const productName = product?.name ?? request?.product_id ?? ''
+  const productUnit = unitShort(product?.uom)
 
   const required = useMemo(() => {
     if (!request) return []
@@ -91,7 +98,11 @@ export function ProductionRequestDetailPage() {
 
       <Card className="grid gap-3 sm:grid-cols-2">
         <Fact label="المنتج" value={productName} />
-        <Fact label="الكمية المخططة" value={formatQuantity(request.planned_qty)} dir="ltr" />
+        <Fact
+          label="الكمية المخططة"
+          value={`${formatQuantity(request.planned_qty)}${productUnit ? ` ${productUnit}` : ''}`}
+          dir="ltr"
+        />
         <div className="text-sm">
           <span className="block text-zinc-500">حالة الطلب</span>
           <Badge tone={REQUEST_STATUS_TONE[request.status]}>
@@ -111,7 +122,14 @@ export function ProductionRequestDetailPage() {
             {required.map((line) => (
               <li key={line.raw_material_id} className="flex justify-between py-1.5">
                 <span>{rawMaterialName(line.raw_material_id)}</span>
-                <span dir="ltr">{formatQuantity(line.qty)}</span>
+                <span dir="ltr">
+                  {formatQuantity(line.qty)}
+                  {rawMaterialUnit(line.raw_material_id) ? (
+                    <span className="ms-1 text-zinc-400">
+                      {rawMaterialUnit(line.raw_material_id)}
+                    </span>
+                  ) : null}
+                </span>
               </li>
             ))}
           </ul>

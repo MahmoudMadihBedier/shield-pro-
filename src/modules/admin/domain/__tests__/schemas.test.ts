@@ -40,16 +40,18 @@ describe('customerInputSchema — geo', () => {
   })
 
   it('rejects a non-numeric geo', () => {
-    expect(
-      customerInputSchema.safeParse({ ...validCustomer, geo: 'Cairo, Egypt' }).success,
-    ).toBe(false)
+    expect(customerInputSchema.safeParse({ ...validCustomer, geo: 'Cairo, Egypt' }).success).toBe(
+      false,
+    )
   })
 })
 
 describe('percentage bounds', () => {
   it('accepts 0 and 100', () => {
     expect(customerInputSchema.parse({ ...validCustomer, discount_pct: 0 }).discount_pct).toBe(0)
-    expect(customerInputSchema.parse({ ...validCustomer, discount_pct: 100 }).discount_pct).toBe(100)
+    expect(customerInputSchema.parse({ ...validCustomer, discount_pct: 100 }).discount_pct).toBe(
+      100,
+    )
   })
 
   it('rejects a discount above 100', () => {
@@ -59,7 +61,9 @@ describe('percentage bounds', () => {
   })
 
   it('rejects a negative discount', () => {
-    expect(customerInputSchema.safeParse({ ...validCustomer, discount_pct: -1 }).success).toBe(false)
+    expect(customerInputSchema.safeParse({ ...validCustomer, discount_pct: -1 }).success).toBe(
+      false,
+    )
   })
 
   it('bounds product default_discount_pct and allowed_waste_pct to 0..100', () => {
@@ -78,6 +82,22 @@ describe('percentage bounds', () => {
         allowed_waste_pct: 5,
       }).success,
     ).toBe(false)
+  })
+})
+
+describe('unit of measure', () => {
+  const base = {
+    code: 'P1',
+    name: 'X',
+    base_price: 1,
+    default_discount_pct: 0,
+    allowed_waste_pct: 0,
+    is_active: true,
+  }
+  it('requires uom to be one of the fixed unit codes', () => {
+    expect(productInputSchema.safeParse({ ...base, uom: 'kg' }).success).toBe(true)
+    expect(productInputSchema.safeParse({ ...base, uom: 'litres-ish' }).success).toBe(false)
+    expect(productInputSchema.safeParse({ ...base, uom: '' }).success).toBe(false)
   })
 })
 
@@ -138,9 +158,9 @@ describe('code normalization', () => {
 
 describe('warehouse kind enum', () => {
   it('accepts a schema kind', () => {
-    expect(
-      warehouseInputSchema.parse({ name: 'مخزن', kind: 'sub', is_active: true }).kind,
-    ).toBe('sub')
+    expect(warehouseInputSchema.parse({ name: 'مخزن', kind: 'sub', is_active: true }).kind).toBe(
+      'sub',
+    )
   })
   it('rejects an unknown kind', () => {
     expect(

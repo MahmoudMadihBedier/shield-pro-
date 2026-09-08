@@ -36,6 +36,9 @@ export const ServerRoute = {
   importRawMaterialPrices: '/import/raw-material-prices',
   adminSetStatus: '/admin/set-status',
   recordDataExport: '/admin/record-data-export',
+  createStaffAccount: '/staff-account/create',
+  updateStaffAccount: '/staff-account/update',
+  resetStaffPassword: '/staff-account/reset-password',
   trialBalance: '/reports/trial-balance',
   customerAging: '/reports/customer-aging',
   // CRM client portal (Phase 3) — see `functions/routes/portal-account.ts` and
@@ -329,6 +332,21 @@ const DISPATCH: Record<string, Dispatch> = {
     kind: 'rpc',
     fn: 'record_data_export',
     args: (p) => ({ p_tables: p.tables, p_rows: p.rows, p_skipped: p.skipped }),
+  },
+  [ServerRoute.createStaffAccount]: {
+    kind: 'edge',
+    fn: 'staff-account',
+    body: (p) => ({ action: 'create', ...(p as Record<string, unknown>) }),
+  },
+  [ServerRoute.updateStaffAccount]: {
+    kind: 'edge',
+    fn: 'staff-account',
+    body: (p) => ({ action: 'update', ...(p as Record<string, unknown>) }),
+  },
+  [ServerRoute.resetStaffPassword]: {
+    kind: 'edge',
+    fn: 'staff-account',
+    body: (p) => ({ action: 'reset-password', ...(p as Record<string, unknown>) }),
   },
   [ServerRoute.trialBalance]: {
     kind: 'rpc',
@@ -626,6 +644,38 @@ export function recordDataExport(counts: {
   skipped: number
 }): Promise<Result<null>> {
   return invoke<null>(ServerRoute.recordDataExport, counts)
+}
+
+// --- Staff accounts (System Admin) — auth user + `public.users` profile -----
+
+export interface StaffAccountResponsibilities {
+  fullName: string
+  roles: string[]
+  branchId?: string
+  subWarehouseId?: string
+  jobGrade?: string
+}
+
+/** Create a login: Auth user (email + password) + linked `users` profile. */
+export function createStaffAccount(
+  input: StaffAccountResponsibilities & { email: string; password: string },
+): Promise<Result<{ userId: string; authUserId: string }>> {
+  return invoke(ServerRoute.createStaffAccount, input)
+}
+
+/** Edit an account's data / roles / branch / active state (+ email). */
+export function updateStaffAccount(
+  input: StaffAccountResponsibilities & { userId: string; email: string; isActive: boolean },
+): Promise<Result<{ ok: true }>> {
+  return invoke(ServerRoute.updateStaffAccount, input)
+}
+
+/** Set a new password on an existing account. */
+export function resetStaffPassword(
+  userId: string,
+  password: string,
+): Promise<Result<{ ok: true }>> {
+  return invoke(ServerRoute.resetStaffPassword, { userId, password })
 }
 
 // --- Server-side report aggregation (Phase 4.2) ------------------------

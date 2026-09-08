@@ -12,19 +12,19 @@ import { productBomRepo } from '@/modules/admin'
 import { Form, FormError, NumberField, SelectField, type SelectOption } from '@/shared/forms'
 import { Button, PageHeader } from '@/shared/ui'
 
-import {
-  requiredMaterialsFor,
-  serializeRequiredMaterials,
-} from '../../domain/planning'
-import {
-  productionRequestFormSchema,
-  type ProductionRequestFormValues,
-} from '../../domain/schemas'
+import { requiredMaterialsFor, serializeRequiredMaterials } from '../../domain/planning'
+import { productionRequestFormSchema, type ProductionRequestFormValues } from '../../domain/schemas'
 import { BomExplosionPanel } from '../components/BomExplosionPanel'
 import { useProductBom, useProductOptions, useRawMaterialOptions } from '../hooks/catalog'
 import { useProductionRequestActions } from '../hooks/documents'
 
-function BomPreview({ rawMaterialName }: { rawMaterialName: (id: string) => string }) {
+function BomPreview({
+  rawMaterialName,
+  rawMaterialUom,
+}: {
+  rawMaterialName: (id: string) => string
+  rawMaterialUom: (id: string) => string | undefined
+}) {
   const { control } = useFormContext<ProductionRequestFormValues>()
   const productId = useWatch({ control, name: 'product_id' })
   const plannedQtyRaw = useWatch({ control, name: 'planned_qty' })
@@ -36,6 +36,7 @@ function BomPreview({ rawMaterialName }: { rawMaterialName: (id: string) => stri
       bomLines={bom.data ?? []}
       plannedQty={plannedQty}
       rawMaterialName={rawMaterialName}
+      rawMaterialUom={rawMaterialUom}
       isLoading={Boolean(productId) && bom.isLoading}
       error={bom.isError ? bom.error : null}
     />
@@ -56,6 +57,11 @@ export function ProductionRequestFormPage() {
   const rawMaterialName = useMemo(() => {
     const map = new Map((rawMaterials.data ?? []).map((rm) => [rm.$id, rm.name]))
     return (id: string) => map.get(id) ?? id
+  }, [rawMaterials.data])
+
+  const rawMaterialUom = useMemo(() => {
+    const map = new Map((rawMaterials.data ?? []).map((rm) => [rm.$id, rm.uom]))
+    return (id: string) => map.get(id)
   }, [rawMaterials.data])
 
   async function handleSubmit(values: ProductionRequestFormValues): Promise<Result<unknown>> {
@@ -127,7 +133,7 @@ export function ProductionRequestFormPage() {
               />
             </div>
 
-            <BomPreview rawMaterialName={rawMaterialName} />
+            <BomPreview rawMaterialName={rawMaterialName} rawMaterialUom={rawMaterialUom} />
 
             <FormError message={formError} />
 

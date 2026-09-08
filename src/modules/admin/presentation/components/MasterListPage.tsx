@@ -9,6 +9,8 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react'
 
 import { useAuth } from '@/application/auth/context'
 import { isSystemAdmin } from '@/core/rbac'
+import { parseRoles, ROLE_LABELS } from '@/core/rbac'
+import { unitLabel } from '@/core/uom'
 import { formatCurrency, formatNumber } from '@/shared/formatters'
 import {
   DataTable,
@@ -49,11 +51,7 @@ function renderCell(format: CellFormat | undefined, value: unknown): ReactNode {
     case 'number':
       return formatNumber(Number(value))
     case 'bool':
-      return value ? (
-        <Badge tone="success">نعم</Badge>
-      ) : (
-        <Badge tone="neutral">لا</Badge>
-      )
+      return value ? <Badge tone="success">نعم</Badge> : <Badge tone="neutral">لا</Badge>
     case 'warehouseKind': {
       const label = WAREHOUSE_KIND_LABELS[value as WarehouseKind]
       return label ? label.ar : String(value)
@@ -67,6 +65,12 @@ function renderCell(format: CellFormat | undefined, value: unknown): ReactNode {
         </StatusPill>
       )
     }
+    case 'unit':
+      return unitLabel(String(value))
+    case 'roles': {
+      const roles = parseRoles(String(value))
+      return roles.length > 0 ? roles.map((r) => ROLE_LABELS[r].ar).join('، ') : String(value)
+    }
     default:
       return String(value)
   }
@@ -76,11 +80,22 @@ export interface MasterListPageProps<K extends AdminListEntity> {
   entity: K
   /** Extra per-row controls rendered before edit/delete (System Admin only). */
   extraRowActions?: (row: AdminRowMap[K]) => ReactNode
+  /**
+   * Replace the generic create/edit form inside the dialog with a bespoke one
+   * (e.g. staff accounts need email + password + a multi-select). When set, the
+   * registry `fields` are ignored for the dialog body.
+   */
+  renderForm?: (ctx: {
+    mode: 'create' | 'edit'
+    row?: AdminRowMap[K]
+    onDone: () => void
+  }) => ReactNode
 }
 
 export function MasterListPage<K extends AdminListEntity>({
   entity,
   extraRowActions,
+  renderForm,
 }: MasterListPageProps<K>) {
   const config = ADMIN_REGISTRY[entity]
   const titles = ENTITY_LABELS[entity]
@@ -124,21 +139,23 @@ export function MasterListPage<K extends AdminListEntity>({
   )
 
   const columns = useMemo<ColumnDef<AdminRowMap[K]>[]>(() => {
-    const dataColumns = config.columns.map((descriptor: ColumnDescriptor): ColumnDef<AdminRowMap[K]> => {
-      const label = FIELD_LABELS[entity][descriptor.field] ?? {
-        ar: descriptor.field,
-        en: descriptor.field,
-      }
-      return {
-        id: descriptor.field,
-        header: bilingual(label),
-        accessor: (row) => (row as Record<string, unknown>)[descriptor.field],
-        cell: (row) =>
-          renderCell(descriptor.format, (row as Record<string, unknown>)[descriptor.field]),
-        sortable: descriptor.sortable,
-        align: descriptor.align,
-      }
-    })
+    const dataColumns = config.columns.map(
+      (descriptor: ColumnDescriptor): ColumnDef<AdminRowMap[K]> => {
+        const label = FIELD_LABELS[entity][descriptor.field] ?? {
+          ar: descriptor.field,
+          en: descriptor.field,
+        }
+        return {
+          id: descriptor.field,
+          header: bilingual(label),
+          accessor: (row) => (row as Record<string, unknown>)[descriptor.field],
+          cell: (row) =>
+            renderCell(descriptor.format, (row as Record<string, unknown>)[descriptor.field]),
+          sortable: descriptor.sortable,
+          align: descriptor.align,
+        }
+      },
+    )
 
     if (!canWrite) return dataColumns
 
@@ -175,9 +192,7 @@ export function MasterListPage<K extends AdminListEntity>({
         titleEn={titles.many.en}
         actions={
           canWrite ? (
-            <Button onClick={() => setDialog({ mode: 'create' })}>
-              + {titles.one.ar} جديد
-            </Button>
+            <Button onClick={() => setDialog({ mode: 'create' })}>+ {titles.one.ar} جديد</Button>
           ) : (
             <Badge tone="info">عرض فقط</Badge>
           )
@@ -214,19 +229,25 @@ export function MasterListPage<K extends AdminListEntity>({
 
       <EntityDialog
         open={dialog != null}
-        title={
-          dialog?.mode === 'edit' ? `تعديل ${titles.one.ar}` : `${titles.one.ar} جديد`
-        }
+        title={dialog?.mode === 'edit' ? `تعديل ${titles.one.ar}` : `${titles.one.ar} جديد`}
         titleEn={dialog?.mode === 'edit' ? `Edit ${titles.one.en}` : `New ${titles.one.en}`}
         onClose={() => setDialog(null)}
       >
         {dialog ? (
-          <MasterFormPanel
-            entity={entity}
-            mode={dialog.mode}
-            row={dialog.row}
-            onDone={() => setDialog(null)}
-          />
+          renderForm ? (
+            renderForm({
+              mode: dialog.mode,
+              row: dialog.row,
+              onDone: () => setDialog(null),
+            })
+          ) : (
+            <MasterFormPanel
+              entity={entity}
+              mode={dialog.mode}
+              row={dialog.row}
+              onDone={() => setDialog(null)}
+            />
+          )
         ) : null}
       </EntityDialog>
     </div>

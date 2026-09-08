@@ -6,6 +6,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import type { AppError } from '@/core/errors'
+import { resolveSaleUnits, type ResolvedSaleUnit } from '@/core/uom'
 import {
   customersRepo,
   productsRepo,
@@ -34,6 +35,10 @@ export interface CustomerOption extends SelectOption {
 export interface ProductOption extends SelectOption {
   basePrice: number
   defaultDiscountPct: number
+  /** Stock unit code. */
+  unit: string
+  /** Sale-unit picker options — base unit first, then configured alternates. */
+  saleUnits: ResolvedSaleUnit[]
 }
 
 /** Approved customers only — a pending customer cannot be invoiced. */
@@ -74,6 +79,8 @@ export function useProductOptions() {
           label: `${row.code} — ${row.name}`,
           basePrice: row.base_price,
           defaultDiscountPct: row.default_discount_pct,
+          unit: row.uom,
+          saleUnits: resolveSaleUnits(row.uom, row.sale_units),
         }))
     },
   })

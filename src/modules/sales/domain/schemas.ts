@@ -23,6 +23,7 @@ import { repAssignmentInputSchema } from '@/core/reps'
 
 export { GEO_REGEX }
 export { parseReps, pickCompleteReps, serializeReps, type RepAssignment } from '@/core/reps'
+export { resolveSaleUnits, unitShort, toBaseQty, type ResolvedSaleUnit } from '@/core/uom'
 
 import { documentEnvelopeSchema } from '@/core/document'
 
@@ -83,7 +84,12 @@ export type CloseoutCashMethod = z.infer<typeof closeoutCashMethodSchema>
  */
 export const invoiceLineSchema = z.object({
   product_id: z.string(),
+  /** Quantity in the product's STOCK unit — the stock-deduction + pricing key. */
   qty: z.number().positive(),
+  /** The unit the seller chose (a `UNITS` code). Absent on pre-sale-unit rows. */
+  sale_unit: z.string().optional(),
+  /** Quantity the seller entered, in `sale_unit`. `qty = sale_qty × factor`. */
+  sale_qty: z.number().positive().optional(),
   base_price: z.number().nonnegative(),
   discount_pct: z.number().min(0).max(100),
   net_price: z.number().nonnegative(),

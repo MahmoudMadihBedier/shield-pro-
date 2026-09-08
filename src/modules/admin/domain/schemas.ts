@@ -15,6 +15,33 @@
  */
 import { z } from 'zod'
 
+import { saleUnitSchema, UNITS } from '@/core/uom'
+
+/** Stock-unit picker input — one of the fixed {@link UNITS}. */
+const unitInput = z.enum(UNITS, { error: 'اختر وحدة القياس' })
+
+export {
+  UNITS,
+  UNIT_LABELS,
+  UNIT_OPTIONS,
+  DEFAULT_UNIT,
+  unitLabel,
+  resolveSaleUnits,
+  serializeSaleUnits,
+  parseSaleUnits,
+  type Unit,
+  type SaleUnit,
+} from '@/core/uom'
+
+/** The `products.sale_units` editor payload — a list of alternate sale units. */
+export const saleUnitsInputSchema = z.array(
+  saleUnitSchema.extend({
+    unit: unitInput,
+    factor: z.number({ error: 'المعامل: أدخل رقمًا' }).gt(0, 'المعامل يجب أن يكون أكبر من صفر'),
+  }),
+)
+export type SaleUnitsInput = z.infer<typeof saleUnitsInputSchema>
+
 // ---------------------------------------------------------------------------
 // Shared column primitives
 // ---------------------------------------------------------------------------
@@ -179,6 +206,8 @@ export const productRowSchema = z.object({
   name: z.string(),
   name_ar: rowOptStr,
   uom: z.string(),
+  /** JSON `[{ unit, factor, label? }]` — parse with `resolveSaleUnits(uom, sale_units)`. */
+  sale_units: rowOptStr,
   base_price: z.number(),
   default_discount_pct: rowNum0,
   allowed_waste_pct: rowNum0,
@@ -188,7 +217,7 @@ export const productInputSchema = z.object({
   code: codeInput,
   name: reqText(128, 'اسم المنتج'),
   name_ar: optText(128),
-  uom: reqText(16, 'وحدة القياس'),
+  uom: unitInput,
   /**
    * The admin-set selling price and the ONLY price field. There is no
    * per-invoice / per-sale price override anywhere in the system — the sole
@@ -239,7 +268,7 @@ export const rawMaterialRowSchema = z.object({
 export const rawMaterialInputSchema = z.object({
   code: codeInput,
   name: reqText(128, 'اسم الخامة'),
-  uom: reqText(16, 'وحدة القياس'),
+  uom: unitInput,
   purchase_price: nonNegative('سعر الشراء'),
   preferred_supplier_id: optText(36),
   reorder_point: nonNegative('حد إعادة الطلب'),

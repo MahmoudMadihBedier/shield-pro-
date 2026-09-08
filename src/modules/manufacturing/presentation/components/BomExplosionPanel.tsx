@@ -6,6 +6,7 @@
 import { useMemo } from 'react'
 
 import type { AppError } from '@/core/errors'
+import { unitShort } from '@/core/uom'
 import type { ProductBomLine } from '@/modules/admin'
 import { formatQuantity } from '@/shared/formatters'
 import { Card } from '@/shared/ui'
@@ -18,6 +19,8 @@ export interface BomExplosionPanelProps {
   plannedQty: number
   /** Resolve a raw-material id to a display name; falls back to the id. */
   rawMaterialName?: (rawMaterialId: string) => string
+  /** Resolve a raw-material id to its stock-unit code (e.g. `'kg'`). */
+  rawMaterialUom?: (rawMaterialId: string) => string | undefined
   isLoading?: boolean
   error?: AppError | null
 }
@@ -26,6 +29,7 @@ export function BomExplosionPanel({
   bomLines,
   plannedQty,
   rawMaterialName,
+  rawMaterialUom,
   isLoading = false,
   error = null,
 }: BomExplosionPanelProps) {
@@ -54,14 +58,18 @@ export function BomExplosionPanel({
         </p>
       ) : (
         <ul className="divide-y divide-black/5 text-sm dark:divide-white/5">
-          {demand.map((line) => (
-            <li key={line.raw_material_id} className="flex items-center justify-between py-1.5">
-              <span>{rawMaterialName?.(line.raw_material_id) ?? line.raw_material_id}</span>
-              <span dir="ltr" className="tabular-nums text-zinc-600 dark:text-zinc-300">
-                {formatQuantity(line.qty)}
-              </span>
-            </li>
-          ))}
+          {demand.map((line) => {
+            const unit = unitShort(rawMaterialUom?.(line.raw_material_id))
+            return (
+              <li key={line.raw_material_id} className="flex items-center justify-between py-1.5">
+                <span>{rawMaterialName?.(line.raw_material_id) ?? line.raw_material_id}</span>
+                <span dir="ltr" className="tabular-nums text-zinc-600 dark:text-zinc-300">
+                  {formatQuantity(line.qty)}
+                  {unit ? <span className="ms-1 text-zinc-400">{unit}</span> : null}
+                </span>
+              </li>
+            )
+          })}
         </ul>
       )}
     </Card>
