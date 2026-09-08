@@ -10,7 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { DocStatus } from '@/core/doc-status'
 import type { AppError } from '@/core/errors'
 import { isErr } from '@/core/result'
-import { AdminOverridePanel } from '@/shared/documents'
+import { AdminOverridePanel, DocumentLetterhead } from '@/shared/documents'
 import { formatCurrency, formatDateTime } from '@/shared/formatters'
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
@@ -50,6 +50,7 @@ export function CapitalContributionDetailPage() {
 
   return (
     <div className="space-y-4">
+      <DocumentLetterhead />
       <PageHeader
         title={`رأس مال ${row?.reference_id ?? ''}`}
         titleEn="Capital contribution"

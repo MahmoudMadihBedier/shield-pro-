@@ -20,7 +20,7 @@ import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 import { isAlreadyPosted, postBatchToLedger } from '../../data/post-batch'
 import { parseRawMaterialLots } from '../../domain/planning'
 import type { ProductionBatch } from '../../domain/schemas'
-import { AdminOverridePanel } from '@/shared/documents'
+import { AdminOverridePanel, DocumentLetterhead } from '@/shared/documents'
 
 import { QcActionBar } from '../components/QcActionBar'
 import { SubmitCancelBar } from '../components/SubmitCancelBar'
@@ -99,6 +99,7 @@ export function ProductionBatchDetailPage() {
 
   return (
     <div className="space-y-4">
+      <DocumentLetterhead />
       <PageHeader
         title={`أمر تشغيل ${batch.reference_id}`}
         titleEn="Production batch"

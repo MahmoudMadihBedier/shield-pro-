@@ -12,6 +12,7 @@ import type { AppError } from '@/core/errors'
 import { isErr } from '@/core/result'
 import { formatCurrency, formatDateTime } from '@/shared/formatters'
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
+import { DocumentLetterhead } from '@/shared/documents'
 
 import { postVoucherToGl, type GlPosting } from '../../data/post-accounting'
 import { VOUCHER_DIRECTION_LABELS } from '../../domain/labels'
@@ -45,6 +46,7 @@ export function PaymentVoucherDetailPage() {
 
   return (
     <div className="space-y-4">
+      <DocumentLetterhead />
       <PageHeader
         title={`سند ${row?.reference_id ?? ''}`}
         titleEn="Voucher"

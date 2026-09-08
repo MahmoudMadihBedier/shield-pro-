@@ -9,3 +9,4 @@ export type {
 } from './document-repo'
 export { useDocumentList, useDocument, useDocumentActions } from './hooks'
 export { AdminOverridePanel, type AdminOverridePanelProps } from './AdminOverridePanel'
+export { DocumentLetterhead, type DocumentLetterheadProps } from './DocumentLetterhead'

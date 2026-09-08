@@ -12,6 +12,7 @@ import { DocStatus } from '@/core/doc-status'
 import type { AppError } from '@/core/errors'
 import { formatCurrency, formatDateTime, formatNumber } from '@/shared/formatters'
 import { Button, Card, PageHeader } from '@/shared/ui'
+import { DocumentLetterhead } from '@/shared/documents'
 
 import { postReceiptToLedger, type ReceiptLedgerPosting } from '../../data/post-receipt'
 import { parseReceiptLines } from '../../domain/lines'
@@ -59,6 +60,7 @@ export function StockReceiptDetailPage() {
 
   return (
     <div className="space-y-5">
+      <DocumentLetterhead />
       <PageHeader
         title={`${PURCHASING_LABELS.stockReceipt.one.ar} ${receipt.reference_id}`}
         titleEn={PURCHASING_LABELS.stockReceipt.one.en}

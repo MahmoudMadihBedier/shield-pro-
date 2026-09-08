@@ -5,6 +5,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 
 import { APP_NAME_AR } from '@/shared/constants'
+import { Logo } from '@/shared/ui'
 
 import { usePortalAuth } from '../auth/portal-context'
 
@@ -22,9 +23,12 @@ export function PortalLayout() {
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <header className="border-b border-black/10 bg-white dark:border-white/10 dark:bg-zinc-900">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-5 py-4">
-          <div>
-            <p className="text-sm font-bold">بوابة العملاء</p>
-            <p className="text-xs text-zinc-400">{APP_NAME_AR}</p>
+          <div className="flex items-center gap-3">
+            <Logo className="h-8" />
+            <div>
+              <p className="text-sm font-bold">بوابة العملاء</p>
+              <p className="text-xs text-zinc-400">{APP_NAME_AR}</p>
+            </div>
           </div>
           <div className="flex items-center gap-3 text-xs text-zinc-500">
             {customer ? <span>{customer.name}</span> : null}

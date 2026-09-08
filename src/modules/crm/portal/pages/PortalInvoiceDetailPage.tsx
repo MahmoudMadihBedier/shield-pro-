@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import { formatCurrency, formatDateTime, formatNumber } from '@/shared/formatters'
 import { Button, Card, PageHeader } from '@/shared/ui'
+import { DocumentLetterhead } from '@/shared/documents/DocumentLetterhead'
 
 import { PortalDocStatusBadge } from '../components/PortalDocStatusBadge'
 import { usePortalInvoiceDetail } from '../hooks'
@@ -74,6 +75,7 @@ export function PortalInvoiceDetailPage() {
 
   return (
     <div className="space-y-5">
+      <DocumentLetterhead />
       <PageHeader
         title={`فاتورة ${invoice.referenceId}`}
         actions={
