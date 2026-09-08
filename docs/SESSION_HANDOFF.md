@@ -175,18 +175,48 @@ Customer approval is now reachable from the **customers list** too — an inline
   contra-revenue; unknown / balance-sheet / purchase-side accounts are left
   off the statement until a real chart of accounts lands.
 
+- **UI redesign (Pass 1, presentation only).** Corporate-blue theme tokens +
+  semantic surface/text/border vars in `index.css`; working light/dark/system
+  toggle (Zustand store `src/shared/theme/useTheme`, pre-paint resolver in
+  `index.html`). Polished top-bar shell: `BrandMark`, module nav on its own
+  wrapping row (dropdowns no longer clipped), `GlobalSearch` command palette
+  (`/` or ⌘K), `Breadcrumbs`, `UserMenu`. Shared primitives reworked (Button
+  `loading`/`block`, Card `interactive`/`flush`, Badge `dot`, new Skeleton /
+  EmptyState / Spinner) so every page inherits the look; DataTable + form
+  fields + module `<dialog>`s + Login/Home restyled.
+
+- **Units of measure (3 commits).**
+  1. `src/core/uom.ts` — fixed unit list (`pc, kg, g, ton, l, ml, box, carton,
+     dozen, pack, bag, roll, sheet, m, cm`) + helpers. `raw_materials.uom` /
+     `products.uom` are now an enum picklist (was free text); production
+     deduction display shows units (BOM explosion, request detail, product BOM
+     demand-per-unit). No data migration (`pc`/`kg` stay valid).
+  2. `products.sale_units` (migration 0021) — JSON `[{unit,factor,label?}]`
+     alternate selling units; `resolveSaleUnits` puts the stock unit first.
+     Invoice line editor gains a Unit column; `qty` stays the stock-unit
+     stock/pricing key, `sale_qty × factor` = `qty`. Sale-units editor card on
+     the product detail page (`productsRepo.setSaleUnits`).
+  3. `staff-account` Edge Function (deployed) — System-Admin create (Auth user
+     + `public.users` profile), update (data/roles/branch/active + email),
+     reset-password; all audited. `core/rbac.ts` ROLE_LABELS/OPTIONS +
+     parse/serializeRoles; `admin/domain/staff.ts` Zod schemas;
+     `StaffAccountForm` (multi-role checklist + branch/warehouse) wired into
+     `UsersListPage` via a new `MasterListPage` `renderForm` override.
+
+Migrations are now 0001–0021. Edge Functions: `portal-account`, `staff-account`.
+
 Remaining backlog: Phase 4.1 still wants production-waste / rep-cash-up /
 customer-statement exports + opening-stock + bank-statement importers; Phase
 4.2 could add inventory valuation, payroll cost, supplier performance, cash
-position. Operational: rotate the DB password + service-role key, then
-disconnect Appwrite.
+position. UI redesign Pass 2 (per-page polish) not started. Operational:
+rotate the DB password + service-role key, then disconnect Appwrite.
 
 Note: commit `88bda05` (the export feature's first commit) was auto-generated
 by tooling without the `Co-Authored-By` / `Claude-Session` trailers; the
 follow-up `cf6830d` has them.
 
 ## Gates (this session): `pnpm typecheck` · `pnpm lint` (17 pre-existing
-router.tsx fast-refresh warns) · `pnpm test` **700 / 92 files** · `pnpm build`.
+router.tsx fast-refresh warns) · `pnpm test` **717 / 94 files** · `pnpm build`.
 
 ## MCP
 `.mcp.json` has the Supabase HTTP MCP (`project_ref=ajrevsyyudfjrwiifekj`).
