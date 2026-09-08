@@ -203,10 +203,11 @@ Customer approval is now reachable from the **customers list** too — an inline
      `StaffAccountForm` (multi-role checklist + branch/warehouse) wired into
      `UsersListPage` via a new `MasterListPage` `renderForm` override.
 
-Migrations are now 0001–0023 (0022/0023 = `enforce_active_system_admin` trigger
+Migrations are now 0001–0024 (0022–0024 = `enforce_active_system_admin` trigger
 on `public.users` — a demote/deactivate/delete can never leave zero active
-System Admins; 0023 adds `FOR UPDATE` row-locking so concurrent demotions
-serialise; smoke-tested). Edge Functions: `portal-account`, `staff-account`.
+System Admins; 0024 serialises concurrent demotions on a single
+`pg_advisory_xact_lock` (0023's `FOR UPDATE` could deadlock); smoke-tested).
+Edge Functions: `portal-account`, `staff-account`.
 Warehouse `owner_user_id` and the staff-form warehouse field are proper
 pickers (staff / active warehouses); `RelationField` keeps a persisted-but-
 inactive value selectable so an edit can't wipe it.
