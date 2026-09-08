@@ -80,3 +80,70 @@ export function formatQtyWithUnit(qty: number, unit: string | null | undefined):
   const u = unitShort(unit)
   return u ? `${qty} ${u}` : String(qty)
 }
+
+// ---------------------------------------------------------------------------
+// Sale units — a product may be sold in units other than its stock unit
+// ---------------------------------------------------------------------------
+
+/**
+ * One alternate selling unit for a product. `factor` = how many of the
+ * product's STOCK units make up one of this sale unit (e.g. a carton of 12
+ * bottles → `{ unit: 'carton', factor: 12 }`). `label` overrides the default
+ * unit label for display (e.g. `"كرتونة (12)"`).
+ */
+export const saleUnitSchema = z.object({
+  unit: unitSchema,
+  factor: z.number().positive(),
+  label: z.string().trim().max(40).optional(),
+})
+export type SaleUnit = z.infer<typeof saleUnitSchema>
+
+/** A resolved, ready-to-render sale unit: always has a `label`. */
+export interface ResolvedSaleUnit {
+  unit: Unit
+  factor: number
+  label: string
+}
+
+/** Parse the `products.sale_units` JSON column; anything malformed → `[]`. */
+export function parseSaleUnits(raw: string | null | undefined): SaleUnit[] {
+  if (raw == null || raw.trim() === '') return []
+  try {
+    const parsed = z.array(saleUnitSchema).safeParse(JSON.parse(raw))
+    return parsed.success ? parsed.data : []
+  } catch {
+    return []
+  }
+}
+
+/** Serialise for the `sale_units` column. */
+export function serializeSaleUnits(list: readonly SaleUnit[]): string {
+  return JSON.stringify(list)
+}
+
+/**
+ * The full option list for a product's sale-unit picker: the stock unit
+ * (factor 1) first, then the configured alternates, de-duplicated by `unit`.
+ */
+export function resolveSaleUnits(
+  stockUnit: string | null | undefined,
+  raw: string | null | undefined,
+): ResolvedSaleUnit[] {
+  const baseUnit: Unit = unitSchema.safeParse(stockUnit).success
+    ? (stockUnit as Unit)
+    : DEFAULT_UNIT
+  const base: ResolvedSaleUnit = { unit: baseUnit, factor: 1, label: unitShort(baseUnit) }
+  const seen = new Set<string>([base.unit])
+  const out: ResolvedSaleUnit[] = [base]
+  for (const su of parseSaleUnits(raw)) {
+    if (seen.has(su.unit) || su.factor <= 0) continue
+    seen.add(su.unit)
+    out.push({ unit: su.unit, factor: su.factor, label: su.label?.trim() || unitShort(su.unit) })
+  }
+  return out
+}
+
+/** Stock (base) quantity for `saleQty` of a unit with the given `factor`. */
+export function toBaseQty(saleQty: number, factor: number): number {
+  return saleQty * factor
+}

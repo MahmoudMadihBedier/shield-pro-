@@ -216,7 +216,8 @@ export const TABLES: TableDef[] = [
       str('code', 32, true),
       str('name', 128, true),
       str('name_ar', 128),
-      str('uom', 16, true),
+      str('uom', 16, true), // stock unit — one of src/core/uom.ts UNITS
+      str('sale_units', 100000), // JSON: [{ unit, factor, label? }] alternate selling units
       { key: 'base_price', type: 'float', required: true, min: 0 },
       { key: 'default_discount_pct', type: 'float', default: 0, min: 0, max: 100 },
       { key: 'allowed_waste_pct', type: 'float', default: 0, min: 0, max: 100 },

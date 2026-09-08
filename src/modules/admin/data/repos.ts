@@ -5,8 +5,12 @@
  * (no downstream ledger / document references). Branches, warehouses, users,
  * products and customers are deactivated via `is_active`, never hard-deleted.
  */
-import type { Result } from '@/core/result'
-import { Tables } from '@/infrastructure/appwrite/collections'
+import { appError } from '@/core/errors'
+import { err, ok, type Result } from '@/core/result'
+import { serializeSaleUnits, type SaleUnit } from '@/core/uom'
+import { DATABASE_ID, Tables } from '@/infrastructure/appwrite/collections'
+import { mapAppwriteError } from '@/infrastructure/appwrite/errors'
+import { tablesDB } from '@/infrastructure/appwrite/services'
 
 import {
   DEFAULT_CUSTOMER_APPROVAL_STATE,
@@ -55,12 +59,45 @@ export const warehousesRepo: MasterRepo<Warehouse, WarehouseInput> = makeMasterR
   searchField: 'name',
 })
 
-export const productsRepo: MasterRepo<Product, ProductInput> = makeMasterRepo({
+const productsBase = makeMasterRepo({
   tableId: Tables.products,
   rowSchema: productRowSchema,
   inputSchema: productInputSchema,
   searchField: 'name',
 })
+
+/**
+ * Replace a product's alternate selling units (`products.sale_units`). Managed
+ * from the product detail page, not the create/edit dialog — like the BOM.
+ */
+async function setSaleUnits(
+  productId: string,
+  saleUnits: readonly SaleUnit[],
+): Promise<Result<Product>> {
+  try {
+    const row = await tablesDB.updateRow({
+      databaseId: DATABASE_ID,
+      tableId: Tables.products,
+      rowId: productId,
+      data: { sale_units: serializeSaleUnits(saleUnits) },
+    })
+    const parsed = productRowSchema.safeParse(row)
+    if (!parsed.success) {
+      return err(
+        appError('server', 'تعذّر حفظ وحدات البيع — بنية غير متوقعة.', {
+          detail: parsed.error.message,
+        }),
+      )
+    }
+    return ok(parsed.data)
+  } catch (e) {
+    return err(mapAppwriteError(e))
+  }
+}
+
+export const productsRepo: MasterRepo<Product, ProductInput> & {
+  setSaleUnits: typeof setSaleUnits
+} = { ...productsBase, setSaleUnits }
 
 export const customersRepo: MasterRepo<Customer, CustomerInput> = makeMasterRepo({
   tableId: Tables.customers,

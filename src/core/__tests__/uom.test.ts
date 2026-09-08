@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_UNIT,
   formatQtyWithUnit,
+  parseSaleUnits,
+  resolveSaleUnits,
+  serializeSaleUnits,
+  toBaseQty,
   UNIT_OPTIONS,
   UNITS,
   unitLabel,
@@ -48,5 +52,39 @@ describe('formatQtyWithUnit', () => {
   })
   it('drops the suffix when there is no unit', () => {
     expect(formatQtyWithUnit(5, null)).toBe('5')
+  })
+})
+
+describe('sale units', () => {
+  it('round-trips and rejects a non-positive factor', () => {
+    const list = [{ unit: 'carton' as const, factor: 12, label: 'كرتونة' }]
+    expect(parseSaleUnits(serializeSaleUnits(list))).toEqual(list)
+    expect(parseSaleUnits('[{"unit":"carton","factor":0}]')).toEqual([])
+    expect(parseSaleUnits('[{"unit":"barrel","factor":5}]')).toEqual([])
+    expect(parseSaleUnits(null)).toEqual([])
+  })
+
+  it('resolveSaleUnits puts the stock unit first (factor 1) then de-dupes alternates', () => {
+    const resolved = resolveSaleUnits(
+      'pc',
+      '[{"unit":"carton","factor":12,"label":"كرتونة"},{"unit":"pc","factor":1},{"unit":"dozen","factor":12}]',
+    )
+    expect(resolved.map((r) => [r.unit, r.factor])).toEqual([
+      ['pc', 1],
+      ['carton', 12],
+      ['dozen', 12],
+    ])
+    expect(resolved[0]!.label).toBe('قطعة')
+    expect(resolved[1]!.label).toBe('كرتونة')
+  })
+
+  it('falls back to the default unit when the stock unit is unknown', () => {
+    const resolved = resolveSaleUnits('barrel', null)
+    expect(resolved).toEqual([{ unit: DEFAULT_UNIT, factor: 1, label: unitShort(DEFAULT_UNIT) }])
+  })
+
+  it('toBaseQty multiplies sale qty by the factor', () => {
+    expect(toBaseQty(2, 12)).toBe(24)
+    expect(toBaseQty(3.5, 1)).toBe(3.5)
   })
 })

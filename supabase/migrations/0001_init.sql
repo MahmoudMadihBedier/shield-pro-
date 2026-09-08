@@ -135,6 +135,7 @@ CREATE TABLE IF NOT EXISTS public."products" (
   "name" text NOT NULL,
   "name_ar" text,
   "uom" text NOT NULL,
+  "sale_units" text,
   "base_price" double precision NOT NULL CHECK ("base_price" >= 0),
   "default_discount_pct" double precision DEFAULT 0 CHECK ("default_discount_pct" >= 0 AND "default_discount_pct" <= 100),
   "allowed_waste_pct" double precision DEFAULT 0 CHECK ("allowed_waste_pct" >= 0 AND "allowed_waste_pct" <= 100),

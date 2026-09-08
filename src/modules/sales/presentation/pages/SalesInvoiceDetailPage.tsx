@@ -21,6 +21,7 @@ import { canActOnSales, canOverrideCredit } from '../../domain/permissions'
 import {
   parseInvoiceLines,
   parseReps,
+  unitShort,
   type InvoiceLine,
   type SalesInvoiceRow,
 } from '../../domain/schemas'
@@ -159,7 +160,16 @@ export function SalesInvoiceDetailPage() {
                   >
                     <td className="p-2">{productLabel.get(line.product_id) ?? line.product_id}</td>
                     <td className="p-2 text-end" dir="ltr">
-                      {formatNumber(line.qty)}
+                      {line.sale_qty != null && line.sale_unit ? (
+                        <>
+                          {formatNumber(line.sale_qty)} {unitShort(line.sale_unit)}
+                          {line.sale_qty !== line.qty ? (
+                            <span className="ms-1 text-zinc-400">(= {formatNumber(line.qty)})</span>
+                          ) : null}
+                        </>
+                      ) : (
+                        formatNumber(line.qty)
+                      )}
                     </td>
                     <td className="p-2 text-end" dir="ltr">
                       {formatCurrency(line.base_price)}

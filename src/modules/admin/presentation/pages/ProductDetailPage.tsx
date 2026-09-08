@@ -12,7 +12,7 @@ import { useAuth } from '@/application/auth/context'
 import type { AppError } from '@/core/errors'
 import { isErr } from '@/core/result'
 import { isSystemAdmin } from '@/core/rbac'
-import { unitShort } from '@/core/uom'
+import { parseSaleUnits, UNIT_OPTIONS, unitShort, type SaleUnit } from '@/core/uom'
 import { formatNumber } from '@/shared/formatters'
 import { Button, Card, PageHeader } from '@/shared/ui'
 
@@ -192,6 +192,18 @@ export function ProductDetailPage() {
         </Card>
       ) : null}
 
+      {productQuery.data ? (
+        <SaleUnitsCard
+          product={productQuery.data}
+          canWrite={canWrite}
+          onSaved={() =>
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.admin.detail('product', productId),
+            })
+          }
+        />
+      ) : null}
+
       <EntityDialog
         open={adding}
         title="إضافة مكوّن"
@@ -209,5 +221,137 @@ export function ProductDetailPage() {
         />
       </EntityDialog>
     </div>
+  )
+}
+
+/**
+ * Manage a product's alternate selling units (`products.sale_units`). The
+ * product's own `uom` is always the implicit factor-1 base unit and is not
+ * listed here. `factor` = how many stock units make one of this sale unit.
+ */
+function SaleUnitsCard({
+  product,
+  canWrite,
+  onSaved,
+}: {
+  product: Product
+  canWrite: boolean
+  onSaved: () => void
+}) {
+  const [rows, setRows] = useState<SaleUnit[]>(() => parseSaleUnits(product.sale_units))
+  const [dirty, setDirty] = useState(false)
+
+  const mutation = useMutation<unknown, AppError, void>({
+    mutationFn: async () => {
+      const res = await productsRepo.setSaleUnits(
+        product.$id,
+        rows.filter((r) => r.unit && r.factor > 0),
+      )
+      if (isErr(res)) throw res.error
+    },
+    onSuccess: () => {
+      setDirty(false)
+      onSaved()
+    },
+  })
+
+  const patch = (i: number, next: Partial<SaleUnit>) => {
+    setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...next } : r)))
+    setDirty(true)
+  }
+  const add = () => {
+    setRows((prev) => [...prev, { unit: 'carton', factor: 12, label: '' }])
+    setDirty(true)
+  }
+  const remove = (i: number) => {
+    setRows((prev) => prev.filter((_, idx) => idx !== i))
+    setDirty(true)
+  }
+
+  return (
+    <Card className="space-y-3">
+      <div>
+        <h3 className="text-sm font-semibold">وحدات البيع / Sale units</h3>
+        <p className="mt-1 text-xs text-zinc-500">
+          وحدة المخزون ({unitShort(product.uom)}) متاحة دائمًا. أضف هنا وحدات بيع بديلة — المعامل هو
+          عدد وحدات المخزون في الوحدة الواحدة (مثال: كرتونة = 12).
+        </p>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="text-sm text-zinc-500">لا توجد وحدات بيع بديلة.</p>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((row, i) => (
+            <li key={i} className="flex flex-wrap items-end gap-2">
+              <label className="text-xs text-zinc-500">
+                الوحدة
+                <select
+                  disabled={!canWrite}
+                  value={row.unit}
+                  onChange={(e) => patch(i, { unit: e.target.value as SaleUnit['unit'] })}
+                  className="block w-32 rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-2 py-1.5 text-sm"
+                >
+                  {UNIT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs text-zinc-500">
+                المعامل / Factor
+                <input
+                  type="number"
+                  dir="ltr"
+                  min={0}
+                  step="any"
+                  disabled={!canWrite}
+                  value={Number.isFinite(row.factor) ? row.factor : ''}
+                  onChange={(e) => patch(i, { factor: e.target.valueAsNumber })}
+                  className="block w-24 rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-2 py-1.5 text-sm"
+                />
+              </label>
+              <label className="flex-1 text-xs text-zinc-500">
+                مسمى (اختياري)
+                <input
+                  type="text"
+                  disabled={!canWrite}
+                  value={row.label ?? ''}
+                  onChange={(e) => patch(i, { label: e.target.value })}
+                  placeholder={unitShort(row.unit)}
+                  className="block w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-2 py-1.5 text-sm"
+                />
+              </label>
+              {canWrite ? (
+                <Button size="sm" variant="danger" onClick={() => remove(i)}>
+                  حذف
+                </Button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {canWrite ? (
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={add}>
+            + وحدة بيع
+          </Button>
+          <Button
+            size="sm"
+            disabled={!dirty || mutation.isPending}
+            onClick={() => mutation.mutate()}
+          >
+            {mutation.isPending ? 'جارٍ الحفظ…' : 'حفظ'}
+          </Button>
+          {mutation.isError ? (
+            <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+              {mutation.error.message}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+    </Card>
   )
 }
