@@ -289,10 +289,16 @@ function EditForm({
         <input className={FIELD} {...register('full_name')} />
       </Field>
       <Field
-        label="البريد الإلكتروني / Email (تغييره يغيّر اسم الدخول)"
+        label="البريد الإلكتروني / Email — اتركه فارغًا للإبقاء عليه"
         error={errors.email?.message}
       >
-        <input className={FIELD} dir="ltr" autoComplete="off" {...register('email')} />
+        <input
+          className={FIELD}
+          dir="ltr"
+          autoComplete="off"
+          placeholder="بريد جديد لتغيير اسم الدخول"
+          {...register('email')}
+        />
       </Field>
 
       <RolesField

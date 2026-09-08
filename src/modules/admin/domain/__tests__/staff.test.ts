@@ -36,6 +36,13 @@ describe('staffCreateSchema', () => {
 })
 
 describe('staffUpdateSchema', () => {
+  it('accepts a blank email (keep current) or a valid one', () => {
+    const base = { full_name: 'x', roles: ['chief_accountant'], is_active: true }
+    expect(staffUpdateSchema.safeParse({ ...base, email: '' }).success).toBe(true)
+    expect(staffUpdateSchema.safeParse({ ...base, email: 'new@example.com' }).success).toBe(true)
+    expect(staffUpdateSchema.safeParse({ ...base, email: 'bad' }).success).toBe(false)
+  })
+
   it('requires is_active and keeps at least one role', () => {
     expect(
       staffUpdateSchema.safeParse({
