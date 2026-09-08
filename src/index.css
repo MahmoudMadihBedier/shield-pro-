@@ -142,13 +142,7 @@ body {
     color: #000;
   }
 
-  /* app chrome */
-  header nav[aria-label='التنقل الرئيسي'],
-  header [aria-label='بحث سريع'],
-  header [aria-label='الإشعارات / Notifications'],
-  header .relative:has(> button[aria-haspopup='menu']),
-  nav[aria-label='مسار التنقل'],
-  footer,
+  /* app chrome — components tag themselves with `.no-print` (see AppLayout) */
   .no-print {
     display: none !important;
   }
@@ -184,6 +178,22 @@ body {
   .rounded-\[var\(--radius-card\)\] {
     break-inside: avoid;
     box-shadow: none !important;
+  }
+
+  /* filter inputs print as plain text, not form widgets */
+  input,
+  select,
+  textarea {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  table {
+    font-size: 11px;
   }
 }
 

@@ -99,7 +99,7 @@ export function ProductionBatchDetailPage() {
 
   return (
     <div className="space-y-4">
-      <DocumentLetterhead />
+      <DocumentLetterhead reference={batch.reference_id} />
       <PageHeader
         title={`أمر تشغيل ${batch.reference_id}`}
         titleEn="Production batch"

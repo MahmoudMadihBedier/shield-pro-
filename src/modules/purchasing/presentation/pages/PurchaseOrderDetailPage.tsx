@@ -80,7 +80,7 @@ export function PurchaseOrderDetailPage() {
 
   return (
     <div className="space-y-5">
-      <DocumentLetterhead />
+      <DocumentLetterhead reference={order.reference_id} />
       <PageHeader
         title={`${PURCHASING_LABELS.purchaseOrder.one.ar} ${order.reference_id}`}
         titleEn={PURCHASING_LABELS.purchaseOrder.one.en}

@@ -50,7 +50,7 @@ export function CapitalContributionDetailPage() {
 
   return (
     <div className="space-y-4">
-      <DocumentLetterhead />
+      <DocumentLetterhead reference={row?.reference_id} />
       <PageHeader
         title={`رأس مال ${row?.reference_id ?? ''}`}
         titleEn="Capital contribution"

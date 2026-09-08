@@ -46,7 +46,7 @@ export function PaymentVoucherDetailPage() {
 
   return (
     <div className="space-y-4">
-      <DocumentLetterhead />
+      <DocumentLetterhead reference={row?.reference_id} />
       <PageHeader
         title={`سند ${row?.reference_id ?? ''}`}
         titleEn="Voucher"

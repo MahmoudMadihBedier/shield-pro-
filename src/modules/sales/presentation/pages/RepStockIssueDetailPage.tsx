@@ -87,7 +87,7 @@ export function RepStockIssueDetailPage() {
 
   return (
     <div className="space-y-5">
-      <DocumentLetterhead />
+      <DocumentLetterhead reference={issue.reference_id} />
       <PageHeader
         title={`إذن صرف ${issue.reference_id}`}
         titleEn="Rep stock issue"

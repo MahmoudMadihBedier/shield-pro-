@@ -55,7 +55,7 @@ export function ReceiptDetailPage() {
 
   return (
     <div className="space-y-4">
-      <DocumentLetterhead />
+      <DocumentLetterhead reference={row?.reference_id} />
       <PageHeader
         title={`تحصيل ${row?.reference_id ?? ''}`}
         titleEn="Collection"

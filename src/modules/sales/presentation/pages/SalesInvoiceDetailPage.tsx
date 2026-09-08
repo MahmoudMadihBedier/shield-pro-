@@ -89,7 +89,7 @@ export function SalesInvoiceDetailPage() {
 
   return (
     <div className="space-y-5">
-      <DocumentLetterhead />
+      <DocumentLetterhead reference={invoice.reference_id} />
       <PageHeader
         title={`فاتورة ${invoice.reference_id}`}
         titleEn="Sales invoice"

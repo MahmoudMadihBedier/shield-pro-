@@ -23,7 +23,7 @@ export function AppLayout() {
             <BrandMark />
             <div className="flex-1" />
             {principal ? (
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="no-print flex shrink-0 items-center gap-2">
                 <GlobalSearch />
                 <NotificationBell />
                 <UserMenu />
@@ -37,7 +37,7 @@ export function AppLayout() {
           {/* Row 2: module nav — its own full-width row so dropdowns overflow
               freely and the bar can wrap on narrow desktops. */}
           {principal ? (
-            <div className="hidden border-t border-[var(--border)] py-1.5 lg:block">
+            <div className="no-print hidden border-t border-[var(--border)] py-1.5 lg:block">
               <TopNav />
             </div>
           ) : null}
@@ -45,7 +45,7 @@ export function AppLayout() {
       </header>
 
       {principal ? (
-        <div className="border-b border-[var(--border)] bg-[var(--surface-2)]">
+        <div className="no-print border-b border-[var(--border)] bg-[var(--surface-2)]">
           <div className="mx-auto max-w-[1440px] px-4 py-2 sm:px-6">
             <Breadcrumbs />
           </div>
@@ -57,7 +57,7 @@ export function AppLayout() {
           <Outlet />
         </main>
 
-        <footer className="mt-12 border-t border-[var(--border)] pt-4 text-xs text-[var(--text-subtle)]">
+        <footer className="no-print mt-12 border-t border-[var(--border)] pt-4 text-xs text-[var(--text-subtle)]">
           ERP + CRM · Factory → Warehouse → Sub-Warehouse → Sales → Accounting
         </footer>
       </div>

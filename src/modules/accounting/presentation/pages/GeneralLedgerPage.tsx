@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { useDebouncedValue } from '@/shared/data-table'
 import type { PaginationState } from '@/shared/data-table'
 import { PageHeader } from '@/shared/ui'
+import { DocumentLetterhead } from '@/shared/documents'
 
 import { GlEntryTable } from '../components'
 import { useGlEntries } from '../hooks'
@@ -81,6 +82,7 @@ export function GeneralLedgerPage() {
 
   return (
     <div className="space-y-4">
+      <DocumentLetterhead />
       <PageHeader
         title="دفتر الأستاذ"
         titleEn="General ledger"

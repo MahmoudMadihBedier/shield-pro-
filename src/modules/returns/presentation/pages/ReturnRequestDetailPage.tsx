@@ -83,7 +83,7 @@ export function ReturnRequestDetailPage() {
 
   return (
     <div className="space-y-4">
-      <DocumentLetterhead />
+      <DocumentLetterhead reference={row?.reference_id} />
       <PageHeader
         title={`مرتجع ${row?.reference_id ?? ''}`}
         titleEn="Return request"

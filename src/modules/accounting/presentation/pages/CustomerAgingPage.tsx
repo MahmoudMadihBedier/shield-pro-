@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { formatCurrency, formatDate } from '@/shared/formatters'
 import { ExportButton } from '@/shared/excel'
 import { Card, PageHeader } from '@/shared/ui'
+import { DocumentLetterhead } from '@/shared/documents'
 
 import { RECEIVABLE_INVOICE_METHODS } from '../../domain/aging'
 import { AgingTable } from '../components'
@@ -49,6 +50,7 @@ export function CustomerAgingPage() {
 
   return (
     <div className="space-y-4">
+      <DocumentLetterhead />
       <PageHeader
         title="أعمار الديون"
         titleEn="Customer aging"

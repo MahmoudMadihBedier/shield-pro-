@@ -60,7 +60,7 @@ export function StockReceiptDetailPage() {
 
   return (
     <div className="space-y-5">
-      <DocumentLetterhead />
+      <DocumentLetterhead reference={receipt.reference_id} />
       <PageHeader
         title={`${PURCHASING_LABELS.stockReceipt.one.ar} ${receipt.reference_id}`}
         titleEn={PURCHASING_LABELS.stockReceipt.one.en}

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 
 import { Card, PageHeader } from '@/shared/ui'
+import { DocumentLetterhead } from '@/shared/documents'
 
 import { TrialBalanceTable } from '../components'
 import { useTrialBalance } from '../hooks'
@@ -21,6 +22,7 @@ export function TrialBalancePage() {
 
   return (
     <div className="space-y-4">
+      <DocumentLetterhead />
       <PageHeader
         title="ميزان المراجعة"
         titleEn="Trial balance"

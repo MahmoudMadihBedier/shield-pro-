@@ -75,7 +75,7 @@ export function PortalInvoiceDetailPage() {
 
   return (
     <div className="space-y-5">
-      <DocumentLetterhead />
+      <DocumentLetterhead reference={invoice.referenceId} />
       <PageHeader
         title={`فاتورة ${invoice.referenceId}`}
         actions={
