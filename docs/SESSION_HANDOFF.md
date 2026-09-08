@@ -203,11 +203,21 @@ Customer approval is now reachable from the **customers list** too — an inline
      `StaffAccountForm` (multi-role checklist + branch/warehouse) wired into
      `UsersListPage` via a new `MasterListPage` `renderForm` override.
 
-Migrations are now 0001–0022 (0022 = `enforce_active_system_admin` trigger on
-`public.users` — atomic guard that a demote/deactivate/delete can never leave
-zero active System Admins; smoke-tested). Edge Functions: `portal-account`,
-`staff-account`. Warehouse `owner_user_id` and the staff-form warehouse field
-are now proper pickers (staff / active warehouses).
+Migrations are now 0001–0023 (0022/0023 = `enforce_active_system_admin` trigger
+on `public.users` — a demote/deactivate/delete can never leave zero active
+System Admins; 0023 adds `FOR UPDATE` row-locking so concurrent demotions
+serialise; smoke-tested). Edge Functions: `portal-account`, `staff-account`.
+Warehouse `owner_user_id` and the staff-form warehouse field are proper
+pickers (staff / active warehouses); `RelationField` keeps a persisted-but-
+inactive value selectable so an edit can't wipe it.
+
+- **Branding + printable bills.** `assets/logo.png` (`src/assets/logo.png`
+  Vite-bundled, 900px/62KB). `<Logo>` in the top bar / login / portal.
+  `<DocumentLetterhead>` (logo chip + company block + a `<PrintButton>`) on
+  all 11 document detail pages and the accounting statements (trial balance,
+  P&L, aging, GL, stock-on-hand). `PrintButton` → `window.print()`; `@media
+  print` in `index.css` strips chrome via a `.no-print` class, forces light,
+  never inverts the logo — so any page prints as a letterheaded sheet.
 
 Remaining backlog: Phase 4.1 still wants production-waste / rep-cash-up /
 customer-statement exports + opening-stock + bank-statement importers; Phase
@@ -220,7 +230,7 @@ by tooling without the `Co-Authored-By` / `Claude-Session` trailers; the
 follow-up `cf6830d` has them.
 
 ## Gates (this session): `pnpm typecheck` · `pnpm lint` (17 pre-existing
-router.tsx fast-refresh warns) · `pnpm test` **717 / 94 files** · `pnpm build`.
+router.tsx fast-refresh warns) · `pnpm test` **718 / 94 files** · `pnpm build`.
 
 ## MCP
 `.mcp.json` has the Supabase HTTP MCP (`project_ref=ajrevsyyudfjrwiifekj`).
