@@ -48,16 +48,15 @@ function useWarehouseOptions() {
     queryFn: async () => {
       const res = await warehousesRepo.list({
         page: 0,
-        pageSize: 100,
+        pageSize: 300,
         sort: { field: 'name', dir: 'asc' },
+        filters: [{ field: 'is_active', value: 'true' }],
       })
       if (isErr(res)) throw res.error
-      return res.value.rows
-        .filter((w) => w.is_active)
-        .map((w) => ({
-          value: w.$id,
-          label: `${w.name} · ${WAREHOUSE_KIND_LABELS[w.kind]?.ar ?? w.kind}`,
-        }))
+      return res.value.rows.map((w) => ({
+        value: w.$id,
+        label: `${w.name} · ${WAREHOUSE_KIND_LABELS[w.kind]?.ar ?? w.kind}`,
+      }))
     },
   })
 }
