@@ -87,7 +87,7 @@ export interface AdminInputMap {
 // ---------------------------------------------------------------------------
 
 export type CellFormat =
-  'text' | 'number' | 'currency' | 'bool' | 'warehouseKind' | 'approvalState' | 'unit'
+  'text' | 'number' | 'currency' | 'bool' | 'warehouseKind' | 'approvalState' | 'unit' | 'roles'
 
 export interface ColumnDescriptor {
   field: string
@@ -220,7 +220,7 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
     searchPlaceholder: 'ابحث بالاسم…',
     columns: [
       { field: 'full_name', sortable: true },
-      { field: 'roles' },
+      { field: 'roles', format: 'roles' },
       { field: 'branch_id' },
       { field: 'job_grade' },
       { field: 'is_active', format: 'bool', align: 'center' },

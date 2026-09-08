@@ -9,6 +9,7 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react'
 
 import { useAuth } from '@/application/auth/context'
 import { isSystemAdmin } from '@/core/rbac'
+import { parseRoles, ROLE_LABELS } from '@/core/rbac'
 import { unitLabel } from '@/core/uom'
 import { formatCurrency, formatNumber } from '@/shared/formatters'
 import {
@@ -66,6 +67,10 @@ function renderCell(format: CellFormat | undefined, value: unknown): ReactNode {
     }
     case 'unit':
       return unitLabel(String(value))
+    case 'roles': {
+      const roles = parseRoles(String(value))
+      return roles.length > 0 ? roles.map((r) => ROLE_LABELS[r].ar).join('، ') : String(value)
+    }
     default:
       return String(value)
   }
@@ -75,11 +80,22 @@ export interface MasterListPageProps<K extends AdminListEntity> {
   entity: K
   /** Extra per-row controls rendered before edit/delete (System Admin only). */
   extraRowActions?: (row: AdminRowMap[K]) => ReactNode
+  /**
+   * Replace the generic create/edit form inside the dialog with a bespoke one
+   * (e.g. staff accounts need email + password + a multi-select). When set, the
+   * registry `fields` are ignored for the dialog body.
+   */
+  renderForm?: (ctx: {
+    mode: 'create' | 'edit'
+    row?: AdminRowMap[K]
+    onDone: () => void
+  }) => ReactNode
 }
 
 export function MasterListPage<K extends AdminListEntity>({
   entity,
   extraRowActions,
+  renderForm,
 }: MasterListPageProps<K>) {
   const config = ADMIN_REGISTRY[entity]
   const titles = ENTITY_LABELS[entity]
@@ -218,12 +234,20 @@ export function MasterListPage<K extends AdminListEntity>({
         onClose={() => setDialog(null)}
       >
         {dialog ? (
-          <MasterFormPanel
-            entity={entity}
-            mode={dialog.mode}
-            row={dialog.row}
-            onDone={() => setDialog(null)}
-          />
+          renderForm ? (
+            renderForm({
+              mode: dialog.mode,
+              row: dialog.row,
+              onDone: () => setDialog(null),
+            })
+          ) : (
+            <MasterFormPanel
+              entity={entity}
+              mode={dialog.mode}
+              row={dialog.row}
+              onDone={() => setDialog(null)}
+            />
+          )
         ) : null}
       </EntityDialog>
     </div>

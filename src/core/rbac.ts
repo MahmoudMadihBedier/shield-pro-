@@ -37,6 +37,60 @@ export const Role = {
 
 export type Role = (typeof Role)[keyof typeof Role]
 
+/** Every role slug, in a sensible presentation order. */
+export const ALL_ROLES: readonly Role[] = [
+  Role.SystemAdmin,
+  Role.ChiefAccountant,
+  Role.FactoryManager,
+  Role.MainWarehouseManager,
+  Role.SubWarehouseManager,
+  Role.SalesRep,
+  Role.RawStoreKeeper,
+  Role.BranchAccountant,
+  Role.FactoryAccountant,
+  Role.PurchasingAccountant,
+  Role.MainWarehouseAccountant,
+]
+
+/** Bilingual job-title label per role. */
+export const ROLE_LABELS: Record<Role, { ar: string; en: string }> = {
+  [Role.SystemAdmin]: { ar: 'مسؤول النظام الرئيسي', en: 'System Admin' },
+  [Role.FactoryManager]: { ar: 'مسؤول المصنع', en: 'Factory Manager' },
+  [Role.RawStoreKeeper]: { ar: 'أمين مخزن الخامات', en: 'Raw Store Keeper' },
+  [Role.MainWarehouseManager]: { ar: 'مسؤول المخزن الرئيسي', en: 'Main Warehouse Manager' },
+  [Role.SubWarehouseManager]: { ar: 'مسؤول المخزن الفرعي', en: 'Sub-Warehouse Manager' },
+  [Role.SalesRep]: { ar: 'مندوب المبيعات', en: 'Sales Rep' },
+  [Role.BranchAccountant]: { ar: 'محاسب الفرع', en: 'Branch Accountant' },
+  [Role.FactoryAccountant]: { ar: 'محاسب المصنع', en: 'Factory Accountant' },
+  [Role.PurchasingAccountant]: { ar: 'محاسب المشتريات', en: 'Purchasing Accountant' },
+  [Role.MainWarehouseAccountant]: {
+    ar: 'محاسب المخزن الرئيسي',
+    en: 'Main Warehouse Accountant',
+  },
+  [Role.ChiefAccountant]: { ar: 'المحاسب الرئيسي', en: 'Chief Accountant' },
+}
+
+/** `{ value, label }[]` for a roles picker. */
+export const ROLE_OPTIONS: ReadonlyArray<{ value: Role; label: string }> = ALL_ROLES.map((r) => ({
+  value: r,
+  label: `${ROLE_LABELS[r].ar} / ${ROLE_LABELS[r].en}`,
+}))
+
+/** Parse the space/comma-separated `users.roles` slug string into a role list. */
+export function parseRoles(raw: string | null | undefined): Role[] {
+  if (!raw) return []
+  const known = new Set<string>(ALL_ROLES)
+  return raw
+    .split(/[\s,]+/)
+    .map((s) => s.trim())
+    .filter((s): s is Role => known.has(s))
+}
+
+/** Serialise a role list back to the space-separated slug string. */
+export function serializeRoles(roles: readonly Role[]): string {
+  return [...new Set(roles)].join(' ')
+}
+
 /** Roles that see every branch and the factory (no scope filter applied). */
 export const GLOBAL_SCOPE_ROLES: ReadonlySet<Role> = new Set<Role>([
   Role.SystemAdmin,
