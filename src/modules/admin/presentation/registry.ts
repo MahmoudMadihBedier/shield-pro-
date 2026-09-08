@@ -10,6 +10,7 @@
 import type { ZodType } from 'zod'
 
 import type { Result } from '@/core/result'
+import { DEFAULT_UNIT, UNIT_OPTIONS } from '@/core/uom'
 
 import {
   branchesRepo,
@@ -85,7 +86,8 @@ export interface AdminInputMap {
 // Descriptors
 // ---------------------------------------------------------------------------
 
-export type CellFormat = 'text' | 'number' | 'currency' | 'bool' | 'warehouseKind' | 'approvalState'
+export type CellFormat =
+  'text' | 'number' | 'currency' | 'bool' | 'warehouseKind' | 'approvalState' | 'unit'
 
 export interface ColumnDescriptor {
   field: string
@@ -251,7 +253,7 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
     columns: [
       { field: 'code', sortable: true },
       { field: 'name', sortable: true },
-      { field: 'uom' },
+      { field: 'uom', format: 'unit' },
       { field: 'base_price', format: 'currency', align: 'end' },
       { field: 'default_discount_pct', format: 'number', align: 'end' },
       { field: 'is_active', format: 'bool', align: 'center' },
@@ -260,7 +262,7 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
       { name: 'code', kind: 'text', required: true },
       { name: 'name', kind: 'text', required: true },
       { name: 'name_ar', kind: 'text' },
-      { name: 'uom', kind: 'text', required: true, placeholder: 'pc / kg / L' },
+      { name: 'uom', kind: 'select', required: true, options: UNIT_OPTIONS },
       { name: 'base_price', kind: 'number', required: true, min: 0 },
       { name: 'default_discount_pct', kind: 'number', min: 0, max: 100 },
       { name: 'allowed_waste_pct', kind: 'number', min: 0, max: 100 },
@@ -270,7 +272,7 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
       code: '',
       name: '',
       name_ar: '',
-      uom: '',
+      uom: DEFAULT_UNIT,
       base_price: 0,
       default_discount_pct: 0,
       allowed_waste_pct: 0,
@@ -306,14 +308,14 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
     columns: [
       { field: 'code', sortable: true },
       { field: 'name', sortable: true },
-      { field: 'uom' },
+      { field: 'uom', format: 'unit' },
       { field: 'purchase_price', format: 'currency', align: 'end' },
       { field: 'reorder_point', format: 'number', align: 'end' },
     ],
     fields: [
       { name: 'code', kind: 'text', required: true },
       { name: 'name', kind: 'text', required: true },
-      { name: 'uom', kind: 'text', required: true, placeholder: 'kg / L' },
+      { name: 'uom', kind: 'select', required: true, options: UNIT_OPTIONS },
       { name: 'purchase_price', kind: 'number', min: 0 },
       { name: 'preferred_supplier_id', kind: 'relation', relationTo: 'supplier' },
       { name: 'reorder_point', kind: 'number', min: 0 },
@@ -321,7 +323,7 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
     emptyInput: {
       code: '',
       name: '',
-      uom: '',
+      uom: DEFAULT_UNIT,
       purchase_price: 0,
       preferred_supplier_id: '',
       reorder_point: 0,

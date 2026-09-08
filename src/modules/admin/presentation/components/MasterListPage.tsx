@@ -9,6 +9,7 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react'
 
 import { useAuth } from '@/application/auth/context'
 import { isSystemAdmin } from '@/core/rbac'
+import { unitLabel } from '@/core/uom'
 import { formatCurrency, formatNumber } from '@/shared/formatters'
 import {
   DataTable,
@@ -49,11 +50,7 @@ function renderCell(format: CellFormat | undefined, value: unknown): ReactNode {
     case 'number':
       return formatNumber(Number(value))
     case 'bool':
-      return value ? (
-        <Badge tone="success">نعم</Badge>
-      ) : (
-        <Badge tone="neutral">لا</Badge>
-      )
+      return value ? <Badge tone="success">نعم</Badge> : <Badge tone="neutral">لا</Badge>
     case 'warehouseKind': {
       const label = WAREHOUSE_KIND_LABELS[value as WarehouseKind]
       return label ? label.ar : String(value)
@@ -67,6 +64,8 @@ function renderCell(format: CellFormat | undefined, value: unknown): ReactNode {
         </StatusPill>
       )
     }
+    case 'unit':
+      return unitLabel(String(value))
     default:
       return String(value)
   }
@@ -124,21 +123,23 @@ export function MasterListPage<K extends AdminListEntity>({
   )
 
   const columns = useMemo<ColumnDef<AdminRowMap[K]>[]>(() => {
-    const dataColumns = config.columns.map((descriptor: ColumnDescriptor): ColumnDef<AdminRowMap[K]> => {
-      const label = FIELD_LABELS[entity][descriptor.field] ?? {
-        ar: descriptor.field,
-        en: descriptor.field,
-      }
-      return {
-        id: descriptor.field,
-        header: bilingual(label),
-        accessor: (row) => (row as Record<string, unknown>)[descriptor.field],
-        cell: (row) =>
-          renderCell(descriptor.format, (row as Record<string, unknown>)[descriptor.field]),
-        sortable: descriptor.sortable,
-        align: descriptor.align,
-      }
-    })
+    const dataColumns = config.columns.map(
+      (descriptor: ColumnDescriptor): ColumnDef<AdminRowMap[K]> => {
+        const label = FIELD_LABELS[entity][descriptor.field] ?? {
+          ar: descriptor.field,
+          en: descriptor.field,
+        }
+        return {
+          id: descriptor.field,
+          header: bilingual(label),
+          accessor: (row) => (row as Record<string, unknown>)[descriptor.field],
+          cell: (row) =>
+            renderCell(descriptor.format, (row as Record<string, unknown>)[descriptor.field]),
+          sortable: descriptor.sortable,
+          align: descriptor.align,
+        }
+      },
+    )
 
     if (!canWrite) return dataColumns
 
@@ -175,9 +176,7 @@ export function MasterListPage<K extends AdminListEntity>({
         titleEn={titles.many.en}
         actions={
           canWrite ? (
-            <Button onClick={() => setDialog({ mode: 'create' })}>
-              + {titles.one.ar} جديد
-            </Button>
+            <Button onClick={() => setDialog({ mode: 'create' })}>+ {titles.one.ar} جديد</Button>
           ) : (
             <Badge tone="info">عرض فقط</Badge>
           )
@@ -214,9 +213,7 @@ export function MasterListPage<K extends AdminListEntity>({
 
       <EntityDialog
         open={dialog != null}
-        title={
-          dialog?.mode === 'edit' ? `تعديل ${titles.one.ar}` : `${titles.one.ar} جديد`
-        }
+        title={dialog?.mode === 'edit' ? `تعديل ${titles.one.ar}` : `${titles.one.ar} جديد`}
         titleEn={dialog?.mode === 'edit' ? `Edit ${titles.one.en}` : `New ${titles.one.en}`}
         onClose={() => setDialog(null)}
       >

@@ -12,10 +12,11 @@ import { useAuth } from '@/application/auth/context'
 import type { AppError } from '@/core/errors'
 import { isErr } from '@/core/result'
 import { isSystemAdmin } from '@/core/rbac'
+import { unitShort } from '@/core/uom'
 import { formatNumber } from '@/shared/formatters'
 import { Button, Card, PageHeader } from '@/shared/ui'
 
-import { productBomRepo, productsRepo } from '../../data/repos'
+import { productBomRepo, productsRepo, rawMaterialsRepo } from '../../data/repos'
 import { explodeBom } from '../../domain/bom'
 import { FIELD_LABELS, bilingual, type Label } from '../../domain/labels'
 import type { Product, ProductBomLine } from '../../domain/schemas'
@@ -57,6 +58,22 @@ export function ProductDetailPage() {
     return (rawMaterialId: string) => map.get(rawMaterialId) ?? rawMaterialId
   }, [rawMaterials.data])
 
+  const rawMaterialUnits = useQuery<Map<string, string>, AppError>({
+    queryKey: ['admin', 'raw-material-units'],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const res = await rawMaterialsRepo.list({
+        page: 0,
+        pageSize: 200,
+        sort: { field: 'name', dir: 'asc' },
+      })
+      if (isErr(res)) throw res.error
+      return new Map(res.value.rows.map((rm) => [rm.$id, rm.uom]))
+    },
+  })
+  const rawUnit = (id: string) => unitShort(rawMaterialUnits.data?.get(id))
+  const productUnit = unitShort(productQuery.data?.uom)
+
   const removeMutation = useMutation<void, AppError, string>({
     mutationFn: async (lineId) => {
       const result = await productBomRepo.remove(lineId)
@@ -90,9 +107,7 @@ export function ProductDetailPage() {
       />
 
       {productQuery.isError ? (
-        <Card className="text-sm text-red-600 dark:text-red-400">
-          {productQuery.error.message}
-        </Card>
+        <Card className="text-sm text-red-600 dark:text-red-400">{productQuery.error.message}</Card>
       ) : null}
 
       <Card className="p-0">
@@ -129,6 +144,9 @@ export function ProductDetailPage() {
                   <td className="p-3">{rawMaterialLabel(line.raw_material_id)}</td>
                   <td className="p-3 text-end" dir="ltr">
                     {formatNumber(line.qty_per_unit)}
+                    {rawUnit(line.raw_material_id) ? (
+                      <span className="ms-1 text-zinc-400">{rawUnit(line.raw_material_id)}</span>
+                    ) : null}
                   </td>
                   {canWrite ? (
                     <td className="p-3 text-end">
@@ -151,12 +169,23 @@ export function ProductDetailPage() {
 
       {lines.length > 0 ? (
         <Card>
-          <h3 className="mb-2 text-sm font-semibold">الاحتياج لكل وحدة إنتاج</h3>
+          <h3 className="mb-1 text-sm font-semibold">
+            الاحتياج لكل وحدة إنتاج{productUnit ? ` (لكل 1 ${productUnit})` : ''}
+          </h3>
+          <p className="mb-2 text-xs text-zinc-500">
+            الكميات بوحدة قياس كل خامة. عند إنتاج كمية ما تُضرب هذه القيم في عدد الوحدات المنتجة
+            لخصمها من المخزون.
+          </p>
           <ul className="space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
             {demandPerUnit.map((demand) => (
               <li key={demand.rawMaterialId} className="flex justify-between">
                 <span>{rawMaterialLabel(demand.rawMaterialId)}</span>
-                <span dir="ltr">{formatNumber(demand.qty)}</span>
+                <span dir="ltr">
+                  {formatNumber(demand.qty)}
+                  {rawUnit(demand.rawMaterialId) ? (
+                    <span className="ms-1 text-zinc-400">{rawUnit(demand.rawMaterialId)}</span>
+                  ) : null}
+                </span>
               </li>
             ))}
           </ul>

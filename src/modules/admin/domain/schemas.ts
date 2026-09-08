@@ -15,6 +15,13 @@
  */
 import { z } from 'zod'
 
+import { UNITS } from '@/core/uom'
+
+/** Stock-unit picker input — one of the fixed {@link UNITS}. */
+const unitInput = z.enum(UNITS, { error: 'اختر وحدة القياس' })
+
+export { UNITS, UNIT_LABELS, UNIT_OPTIONS, DEFAULT_UNIT, unitLabel, type Unit } from '@/core/uom'
+
 // ---------------------------------------------------------------------------
 // Shared column primitives
 // ---------------------------------------------------------------------------
@@ -188,7 +195,7 @@ export const productInputSchema = z.object({
   code: codeInput,
   name: reqText(128, 'اسم المنتج'),
   name_ar: optText(128),
-  uom: reqText(16, 'وحدة القياس'),
+  uom: unitInput,
   /**
    * The admin-set selling price and the ONLY price field. There is no
    * per-invoice / per-sale price override anywhere in the system — the sole
@@ -239,7 +246,7 @@ export const rawMaterialRowSchema = z.object({
 export const rawMaterialInputSchema = z.object({
   code: codeInput,
   name: reqText(128, 'اسم الخامة'),
-  uom: reqText(16, 'وحدة القياس'),
+  uom: unitInput,
   purchase_price: nonNegative('سعر الشراء'),
   preferred_supplier_id: optText(36),
   reorder_point: nonNegative('حد إعادة الطلب'),
