@@ -12,6 +12,7 @@ export const portalKeys = {
   invoices: (params: unknown) => ['portal', 'invoices', params] as const,
   invoice: (id: string) => ['portal', 'invoice', id] as const,
   receipts: (params: unknown) => ['portal', 'receipts', params] as const,
+  statement: () => ['portal', 'statement'] as const,
 } as const
 
 export const crmAdminKeys = {
