@@ -11,6 +11,12 @@ const SECTIONS = [
     desc: 'أرصدة الأصناف في كل مخزن (إسقاط دفتر المخزون).',
   },
   {
+    to: '/inventory/valuation',
+    ar: 'تقييم المخزون',
+    en: 'Inventory valuation',
+    desc: 'قيمة المخزون الحالي = الرصيد × متوسط تكلفة الوحدة، مجمّعة حسب المخزن، قابلة للطباعة والتصدير.',
+  },
+  {
     to: '/inventory/transfers',
     ar: 'التحويلات',
     en: 'Warehouse transfers',

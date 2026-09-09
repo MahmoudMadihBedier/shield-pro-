@@ -41,6 +41,7 @@ export const ServerRoute = {
   resetStaffPassword: '/staff-account/reset-password',
   trialBalance: '/reports/trial-balance',
   customerAging: '/reports/customer-aging',
+  inventoryValuation: '/reports/inventory-valuation',
   // CRM client portal (Phase 3) — see `functions/routes/portal-account.ts` and
   // `functions/routes/portal-data.ts`.
   createPortalAccount: '/portal-account/create',
@@ -357,6 +358,11 @@ const DISPATCH: Record<string, Dispatch> = {
     kind: 'rpc',
     fn: 'customer_aging',
     args: (p) => ({ p_as_of: p.asOf }),
+  },
+  [ServerRoute.inventoryValuation]: {
+    kind: 'rpc',
+    fn: 'inventory_valuation',
+    args: () => ({}),
   },
   [ServerRoute.createPortalAccount]: {
     kind: 'edge',
@@ -712,6 +718,27 @@ export function fetchTrialBalance(
 /** Whole-book customer aging aggregated in Postgres (FIFO receipt application). */
 export function fetchCustomerAging(asOf: string): Promise<Result<CustomerAgingRpcRow[]>> {
   return invoke<CustomerAgingRpcRow[]>(ServerRoute.customerAging, { asOf })
+}
+
+export interface InventoryValuationRpcRow {
+  productId: string
+  warehouseId: string
+  qty: number
+  unitCost: number
+  value: number
+}
+export interface InventoryValuationRpc {
+  rows: InventoryValuationRpcRow[]
+  totalValue: number
+  lineCount: number
+}
+
+/**
+ * Current stock value per (product, warehouse) — on-hand qty × weighted-average
+ * unit cost from the stock ledger. Warehouse-scoped server-side.
+ */
+export function fetchInventoryValuation(): Promise<Result<InventoryValuationRpc>> {
+  return invoke<InventoryValuationRpc>(ServerRoute.inventoryValuation, {})
 }
 
 // --- CRM client portal (Phase 3) -------------------------------------------

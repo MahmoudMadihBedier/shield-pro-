@@ -1,5 +1,6 @@
 export { InventoryHubPage } from './InventoryHubPage'
 export { StockOnHandPage } from './StockOnHandPage'
+export { InventoryValuationPage } from './InventoryValuationPage'
 export { WarehouseTransferListPage } from './WarehouseTransferListPage'
 export { WarehouseTransferFormPage } from './WarehouseTransferFormPage'
 export { WarehouseTransferDetailPage } from './WarehouseTransferDetailPage'

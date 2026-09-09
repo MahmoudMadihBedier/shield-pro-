@@ -13,8 +13,9 @@ import type { RouteObject } from 'react-router-dom'
 const InventoryHubPage = lazy(() =>
   import('./pages').then((m) => ({ default: m.InventoryHubPage })),
 )
-const StockOnHandPage = lazy(() =>
-  import('./pages').then((m) => ({ default: m.StockOnHandPage })),
+const StockOnHandPage = lazy(() => import('./pages').then((m) => ({ default: m.StockOnHandPage })))
+const InventoryValuationPage = lazy(() =>
+  import('./pages').then((m) => ({ default: m.InventoryValuationPage })),
 )
 const WarehouseTransferListPage = lazy(() =>
   import('./pages').then((m) => ({ default: m.WarehouseTransferListPage })),
@@ -31,31 +32,111 @@ const StockCountSessionListPage = lazy(() =>
 const StockCountSessionPage = lazy(() =>
   import('./pages').then((m) => ({ default: m.StockCountSessionPage })),
 )
-const WriteOffListPage = lazy(() => import('./pages').then((m) => ({ default: m.WriteOffListPage })))
-const WriteOffFormPage = lazy(() => import('./pages').then((m) => ({ default: m.WriteOffFormPage })))
+const WriteOffListPage = lazy(() =>
+  import('./pages').then((m) => ({ default: m.WriteOffListPage })),
+)
+const WriteOffFormPage = lazy(() =>
+  import('./pages').then((m) => ({ default: m.WriteOffFormPage })),
+)
 const WriteOffDetailPage = lazy(() =>
   import('./pages').then((m) => ({ default: m.WriteOffDetailPage })),
 )
 
 function Lazy({ children }: { children: ReactNode }) {
   return (
-    <Suspense
-      fallback={<div className="p-6 text-sm text-zinc-500">جارٍ التحميل…</div>}
-    >
+    <Suspense fallback={<div className="p-6 text-sm text-zinc-500">جارٍ التحميل…</div>}>
       {children}
     </Suspense>
   )
 }
 
 export const inventoryRoutes: RouteObject[] = [
-  { path: 'inventory', element: <Lazy><InventoryHubPage /></Lazy> },
-  { path: 'inventory/stock', element: <Lazy><StockOnHandPage /></Lazy> },
-  { path: 'inventory/transfers', element: <Lazy><WarehouseTransferListPage /></Lazy> },
-  { path: 'inventory/transfers/new', element: <Lazy><WarehouseTransferFormPage /></Lazy> },
-  { path: 'inventory/transfers/:id', element: <Lazy><WarehouseTransferDetailPage /></Lazy> },
-  { path: 'inventory/counts', element: <Lazy><StockCountSessionListPage /></Lazy> },
-  { path: 'inventory/counts/:id', element: <Lazy><StockCountSessionPage /></Lazy> },
-  { path: 'inventory/write-offs', element: <Lazy><WriteOffListPage /></Lazy> },
-  { path: 'inventory/write-offs/new', element: <Lazy><WriteOffFormPage /></Lazy> },
-  { path: 'inventory/write-offs/:id', element: <Lazy><WriteOffDetailPage /></Lazy> },
+  {
+    path: 'inventory',
+    element: (
+      <Lazy>
+        <InventoryHubPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'inventory/stock',
+    element: (
+      <Lazy>
+        <StockOnHandPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'inventory/valuation',
+    element: (
+      <Lazy>
+        <InventoryValuationPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'inventory/transfers',
+    element: (
+      <Lazy>
+        <WarehouseTransferListPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'inventory/transfers/new',
+    element: (
+      <Lazy>
+        <WarehouseTransferFormPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'inventory/transfers/:id',
+    element: (
+      <Lazy>
+        <WarehouseTransferDetailPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'inventory/counts',
+    element: (
+      <Lazy>
+        <StockCountSessionListPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'inventory/counts/:id',
+    element: (
+      <Lazy>
+        <StockCountSessionPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'inventory/write-offs',
+    element: (
+      <Lazy>
+        <WriteOffListPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'inventory/write-offs/new',
+    element: (
+      <Lazy>
+        <WriteOffFormPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'inventory/write-offs/:id',
+    element: (
+      <Lazy>
+        <WriteOffDetailPage />
+      </Lazy>
+    ),
+  },
 ]
