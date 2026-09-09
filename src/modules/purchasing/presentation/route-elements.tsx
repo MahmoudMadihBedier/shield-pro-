@@ -20,6 +20,9 @@ const StockReceiptListPage = lazy(() =>
 const StockReceiptDetailPage = lazy(() =>
   import('./pages/StockReceiptDetailPage').then((m) => ({ default: m.StockReceiptDetailPage })),
 )
+const SupplierPerformancePage = lazy(() =>
+  import('./pages/SupplierPerformancePage').then((m) => ({ default: m.SupplierPerformancePage })),
+)
 
 function Lazy({ children }: { children: ReactNode }) {
   return (
@@ -71,6 +74,14 @@ export function StockReceiptDetailRoute() {
   return (
     <Lazy>
       <StockReceiptDetailPage />
+    </Lazy>
+  )
+}
+
+export function SupplierPerformanceRoute() {
+  return (
+    <Lazy>
+      <SupplierPerformancePage />
     </Lazy>
   )
 }

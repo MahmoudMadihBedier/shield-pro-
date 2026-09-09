@@ -86,7 +86,14 @@ async function scanTable<T>(
         const probe = await tablesDB.listRows({
           databaseId: DATABASE_ID,
           tableId,
-          queries: [...baseQueries, Query.limit(1), Query.offset(collected.length)],
+          // Only `rows.length` is read — skip the exact COUNT(*) over a table
+          // that just proved to be huge.
+          queries: [
+            ...baseQueries,
+            Query.limit(1),
+            Query.offset(collected.length),
+            Query.noCount(),
+          ],
         })
         if (probe.rows.length === 0) break
         // Never silently truncate a financial figure.
@@ -98,37 +105,6 @@ async function scanTable<T>(
       }
     }
     return ok(collected)
-  } catch (e) {
-    return err(mapAppwriteError(e))
-  }
-}
-
-/**
- * The most recent `limit` submitted invoices (newest first) — a bounded read
- * for pickers that only need a working set, not the whole book. `scanTable`'s
- * hard cap makes an unbounded `listSubmittedInvoices()` unusable once a tenant
- * crosses `SCAN_CAP` invoices; this reader stays O(limit).
- */
-export async function listRecentSubmittedInvoices(
-  limit: number,
-): Promise<Result<InvoiceForAging[]>> {
-  try {
-    const res = await tablesDB.listRows({
-      databaseId: DATABASE_ID,
-      tableId: Tables.salesInvoices,
-      queries: [
-        Query.equal('doc_status', DocStatus.Submitted),
-        Query.orderDesc('posting_datetime'),
-        Query.limit(limit),
-      ],
-    })
-    const out: InvoiceForAging[] = []
-    for (const raw of res.rows) {
-      const parsed = parseInvoice(raw)
-      if (!parsed.success) return err(appError('server', SHAPE_ERROR, { detail: parsed.message }))
-      out.push(parsed.data)
-    }
-    return ok(out)
   } catch (e) {
     return err(mapAppwriteError(e))
   }

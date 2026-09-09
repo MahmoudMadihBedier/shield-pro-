@@ -25,6 +25,10 @@ create or replace function public.inventory_valuation()
   security definer
   set search_path = public
 as $$
+  -- Branch scope is applied ONCE, on `bin_balances` in `joined`. The cost CTEs
+  -- feed that join, so an unreadable warehouse's ledger rows can never surface;
+  -- re-checking `_can_read_warehouse` per scanned ledger row here would just be
+  -- a correlated subquery over the whole ledger for no added safety.
   with in_moves as (
     -- Weighted-average rate over priced receipts (primary cost basis).
     select product_id, warehouse_id,
@@ -33,7 +37,6 @@ as $$
     where not coalesce(is_cancelled, false)
       and qty_change > 0
       and valuation_rate > 0
-      and public._can_read_warehouse(warehouse_id)
     group by product_id, warehouse_id
   ),
   last_rate as (
@@ -43,7 +46,6 @@ as $$
     from public.stock_ledger_entries
     where not coalesce(is_cancelled, false)
       and valuation_rate > 0
-      and public._can_read_warehouse(warehouse_id)
     order by product_id, warehouse_id, posting_datetime desc, id desc
   ),
   joined as (

@@ -28,4 +28,10 @@ export const purchasingNavItems: readonly NavItem[] = [
     labelEn: 'Raw-material receipts',
     roles: PURCHASING_ROLES,
   },
+  {
+    to: '/purchasing/supplier-performance',
+    label: 'أداء الموردين',
+    labelEn: 'Supplier performance',
+    roles: [Role.PurchasingAccountant, Role.SystemAdmin],
+  },
 ]

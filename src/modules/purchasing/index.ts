@@ -10,6 +10,7 @@ export { PurchaseOrderDetailPage } from './presentation/pages/PurchaseOrderDetai
 export { StockReceiptListPage } from './presentation/pages/StockReceiptListPage'
 export { StockReceiptFormPage } from './presentation/pages/StockReceiptFormPage'
 export { StockReceiptDetailPage } from './presentation/pages/StockReceiptDetailPage'
+export { SupplierPerformancePage } from './presentation/pages/SupplierPerformancePage'
 
 // --- routing + nav ----------------------------------------------------
 export { purchasingRoutes } from './routes'
@@ -50,3 +51,11 @@ export {
 } from './domain/lines'
 export { receiptToStockMoves, type StockMove } from './domain/to-ledger'
 export { canActOnPurchasing, PURCHASING_ACTOR_ROLES } from './domain/permissions'
+export {
+  sortBySpend,
+  daysSinceLastOrder,
+  supplierPerformanceToRows,
+  type SupplierPerformanceRow,
+  type SupplierPerformanceReport,
+} from './domain/supplier-performance'
+export { supplierPerformance } from './data/supplier-performance-repo'

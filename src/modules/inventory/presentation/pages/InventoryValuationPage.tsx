@@ -40,7 +40,9 @@ export function InventoryValuationPage() {
       product: (id) => productLabel.get(id) ?? id,
     }).map((r) => ({
       ...r,
-      qty: roundCents(r.qty),
+      // qty is a quantity (kg / L / pieces), not money — keep 3-decimal
+      // precision; only the money columns snap to whole cents.
+      qty: Math.round(r.qty * 1000) / 1000,
       unit_cost: roundCents(r.unit_cost),
       value: roundCents(r.value),
     }))

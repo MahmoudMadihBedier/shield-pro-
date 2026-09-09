@@ -15,6 +15,8 @@ import type { GlLine } from '@/core/ledger'
 import type { ReferenceEntity } from '@/core/reference-id'
 import { err, ok, type Result } from '@/core/result'
 
+import { FunctionsHttpError } from '@supabase/supabase-js'
+
 import { supabase } from './client'
 import { mapAppwriteError } from './errors'
 
@@ -42,6 +44,7 @@ export const ServerRoute = {
   trialBalance: '/reports/trial-balance',
   customerAging: '/reports/customer-aging',
   inventoryValuation: '/reports/inventory-valuation',
+  supplierPerformance: '/reports/supplier-performance',
   // CRM client portal (Phase 3) — see `functions/routes/portal-account.ts` and
   // `functions/routes/portal-data.ts`.
   createPortalAccount: '/portal-account/create',
@@ -364,6 +367,11 @@ const DISPATCH: Record<string, Dispatch> = {
     fn: 'inventory_valuation',
     args: () => ({}),
   },
+  [ServerRoute.supplierPerformance]: {
+    kind: 'rpc',
+    fn: 'supplier_performance',
+    args: () => ({}),
+  },
   [ServerRoute.createPortalAccount]: {
     kind: 'edge',
     fn: 'portal-account',
@@ -398,6 +406,45 @@ const DISPATCH: Record<string, Dispatch> = {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+/**
+ * Turn a `supabase.functions.invoke` failure into a typed `AppError`.
+ *
+ * `supabase-js` v2 does NOT put the response body in `error` for a non-2xx
+ * Edge response — `error` is a `FunctionsHttpError` and the body (our
+ * `{ error: string }`) is on `error.context`, a `Response` that must be read.
+ * Without this the caller only ever sees a generic "Edge Function returned a
+ * non-2xx status code", never the function's own message (e.g. "your role may
+ * not manage CRM portal accounts", "this customer already has a portal
+ * account"). A `FunctionsFetchError` (function not deployed / unreachable) maps
+ * through `mapAppwriteError` as a network error.
+ */
+async function edgeError(fnName: string, error: unknown): Promise<AppError> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = (await error.context.json()) as { error?: unknown }
+      if (body && typeof body.error === 'string' && body.error) {
+        const status = error.context.status
+        const code: AppError['code'] =
+          status === 401
+            ? 'unauthorized'
+            : status === 403
+              ? 'forbidden'
+              : status === 404
+                ? 'not_found'
+                : status === 409
+                  ? 'conflict'
+                  : status >= 400 && status < 500
+                    ? 'validation'
+                    : 'server'
+        return appError(code, body.error, { detail: `${fnName} → ${status}` })
+      }
+    } catch {
+      /* body wasn't JSON or was already consumed — fall through */
+    }
+  }
+  return mapAppwriteError(error)
+}
+
 async function invoke<T>(path: string, payload: unknown): Promise<Result<T>> {
   const d = DISPATCH[path]
   if (!d) {
@@ -412,7 +459,7 @@ async function invoke<T>(path: string, payload: unknown): Promise<Result<T>> {
       return ok(data as T)
     }
     const { data, error } = await supabase.functions.invoke(d.fn, { body: d.body(payload ?? {}) })
-    if (error) return err(mapAppwriteError(error))
+    if (error) return err(await edgeError(d.fn, error))
     if (
       data &&
       typeof data === 'object' &&
@@ -743,6 +790,32 @@ export interface InventoryValuationRpc {
  */
 export function fetchInventoryValuation(): Promise<Result<InventoryValuationRpc>> {
   return invoke<InventoryValuationRpc>(ServerRoute.inventoryValuation, {})
+}
+
+export interface SupplierPerformanceRpcRow {
+  supplierId: string
+  supplierName: string
+  orderCount: number
+  submittedValue: number
+  avgOrderValue: number
+  cancelledCount: number
+  cancelRate: number
+  firstOrderAt: string | null
+  lastOrderAt: string | null
+}
+export interface SupplierPerformanceRpc {
+  rows: SupplierPerformanceRpcRow[]
+  totalSpend: number
+  supplierCount: number
+}
+
+/**
+ * One row per supplier aggregated over `purchase_orders` — order count, spend,
+ * average order value, cancellation rate, first/last order. Branch-scoped
+ * server-side.
+ */
+export function fetchSupplierPerformance(): Promise<Result<SupplierPerformanceRpc>> {
+  return invoke<SupplierPerformanceRpc>(ServerRoute.supplierPerformance, {})
 }
 
 // --- CRM client portal (Phase 3) -------------------------------------------

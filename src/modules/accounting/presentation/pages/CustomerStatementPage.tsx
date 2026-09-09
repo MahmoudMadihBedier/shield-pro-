@@ -152,6 +152,11 @@ export function CustomerStatementPage() {
 
       {!customerId ? (
         <Card className="text-sm text-zinc-500">اختر عميلًا لعرض كشف الحساب.</Card>
+      ) : deepLinked.isError ? (
+        <Card className="text-sm text-red-600 dark:text-red-400">
+          تعذّر العثور على هذا العميل — قد يكون محذوفًا أو خارج نطاق صلاحيتك. اختر عميلًا من
+          القائمة.
+        </Card>
       ) : query.isLoading ? (
         <Card className="text-sm text-zinc-500">جارٍ التحميل…</Card>
       ) : query.isError ? (

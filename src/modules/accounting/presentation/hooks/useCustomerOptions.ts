@@ -10,12 +10,10 @@ import type { AppError } from '@/core/errors'
 import { customersRepo } from '@/modules/admin'
 import type { SelectOption } from '@/shared/forms'
 
-import { listRecentSubmittedInvoices } from '../../data/aging-repo'
+import { listSubmittedInvoices } from '../../data/aging-repo'
 import { accountingKeys } from '../query-keys'
 
 const MAX_ROWS = 200
-/** The receipt form only needs a recent working set, not every invoice ever. */
-const INVOICE_PICKER_LIMIT = 500
 
 export interface CustomerOption extends SelectOption {
   creditLimit: number
@@ -56,7 +54,11 @@ export function useSubmittedInvoiceOptions() {
     queryKey: accountingKeys.options.submittedInvoices(),
     staleTime: 30_000,
     queryFn: async () => {
-      const res = await listRecentSubmittedInvoices(INVOICE_PICKER_LIMIT)
+      // Whole book, paged. A receipt can be recorded against ANY still-open
+      // invoice, however old — a "newest N" cap would silently hide an unpaid
+      // invoice from the picker. `scanTable`'s SCAN_CAP is a loud, actionable
+      // error if a tenant ever crosses it; that beats a silent omission here.
+      const res = await listSubmittedInvoices()
       if (!res.ok) throw res.error
       return res.value.map((inv) => ({
         value: inv.reference_id,
