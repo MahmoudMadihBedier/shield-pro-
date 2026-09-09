@@ -13,7 +13,9 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
+import { useAuth } from '@/application/auth/context'
 import { DocStatus } from '@/core/doc-status'
+import { isSystemAdmin } from '@/core/rbac'
 import { formatCurrency, formatDate, formatQuantity } from '@/shared/formatters'
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
@@ -39,6 +41,8 @@ export function ProductionBatchDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const query = useProductionBatch(id || undefined)
+  const { principal } = useAuth()
+  const isAdmin = principal != null && isSystemAdmin(principal)
   const { submit, cancel } = useProductionBatchActions()
   const products = useProductOptions()
   const warehouses = useFactoryWarehouses()
@@ -162,6 +166,7 @@ export function ProductionBatchDetailPage() {
         onCancel={(reason) => cancel.mutate({ id: batch.$id, reason })}
         busy={submit.isPending || cancel.isPending || ledger.kind === 'posting'}
         error={submitCancelError}
+        bypassGates={isAdmin}
       />
 
       <AdminOverridePanel

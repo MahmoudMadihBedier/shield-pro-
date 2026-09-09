@@ -25,16 +25,27 @@ export function PrintButton({
   ...rest
 }: PrintButtonProps) {
   const onClick = useCallback(() => {
+    if (!documentTitle) {
+      window.print()
+      return
+    }
     const previous = document.title
-    if (documentTitle) document.title = documentTitle
+    document.title = documentTitle
+    let done = false
     const restore = () => {
+      if (done) return
+      done = true
       document.title = previous
       window.removeEventListener('afterprint', restore)
+      window.removeEventListener('focus', restore)
     }
-    window.addEventListener('afterprint', restore)
+    // `afterprint` fires when the dialog closes on Chrome; `focus` returns to
+    // the window when Firefox/Safari dismiss theirs. A long safety net covers
+    // the rest without racing a slow "Save as PDF".
+    window.addEventListener('afterprint', restore, { once: true })
+    window.addEventListener('focus', restore, { once: true })
+    window.setTimeout(restore, 60_000)
     window.print()
-    // Safari/Firefox sometimes skip `afterprint` — belt-and-braces.
-    window.setTimeout(restore, 1000)
   }, [documentTitle])
 
   return (

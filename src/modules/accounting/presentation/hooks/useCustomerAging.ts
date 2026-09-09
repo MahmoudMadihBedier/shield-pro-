@@ -7,10 +7,12 @@ import type { AppError } from '@/core/errors'
 
 import {
   customerAgingReport,
+  customerStatement,
   listReceiptsForCustomer,
   listSubmittedInvoices,
   type CustomerAgingRow,
 } from '../../data/aging-repo'
+import type { CustomerStatement } from '../../domain/statement'
 import type { InvoiceForAging } from '../../domain/schemas'
 import type { Receipt } from '../../domain/schemas'
 import { accountingKeys } from '../query-keys'
@@ -46,6 +48,24 @@ export function useCustomerLedger(customerId: string | undefined) {
       if (!invoices.ok) throw invoices.error
       if (!receipts.ok) throw receipts.error
       return { invoices: invoices.value, receipts: receipts.value }
+    },
+  })
+}
+
+export interface StatementRange {
+  from?: string
+  to?: string
+}
+
+/** One customer's running-balance account statement over an optional range. */
+export function useCustomerStatement(customerId: string | undefined, range: StatementRange = {}) {
+  return useQuery<CustomerStatement, AppError>({
+    queryKey: accountingKeys.aging.statement(customerId ?? '', range),
+    enabled: Boolean(customerId),
+    queryFn: async () => {
+      const res = await customerStatement(customerId as string, range)
+      if (!res.ok) throw res.error
+      return res.value
     },
   })
 }

@@ -24,6 +24,11 @@ export interface SubmitCancelBarProps {
   onCancel: (reason: string) => void
   busy?: boolean
   error?: string | null
+  /**
+   * System Admin — exempt from the QC-before-submit gate here and server-side
+   * (`_submit_gates` returns early for `system_admin`). Keeps the button live.
+   */
+  bypassGates?: boolean
 }
 
 export function SubmitCancelBar({
@@ -33,10 +38,11 @@ export function SubmitCancelBar({
   onCancel,
   busy = false,
   error = null,
+  bypassGates = false,
 }: SubmitCancelBarProps) {
   const [reason, setReason] = useState('')
 
-  const qcGateOk = qcStatus == null || isTransferable(qcStatus)
+  const qcGateOk = bypassGates || qcStatus == null || isTransferable(qcStatus)
 
   return (
     <Card className="space-y-3">
@@ -81,7 +87,9 @@ export function SubmitCancelBar({
       {docStatus === DocStatus.Submitted ? (
         <div className="space-y-2">
           <label className="block text-sm">
-            <span className="mb-1 block text-zinc-600 dark:text-zinc-400">سبب الإلغاء (إلزامي)</span>
+            <span className="mb-1 block text-zinc-600 dark:text-zinc-400">
+              سبب الإلغاء (إلزامي)
+            </span>
             <textarea
               rows={2}
               value={reason}

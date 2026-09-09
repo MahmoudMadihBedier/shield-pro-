@@ -46,6 +46,12 @@ export const accountingNavItems: NavItem[] = [
     roles: ACCOUNTING_NAV_ROLES,
   },
   {
+    to: '/accounting/statement',
+    label: 'كشف حساب عميل',
+    labelEn: 'Customer statement',
+    roles: ACCOUNTING_NAV_ROLES,
+  },
+  {
     to: '/accounting/trial-balance',
     label: 'ميزان المراجعة',
     labelEn: 'Trial balance',

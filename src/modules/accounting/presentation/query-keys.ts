@@ -20,6 +20,8 @@ export const accountingKeys = {
     root: ['accounting', 'aging'] as const,
     report: (asOf: string) => ['accounting', 'aging', 'report', asOf] as const,
     customer: (customerId: string) => ['accounting', 'aging', 'customer', customerId] as const,
+    statement: (customerId: string, params: unknown) =>
+      ['accounting', 'aging', 'statement', customerId, params] as const,
   },
 
   options: {

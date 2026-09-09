@@ -15,9 +15,36 @@ export const INVENTORY_NAV_ROLES: readonly Role[] = [
 ]
 
 export const inventoryNavItems: readonly NavItem[] = [
-  { to: '/inventory', label: 'المخزون', labelEn: 'Inventory', roles: INVENTORY_NAV_ROLES, end: true },
-  { to: '/inventory/stock', label: 'الرصيد الحالي', labelEn: 'Stock on hand', roles: INVENTORY_NAV_ROLES },
-  { to: '/inventory/transfers', label: 'التحويلات', labelEn: 'Transfers', roles: INVENTORY_NAV_ROLES },
+  {
+    to: '/inventory',
+    label: 'المخزون',
+    labelEn: 'Inventory',
+    roles: INVENTORY_NAV_ROLES,
+    end: true,
+  },
+  {
+    to: '/inventory/stock',
+    label: 'الرصيد الحالي',
+    labelEn: 'Stock on hand',
+    roles: INVENTORY_NAV_ROLES,
+  },
+  {
+    to: '/inventory/valuation',
+    label: 'تقييم المخزون',
+    labelEn: 'Valuation',
+    roles: INVENTORY_NAV_ROLES,
+  },
+  {
+    to: '/inventory/transfers',
+    label: 'التحويلات',
+    labelEn: 'Transfers',
+    roles: INVENTORY_NAV_ROLES,
+  },
   { to: '/inventory/counts', label: 'الجرد', labelEn: 'Stock counts', roles: INVENTORY_NAV_ROLES },
-  { to: '/inventory/write-offs', label: 'الهالك', labelEn: 'Write-offs', roles: INVENTORY_NAV_ROLES },
+  {
+    to: '/inventory/write-offs',
+    label: 'الهالك',
+    labelEn: 'Write-offs',
+    roles: INVENTORY_NAV_ROLES,
+  },
 ]

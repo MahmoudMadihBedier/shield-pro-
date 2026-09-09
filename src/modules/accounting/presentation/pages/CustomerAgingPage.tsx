@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { formatCurrency, formatDate } from '@/shared/formatters'
 import { ExportButton } from '@/shared/excel'
@@ -102,13 +103,21 @@ export function CustomerAgingPage() {
                 </span>
               ) : null}
             </div>
-            <button
-              type="button"
-              onClick={() => setDrillCustomer(undefined)}
-              className="text-sm text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-            >
-              إغلاق
-            </button>
+            <div className="flex items-center gap-3 text-sm">
+              <Link
+                to={`/accounting/statement?customer=${drillCustomer}`}
+                className="font-medium text-brand-600 hover:underline dark:text-brand-400"
+              >
+                كشف حساب كامل / Full statement
+              </Link>
+              <button
+                type="button"
+                onClick={() => setDrillCustomer(undefined)}
+                className="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+              >
+                إغلاق
+              </button>
+            </div>
           </div>
 
           {ledger.isLoading ? <p className="text-sm text-zinc-500">جارٍ التحميل…</p> : null}

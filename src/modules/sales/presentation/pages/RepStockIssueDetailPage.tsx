@@ -17,7 +17,12 @@ import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
 import { postRepIssueToLedger, type RepIssueLedgerPosting } from '../../data/post-sales'
 import { canActOnSales, canManageSales } from '../../domain/permissions'
-import { parseRepIssueLines, type RepIssueLine, type RepStockIssueRow } from '../../domain/schemas'
+import {
+  parseRepIssueLines,
+  REP_ISSUE_STATUSES,
+  type RepIssueLine,
+  type RepStockIssueRow,
+} from '../../domain/schemas'
 import { DocStatusPill, SubmitCancelBar } from '../components'
 import {
   optionLabelMap,
@@ -167,6 +172,7 @@ export function RepStockIssueDetailPage() {
       <AdminOverridePanel
         table="rep_stock_issues"
         row={issue}
+        statusOptions={REP_ISSUE_STATUSES}
         onDone={() => void query.refetch()}
       />
     </div>

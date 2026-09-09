@@ -20,7 +20,14 @@ import { mapAppwriteError } from '@/infrastructure/appwrite/errors'
 import { fetchCustomerAging } from '@/infrastructure/appwrite/functions'
 import { Query, tablesDB } from '@/infrastructure/appwrite/services'
 
+import { z } from 'zod'
+
 import { type CustomerAging } from '../domain/aging'
+import {
+  buildCustomerStatement,
+  pickReceivableInvoices,
+  type CustomerStatement,
+} from '../domain/statement'
 import {
   invoiceForAgingSchema,
   receiptRowSchema,
@@ -54,7 +61,15 @@ async function scanTable<T>(
 ): Promise<Result<T[]>> {
   const collected: T[] = []
   try {
-    for (let offset = 0; offset < SCAN_CAP; offset += SCAN_PAGE) {
+    for (let offset = 0; ; offset += SCAN_PAGE) {
+      if (offset >= SCAN_CAP) {
+        // Never silently truncate a financial figure.
+        return err(
+          appError('server', 'عدد السجلات كبير جدًا لعرضه هنا — تواصل مع الدعم لتقرير مفصّل.', {
+            detail: `${tableId}: exceeded ${SCAN_CAP} rows`,
+          }),
+        )
+      }
       const res = await tablesDB.listRows({
         databaseId: DATABASE_ID,
         tableId,
@@ -105,6 +120,71 @@ export function listReceiptsForCustomer(customerId: string): Promise<Result<Rece
     Tables.receipts,
     [Query.equal('doc_status', DocStatus.Submitted), Query.equal('customer_id', customerId)],
     parseReceipt,
+  )
+}
+
+const returnForStatementSchema = z.object({
+  reference_id: z.string(),
+  posting_datetime: z.string(),
+  refund_amount: z
+    .number()
+    .nullish()
+    .transform((v) => v ?? 0),
+})
+type ReturnForStatement = z.infer<typeof returnForStatementSchema>
+
+const parseReturn = (raw: unknown) => {
+  const r = returnForStatementSchema.safeParse(raw)
+  return r.success
+    ? { success: true as const, data: r.data }
+    : { success: false as const, message: r.error.message }
+}
+
+/** Submitted `return_requests` with a refund, for one customer. */
+export function listReturnsForCustomer(customerId: string): Promise<Result<ReturnForStatement[]>> {
+  return scanTable(
+    Tables.returnRequests,
+    [Query.equal('doc_status', DocStatus.Submitted), Query.equal('customer_id', customerId)],
+    parseReturn,
+  )
+}
+
+/**
+ * One customer's account statement over `[from, to]`: submitted credit-side
+ * invoices (debits) vs. receipts + return credit notes (credits), with a
+ * running balance. History before `from` folds into the opening balance.
+ */
+export async function customerStatement(
+  customerId: string,
+  range: { from?: string; to?: string } = {},
+): Promise<Result<CustomerStatement>> {
+  const [invoices, receipts, returns] = await Promise.all([
+    listSubmittedInvoices({ customerId }),
+    listReceiptsForCustomer(customerId),
+    listReturnsForCustomer(customerId),
+  ])
+  if (!invoices.ok) return invoices
+  if (!receipts.ok) return receipts
+  if (!returns.ok) return returns
+
+  return ok(
+    buildCustomerStatement({
+      from: range.from,
+      to: range.to,
+      // Same credit-side rule + full net_total as the aging report, so the
+      // statement's closing balance matches `customer_aging`'s `outstanding`.
+      invoices: pickReceivableInvoices(invoices.value),
+      receipts: receipts.value.map((r) => ({
+        reference: r.reference_id,
+        date: r.posting_datetime,
+        amount: r.amount,
+      })),
+      returns: returns.value.map((r) => ({
+        reference: r.reference_id,
+        date: r.posting_datetime,
+        amount: r.refund_amount,
+      })),
+    }),
   )
 }
 

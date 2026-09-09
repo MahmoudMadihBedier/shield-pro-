@@ -170,6 +170,7 @@ export function ProductionRequestDetailPage() {
       <AdminOverridePanel
         table="production_requests"
         row={request}
+        statusOptions={PRODUCTION_REQUEST_STATUSES}
         onDone={() => void query.refetch()}
       />
     </div>

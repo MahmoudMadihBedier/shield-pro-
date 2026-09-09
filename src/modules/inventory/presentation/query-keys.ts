@@ -14,6 +14,8 @@ export const inventoryKeys = {
       ['inventory', 'bin', 'qty', productId, warehouseId] as const,
   },
 
+  valuation: () => ['inventory', 'valuation'] as const,
+
   options: {
     warehouses: (kind: string | null) => ['inventory', 'options', 'warehouses', kind] as const,
     products: () => ['inventory', 'options', 'products'] as const,

@@ -25,6 +25,7 @@ import {
 import { originKind, originWarehouseHint } from '../../domain/origin'
 import {
   parseReturnLines,
+  RETURN_STATUSES,
   type ReturnLine,
   type ReturnRequestRow,
   type ReturnStatus,
@@ -198,6 +199,7 @@ export function ReturnRequestDetailPage() {
           <AdminOverridePanel
             table="return_requests"
             row={row}
+            statusOptions={RETURN_STATUSES}
             onDone={() => void query.refetch()}
           />
 

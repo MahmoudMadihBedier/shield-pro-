@@ -200,8 +200,8 @@ Deno.serve(async (req) => {
       })
       .eq('id', userId)
     if (updErr) {
-      // The `enforce_active_system_admin` trigger (migrations 0022/0023).
-      if (updErr.code === '23514' || /System Admin must remain/i.test(updErr.message)) {
+      // The `enforce_active_system_admin` trigger raises this exact text.
+      if (/System Admin must remain/i.test(updErr.message)) {
         return json({ error: 'at least one active System Admin must remain' }, 409)
       }
       return json({ error: updErr.message }, 500)

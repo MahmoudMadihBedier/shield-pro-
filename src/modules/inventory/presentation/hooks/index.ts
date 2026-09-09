@@ -1,4 +1,5 @@
 export { useBinBalances, useBinQty, type BinBalance } from './useBinBalances'
+export { useInventoryValuation } from './useInventoryValuation'
 export { useInventoryPermissions, type InventoryPermissions } from './usePermissions'
 export { useWarehouseOptions, useProductOptions, optionLabelMap, type Option } from './useOptions'
 export {

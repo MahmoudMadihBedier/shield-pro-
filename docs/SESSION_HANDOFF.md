@@ -203,10 +203,11 @@ Customer approval is now reachable from the **customers list** too — an inline
      `StaffAccountForm` (multi-role checklist + branch/warehouse) wired into
      `UsersListPage` via a new `MasterListPage` `renderForm` override.
 
-Migrations are now 0001–0023 (0022/0023 = `enforce_active_system_admin` trigger
+Migrations are now 0001–0024 (0022–0024 = `enforce_active_system_admin` trigger
 on `public.users` — a demote/deactivate/delete can never leave zero active
-System Admins; 0023 adds `FOR UPDATE` row-locking so concurrent demotions
-serialise; smoke-tested). Edge Functions: `portal-account`, `staff-account`.
+System Admins; 0024 serialises concurrent demotions on a single
+`pg_advisory_xact_lock` (0023's `FOR UPDATE` could deadlock); smoke-tested).
+Edge Functions: `portal-account`, `staff-account`.
 Warehouse `owner_user_id` and the staff-form warehouse field are proper
 pickers (staff / active warehouses); `RelationField` keeps a persisted-but-
 inactive value selectable so an edit can't wipe it.
@@ -219,18 +220,34 @@ inactive value selectable so an edit can't wipe it.
   print` in `index.css` strips chrome via a `.no-print` class, forces light,
   never inverts the logo — so any page prints as a letterheaded sheet.
 
-Remaining backlog: Phase 4.1 still wants production-waste / rep-cash-up /
-customer-statement exports + opening-stock + bank-statement importers; Phase
-4.2 could add inventory valuation, payroll cost, supplier performance, cash
-position. UI redesign Pass 2 (per-page polish) not started. Operational:
-rotate the DB password + service-role key, then disconnect Appwrite.
+- **Customer account statement (`/accounting/statement`, Phase 4.1/4.2).**
+  `domain/statement.ts` `buildCustomerStatement` — running-balance ledger of
+  credit-side invoices (debit) vs. receipts + return credit notes (credit),
+  history before `from` folded into an opening balance. `aging-repo`
+  `customerStatement(id, range)` composes the reads (`invoiceForAgingSchema`
+  gained `credit_amount`). Printable page + CSV/Excel export, linked from the
+  nav / hub / aging drill-in.
+
+- **Inventory valuation (`/inventory/valuation`, Phase 4.2).** Migration 0025
+  `inventory_valuation()` RPC — on-hand qty (`bin_balances`) × weighted-average
+  unit cost from the stock ledger's IN-move `valuation_rate` (fallback: last
+  positive rate), warehouse-scoped. `domain/valuation.ts` groups by warehouse;
+  printable page + CSV/Excel export. "As of now" only.
+
+Migrations are now 0001–0025.
+
+Remaining backlog: Phase 4.1 still wants production-waste / rep-cash-up
+exports + opening-stock + bank-statement importers; Phase 4.2 could add
+payroll cost, supplier performance, cash position. UI redesign Pass 2
+(per-page polish) not started. Operational: rotate the DB password +
+service-role key, then disconnect Appwrite.
 
 Note: commit `88bda05` (the export feature's first commit) was auto-generated
 by tooling without the `Co-Authored-By` / `Claude-Session` trailers; the
 follow-up `cf6830d` has them.
 
 ## Gates (this session): `pnpm typecheck` · `pnpm lint` (17 pre-existing
-router.tsx fast-refresh warns) · `pnpm test` **718 / 94 files** · `pnpm build`.
+router.tsx fast-refresh warns) · `pnpm test` **729 / 96 files** · `pnpm build`.
 
 ## MCP
 `.mcp.json` has the Supabase HTTP MCP (`project_ref=ajrevsyyudfjrwiifekj`).

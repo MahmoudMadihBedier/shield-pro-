@@ -30,13 +30,33 @@ export interface AdminOverridePanelProps {
     status?: string | null
     qc_status?: string | null
   }
+  /**
+   * The `status` workflow vocabulary for this document — pass the module's own
+   * `*_STATUSES` tuple (`src/shared/` must not import module code, so the caller
+   * owns the source of truth). When omitted, `status` renders as a free-text
+   * input.
+   */
+  statusOptions?: readonly string[]
   /** Called after a successful override so the page can refetch. */
   onDone?: () => void
 }
 
-export function AdminOverridePanel({ table, row, onDone }: AdminOverridePanelProps) {
+export function AdminOverridePanel({
+  table,
+  row,
+  statusOptions: statusVocab,
+  onDone,
+}: AdminOverridePanelProps) {
   const hasStatus = typeof row.status === 'string'
   const hasQc = typeof row.qc_status === 'string'
+
+  // The caller's vocabulary, with the current value folded in so a legacy/edge
+  // value stays selectable. Empty ⇒ render a free-text input.
+  const statusOptions = useMemo(() => {
+    if (!statusVocab || statusVocab.length === 0) return []
+    const current = row.status ?? ''
+    return current && !statusVocab.includes(current) ? [current, ...statusVocab] : [...statusVocab]
+  }, [statusVocab, row.status])
 
   const [docStatus, setDocStatus] = useState(String(row.doc_status ?? ''))
   const [status, setStatus] = useState(row.status ?? '')
@@ -98,12 +118,27 @@ export function AdminOverridePanel({ table, row, onDone }: AdminOverridePanelPro
           {hasStatus ? (
             <label className="block text-sm">
               <span className="mb-1 block text-zinc-600 dark:text-zinc-400">status</span>
-              <input
-                dir="ltr"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full rounded-lg border border-black/15 bg-transparent px-3 py-2 font-mono text-sm dark:border-white/15"
-              />
+              {statusOptions.length > 0 ? (
+                <select
+                  dir="ltr"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full rounded-lg border border-black/15 bg-transparent px-3 py-2 font-mono text-sm dark:border-white/15"
+                >
+                  {statusOptions.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  dir="ltr"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full rounded-lg border border-black/15 bg-transparent px-3 py-2 font-mono text-sm dark:border-white/15"
+                />
+              )}
             </label>
           ) : null}
 
