@@ -18,11 +18,13 @@ const rowSchema = z.object({
   qty: z.number().finite(),
   unitCost: z.number().finite(),
   value: z.number().finite(),
+  hasCost: z.boolean().default(true),
 })
 const reportSchema = z.object({
   rows: z.array(rowSchema),
   totalValue: z.number().finite(),
   lineCount: z.number().int().nonnegative(),
+  uncostedLineCount: z.number().int().nonnegative().default(0),
 })
 
 export async function inventoryValuation(): Promise<Result<ValuationReport>> {

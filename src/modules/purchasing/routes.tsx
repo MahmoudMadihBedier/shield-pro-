@@ -12,6 +12,7 @@ import {
   PurchasingHomeRoute,
   StockReceiptDetailRoute,
   StockReceiptListRoute,
+  SupplierPerformanceRoute,
 } from './presentation/route-elements'
 
 export const purchasingRoutes: RouteObject[] = [
@@ -20,4 +21,5 @@ export const purchasingRoutes: RouteObject[] = [
   { path: 'purchasing/orders/:id', element: <PurchaseOrderDetailRoute /> },
   { path: 'purchasing/receipts', element: <StockReceiptListRoute /> },
   { path: 'purchasing/receipts/:id', element: <StockReceiptDetailRoute /> },
+  { path: 'purchasing/supplier-performance', element: <SupplierPerformanceRoute /> },
 ]

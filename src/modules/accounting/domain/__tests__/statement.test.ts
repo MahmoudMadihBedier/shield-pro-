@@ -52,6 +52,18 @@ describe('buildCustomerStatement', () => {
     expect(s.closingBalance).toBe(800)
   })
 
+  it('keeps a row with an unparseable date visible (sorted last), not folded into opening', () => {
+    const s = buildCustomerStatement({
+      invoices: [inv('GOOD', '2026-03-02T00:00:00Z', 300), inv('BAD-DATE', 'not-a-date', 100)],
+      receipts: [],
+      returns: [],
+      from: '2026-03-01T00:00:00Z',
+    })
+    expect(s.openingBalance).toBe(0)
+    expect(s.lines.map((l) => l.reference)).toEqual(['GOOD', 'BAD-DATE'])
+    expect(s.closingBalance).toBe(400)
+  })
+
   it('drops zero / negative receivable invoices (cash sales)', () => {
     const s = buildCustomerStatement({
       invoices: [

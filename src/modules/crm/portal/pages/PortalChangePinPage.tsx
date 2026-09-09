@@ -1,14 +1,13 @@
 /**
- * Self-service PIN change. This is a standard authenticated Appwrite Auth
- * call (`account.updatePassword`) — no Function route needed, the same way
- * any signed-in user may change their own password.
+ * Self-service PIN change. Runs on the dedicated `portalSupabase` client and
+ * re-authenticates with the current PIN first (Supabase's `updateUser` does
+ * not verify it), so a stolen-but-unlocked session cannot silently change it.
  */
 import { useState } from 'react'
 import { z } from 'zod'
 
 import { isValidPin, PIN_LENGTH } from '@/core/portal'
-import { mapAppwriteError } from '@/infrastructure/appwrite/errors'
-import { account } from '@/infrastructure/appwrite/services'
+import { portalUpdatePin } from '@/infrastructure/appwrite/portal'
 import { err, ok, type Result } from '@/core/result'
 import { Form, FormError, TextField } from '@/shared/forms'
 import { Card, PageHeader } from '@/shared/ui'
@@ -37,20 +36,20 @@ export function PortalChangePinPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="تغيير الرقم السري" description="غيّر الرقم السري الخاص بحسابك في البوابة" />
+      <PageHeader
+        title="تغيير الرقم السري"
+        description="غيّر الرقم السري الخاص بحسابك في البوابة"
+      />
 
       <Card className="max-w-md">
         <Form<ChangePinValues>
           schema={changePinSchema}
           onSubmit={async (values): Promise<Result<unknown> | void> => {
             setSuccess(false)
-            try {
-              await account.updatePassword({ password: values.newPin, oldPassword: values.currentPin })
-              setSuccess(true)
-              return ok(undefined)
-            } catch (e) {
-              return err(mapAppwriteError(e))
-            }
+            const res = await portalUpdatePin(values.newPin, values.currentPin)
+            if (!res.ok) return err(res.error)
+            setSuccess(true)
+            return ok(undefined)
           }}
           className="space-y-4"
         >

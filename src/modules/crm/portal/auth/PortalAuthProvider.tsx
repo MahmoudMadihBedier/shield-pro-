@@ -4,23 +4,27 @@
  * `users` profile row, no team/role membership, no branch pin — only a
  * `customers` row linked via `portal_user_id`.
  *
- * `login` authenticates straight against Appwrite Auth with the synthetic
- * portal email (`portalEmailForCode`) and the customer's PIN as the password
- * — Appwrite owns hashing/rate-limiting/sessions. The portal never reads
- * business data itself; `/portal/me` (a `shield-server` Function route)
- * resolves the caller's own customer record server-side.
+ * `login` authenticates against Supabase Auth with the synthetic portal email
+ * (`portalEmailForCode`) and the customer's PIN as the password — Supabase owns
+ * hashing/rate-limiting/sessions. Every call runs on the dedicated
+ * `portalSupabase` client (`infrastructure/appwrite/portal.ts`, its own
+ * `storageKey`), so a customer session never overwrites a staff session in the
+ * same browser. The portal never reads business data directly; `portal_me` (a
+ * SECURITY DEFINER RPC) resolves the caller's own `customers` row server-side.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, type ReactNode } from 'react'
 
 import type { AppError } from '@/core/errors'
 import { portalEmailForCode } from '@/core/portal'
-import { mapAppwriteError } from '@/infrastructure/appwrite/errors'
-import { getPortalMe } from '@/infrastructure/appwrite/functions'
-import { account } from '@/infrastructure/appwrite/services'
+import { portalMe, portalSignIn, portalSignOut } from '@/infrastructure/appwrite/portal'
 
 import { portalKeys } from '../../query-keys'
-import { PortalAuthContext, type PortalAuthContextValue, type PortalCustomer } from './portal-context'
+import {
+  PortalAuthContext,
+  type PortalAuthContextValue,
+  type PortalCustomer,
+} from './portal-context'
 
 export function PortalAuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
@@ -28,7 +32,7 @@ export function PortalAuthProvider({ children }: { children: ReactNode }) {
   const session = useQuery<PortalCustomer | null, AppError>({
     queryKey: portalKeys.session(),
     queryFn: async () => {
-      const result = await getPortalMe()
+      const result = await portalMe()
       if (!result.ok) {
         if (result.error.code === 'unauthorized' || result.error.code === 'forbidden') return null
         throw result.error
@@ -41,24 +45,14 @@ export function PortalAuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation<PortalCustomer, AppError, { clientId: string; pin: string }>({
     mutationFn: async ({ clientId, pin }) => {
-      try {
-        await account.createEmailPasswordSession({
-          email: portalEmailForCode(clientId),
-          password: pin,
-        })
-      } catch (e) {
-        throw mapAppwriteError(e)
-      }
+      const signIn = await portalSignIn(portalEmailForCode(clientId), pin)
+      if (!signIn.ok) throw signIn.error
 
-      const result = await getPortalMe()
+      const result = await portalMe()
       if (!result.ok) {
-        // The Appwrite session is valid but no customer is linked (or the
-        // link was revoked) — never leave a half-authenticated session.
-        try {
-          await account.deleteSession({ sessionId: 'current' })
-        } catch {
-          /* best effort */
-        }
+        // The session is valid but no customer is linked (or the link was
+        // revoked) — never leave a half-authenticated session.
+        await portalSignOut()
         throw result.error
       }
       return result.value
@@ -70,11 +64,8 @@ export function PortalAuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation<void, AppError>({
     mutationFn: async () => {
-      try {
-        await account.deleteSession({ sessionId: 'current' })
-      } catch (e) {
-        throw mapAppwriteError(e)
-      }
+      const res = await portalSignOut()
+      if (!res.ok) throw res.error
     },
     onSettled: () => {
       queryClient.setQueryData(portalKeys.session(), null)

@@ -15,6 +15,8 @@ import type { GlLine } from '@/core/ledger'
 import type { ReferenceEntity } from '@/core/reference-id'
 import { err, ok, type Result } from '@/core/result'
 
+import { FunctionsHttpError } from '@supabase/supabase-js'
+
 import { supabase } from './client'
 import { mapAppwriteError } from './errors'
 
@@ -42,15 +44,13 @@ export const ServerRoute = {
   trialBalance: '/reports/trial-balance',
   customerAging: '/reports/customer-aging',
   inventoryValuation: '/reports/inventory-valuation',
-  // CRM client portal (Phase 3) — see `functions/routes/portal-account.ts` and
-  // `functions/routes/portal-data.ts`.
+  supplierPerformance: '/reports/supplier-performance',
+  // CRM client portal (Phase 3): staff-side account lifecycle only. The
+  // customer-facing reads run on the dedicated portal client — see
+  // `infrastructure/appwrite/portal.ts`.
   createPortalAccount: '/portal-account/create',
   resetPortalPin: '/portal-account/reset',
   revokePortalAccess: '/portal-account/revoke',
-  portalMe: '/portal/me',
-  portalInvoices: '/portal/invoices',
-  portalInvoiceDetail: '/portal/invoice-detail',
-  portalReceipts: '/portal/receipts',
 } as const
 
 export interface AllocatedReference {
@@ -364,6 +364,11 @@ const DISPATCH: Record<string, Dispatch> = {
     fn: 'inventory_valuation',
     args: () => ({}),
   },
+  [ServerRoute.supplierPerformance]: {
+    kind: 'rpc',
+    fn: 'supplier_performance',
+    args: () => ({}),
+  },
   [ServerRoute.createPortalAccount]: {
     kind: 'edge',
     fn: 'portal-account',
@@ -379,24 +384,47 @@ const DISPATCH: Record<string, Dispatch> = {
     fn: 'portal-account',
     body: (p) => ({ action: 'revoke', customerId: p.customerId }),
   },
-  [ServerRoute.portalMe]: { kind: 'rpc', fn: 'portal_me', args: () => ({}) },
-  [ServerRoute.portalInvoices]: {
-    kind: 'rpc',
-    fn: 'portal_invoices',
-    args: (p) => ({ p_page: p.page ?? 0, p_page_size: p.pageSize ?? null }),
-  },
-  [ServerRoute.portalInvoiceDetail]: {
-    kind: 'rpc',
-    fn: 'portal_invoice_detail',
-    args: (p) => ({ p_invoice_id: p.invoiceId }),
-  },
-  [ServerRoute.portalReceipts]: {
-    kind: 'rpc',
-    fn: 'portal_receipts',
-    args: (p) => ({ p_page: p.page ?? 0, p_page_size: p.pageSize ?? null }),
-  },
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+/**
+ * Turn a `supabase.functions.invoke` failure into a typed `AppError`.
+ *
+ * `supabase-js` v2 does NOT put the response body in `error` for a non-2xx
+ * Edge response — `error` is a `FunctionsHttpError` and the body (our
+ * `{ error: string }`) is on `error.context`, a `Response` that must be read.
+ * Without this the caller only ever sees a generic "Edge Function returned a
+ * non-2xx status code", never the function's own message (e.g. "your role may
+ * not manage CRM portal accounts", "this customer already has a portal
+ * account"). A `FunctionsFetchError` (function not deployed / unreachable) maps
+ * through `mapAppwriteError` as a network error.
+ */
+async function edgeError(fnName: string, error: unknown): Promise<AppError> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = (await error.context.json()) as { error?: unknown }
+      if (body && typeof body.error === 'string' && body.error) {
+        const status = error.context.status
+        const code: AppError['code'] =
+          status === 401
+            ? 'unauthorized'
+            : status === 403
+              ? 'forbidden'
+              : status === 404
+                ? 'not_found'
+                : status === 409
+                  ? 'conflict'
+                  : status >= 400 && status < 500
+                    ? 'validation'
+                    : 'server'
+        return appError(code, body.error, { detail: `${fnName} → ${status}` })
+      }
+    } catch {
+      /* body wasn't JSON or was already consumed — fall through */
+    }
+  }
+  return mapAppwriteError(error)
+}
 
 async function invoke<T>(path: string, payload: unknown): Promise<Result<T>> {
   const d = DISPATCH[path]
@@ -412,7 +440,7 @@ async function invoke<T>(path: string, payload: unknown): Promise<Result<T>> {
       return ok(data as T)
     }
     const { data, error } = await supabase.functions.invoke(d.fn, { body: d.body(payload ?? {}) })
-    if (error) return err(mapAppwriteError(error))
+    if (error) return err(await edgeError(d.fn, error))
     if (
       data &&
       typeof data === 'object' &&
@@ -726,11 +754,15 @@ export interface InventoryValuationRpcRow {
   qty: number
   unitCost: number
   value: number
+  /** `false` ⇒ no rate anywhere in the ledger; `value` is 0 and not trustworthy. */
+  hasCost: boolean
 }
 export interface InventoryValuationRpc {
   rows: InventoryValuationRpcRow[]
   totalValue: number
   lineCount: number
+  /** How many `rows` have `hasCost === false` — the total excludes their real worth. */
+  uncostedLineCount: number
 }
 
 /**
@@ -739,6 +771,32 @@ export interface InventoryValuationRpc {
  */
 export function fetchInventoryValuation(): Promise<Result<InventoryValuationRpc>> {
   return invoke<InventoryValuationRpc>(ServerRoute.inventoryValuation, {})
+}
+
+export interface SupplierPerformanceRpcRow {
+  supplierId: string
+  supplierName: string
+  orderCount: number
+  submittedValue: number
+  avgOrderValue: number
+  cancelledCount: number
+  cancelRate: number
+  firstOrderAt: string | null
+  lastOrderAt: string | null
+}
+export interface SupplierPerformanceRpc {
+  rows: SupplierPerformanceRpcRow[]
+  totalSpend: number
+  supplierCount: number
+}
+
+/**
+ * One row per supplier aggregated over `purchase_orders` — order count, spend,
+ * average order value, cancellation rate, first/last order. Branch-scoped
+ * server-side.
+ */
+export function fetchSupplierPerformance(): Promise<Result<SupplierPerformanceRpc>> {
+  return invoke<SupplierPerformanceRpc>(ServerRoute.supplierPerformance, {})
 }
 
 // --- CRM client portal (Phase 3) -------------------------------------------
@@ -764,30 +822,8 @@ export function revokePortalAccess(
   return invoke<RevokePortalAccessResult>(ServerRoute.revokePortalAccess, payload)
 }
 
-/** Portal-only: the signed-in customer's own profile. */
-export function getPortalMe(): Promise<Result<PortalMeResult>> {
-  return invoke<PortalMeResult>(ServerRoute.portalMe, {})
-}
-
-/** Portal-only: the signed-in customer's own invoices, paginated. */
-export function listPortalInvoices(
-  payload: PortalInvoiceListPayload = {},
-): Promise<Result<PortalInvoiceListResult>> {
-  return invoke<PortalInvoiceListResult>(ServerRoute.portalInvoices, payload)
-}
-
-/** Portal-only: one of the signed-in customer's own invoices, in full. */
-export function getPortalInvoiceDetail(
-  payload: PortalInvoiceDetailPayload,
-): Promise<Result<PortalInvoiceDetailResult>> {
-  return invoke<PortalInvoiceDetailResult>(ServerRoute.portalInvoiceDetail, payload)
-}
-
-/** Portal-only: the signed-in customer's own receipts, paginated. */
-export function listPortalReceipts(
-  payload: PortalReceiptListPayload = {},
-): Promise<Result<PortalReceiptListResult>> {
-  return invoke<PortalReceiptListResult>(ServerRoute.portalReceipts, payload)
-}
+// Customer-facing portal reads (`portal_me` / `portal_invoices` / …) run on the
+// dedicated portal client — see `infrastructure/appwrite/portal.ts`. The result
+// shapes below are shared with that module.
 
 export type { AppError }

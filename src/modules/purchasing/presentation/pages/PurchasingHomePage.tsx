@@ -18,6 +18,11 @@ const CARDS = [
     label: PURCHASING_LABELS.stockReceipt.many,
     desc: 'تسجيل استلام الخامات مقابل أوامر شراء معتمدة وترحيلها إلى المخزون.',
   },
+  {
+    to: '/purchasing/supplier-performance',
+    label: { ar: 'أداء الموردين', en: 'Supplier performance' },
+    desc: 'الإنفاق وعدد الأوامر ونسبة الإلغاء وآخر تعامل لكل مورد.',
+  },
 ]
 
 export function PurchasingHomePage() {

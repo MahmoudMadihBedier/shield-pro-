@@ -54,6 +54,10 @@ export function useSubmittedInvoiceOptions() {
     queryKey: accountingKeys.options.submittedInvoices(),
     staleTime: 30_000,
     queryFn: async () => {
+      // Whole book, paged. A receipt can be recorded against ANY still-open
+      // invoice, however old — a "newest N" cap would silently hide an unpaid
+      // invoice from the picker. `scanTable`'s SCAN_CAP is a loud, actionable
+      // error if a tenant ever crosses it; that beats a silent omission here.
       const res = await listSubmittedInvoices()
       if (!res.ok) throw res.error
       return res.value.map((inv) => ({

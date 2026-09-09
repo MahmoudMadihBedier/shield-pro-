@@ -1,3 +1,62 @@
+# Session handoff — 2026-09-10 (admin gates, reports, CRM portal isolation)
+
+Branch `feat/appwrite-scaffold`, committed, **not pushed**. Gates: `pnpm
+typecheck` · `pnpm lint` (only pre-existing router.tsx warns) · `pnpm test`
+**742 / 98 files** · `pnpm build`.
+
+### Done this session
+- **System Admin bypasses production approval gates in the UI** (`32dcc6c`).
+  QcActionBar self-sign SoD, SubmitCancelBar QC gate (`bypassGates` prop),
+  ExceptionsDashboard self-decide — all now exempt `system_admin`, matching the
+  server (`_submit_gates` / `decide_approval`, migration 0014). Admin Override
+  panel `status` field is a per-table `<select>` (`statusOptions` prop, each
+  detail page passes its own `*_STATUSES`).
+- **Customer-statement + inventory-valuation review fixes** (`7b7524e`): new
+  `src/core/money.ts` `roundCents` (one money-rounding primitive); statement
+  no longer folds unparseable dates into the opening balance; `scanTable`
+  off-by-one + `noCount()` probe; **migration 0026** supersedes the
+  `inventory_valuation` body (EXECUTE→authenticated, real last-positive-rate
+  fallback, `hasCost` / `uncostedLineCount` so the total is caveated not
+  silently understated).
+- **Supplier performance report** — Phase 4.2 (`da59b28`). **Migration 0027**
+  `supplier_performance()` RPC (per-supplier order count / spend / avg / cancel
+  rate / first-last order, branch-scoped, cancelled-only suppliers excluded).
+  Domain + repo + hook + printable page w/ CSV-Excel export, gated to
+  PurchasingAccountant / SystemAdmin, wired into purchasing routes/nav/hub.
+- **`supabase.functions.invoke` error surfacing** (`da59b28`): non-2xx Edge
+  responses now return the function's own `{ error }` body (read off
+  `FunctionsHttpError.context`) instead of "non-2xx status".
+- **CRM client portal isolated on its own Supabase session** (`0441554`).
+  New `portalSupabase` client (own `storageKey`) + `infrastructure/appwrite/
+  portal.ts` (portalSignIn/Out/UpdatePin + the `portal_*` reads). Portal auth
+  provider / hooks / change-PIN page moved onto it; portal read routes removed
+  from `functions.ts`. Staff client keeps the default key → existing staff
+  sessions untouched. Fixes: a customer login at `/portal/login` no longer
+  clobbers a staff session in the same browser.
+
+### Deploy debt (blocked in-session — `supabase db push` / curl-with-secret
+### are classifier-blocked here; run locally)
+1. **`npx supabase db push --include-all`** — migrations **0026** + **0027**
+   are local-only. Frontend tolerates the pre-0026 `inventory_valuation`
+   payload (Zod defaults), so no hard ordering, but push both.
+2. **CRM "إنشاء حساب البوابة" button reportedly errors.** `portal-account`
+   Edge Function IS deployed (v1, ACTIVE, `verify_jwt: true`). With the new
+   error surfacing the real message will now show — likely one of: the
+   signed-in staff account's `public.users.auth_user_id` ≠ its `auth.uid()`
+   (→ 403 "restricted to staff accounts"); role not in
+   `system_admin|branch_accountant|chief_accountant` (→ 403); or the customer
+   row has no `code` (→ createUser invalid-email 500). Needs the exact error
+   text or a service-role read of `customers` / `users` to pin down.
+3. Rotate DB password + service-role key; disconnect Appwrite.
+
+### Remaining backlog
+Phase 4.1: production-waste / rep-cash-up exports, opening-stock +
+bank-statement importers. Phase 4.2: payroll cost, cash position. CRM: portal
+page polish (letterhead, printable invoice/statement); Story 3.2 mid-session
+revocation (banned user's existing JWT lives to expiry). UI redesign Pass 2.
+
+---
+
 # Session handoff — 2026-09-06 (Appwrite → Supabase migration)
 
 **The backend is now Supabase.** Appwrite is fully removed from the codebase.

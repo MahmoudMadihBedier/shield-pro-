@@ -12,6 +12,8 @@ export const purchasingKeys = {
   receiptList: (params: unknown) => ['purchasing', 'receipt', 'list', params] as const,
   receiptDetail: (id: string) => ['purchasing', 'receipt', 'detail', id] as const,
 
+  supplierPerformance: () => ['purchasing', 'supplier-performance'] as const,
+
   supplierOptions: () => ['purchasing', 'supplier-options'] as const,
   rawMaterialOptions: () => ['purchasing', 'raw-material-options'] as const,
   rawStoreWarehouseOptions: () => ['purchasing', 'raw-store-warehouse-options'] as const,
