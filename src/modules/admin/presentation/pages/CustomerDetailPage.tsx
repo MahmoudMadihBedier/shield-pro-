@@ -12,8 +12,9 @@ import { queryKeys } from '@/application/query/keys'
 import type { AppError } from '@/core/errors'
 import { isErr } from '@/core/result'
 import { adminSetStatus } from '@/infrastructure/appwrite/functions'
-// Leaf import (not the `@/modules/crm` barrel) so this page doesn't pull the
+// Leaf imports (not the `@/modules/crm` barrel) so this page doesn't pull the
 // whole CRM module — portal pages, admin hooks, everything — into its chunk.
+import { CustomerActivityLog } from '@/modules/crm/admin/CustomerActivityLog'
 import { PortalAccountPanel } from '@/modules/crm/admin/PortalAccountPanel'
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
@@ -117,6 +118,7 @@ export function CustomerDetailPage() {
               })
             }}
           />
+          <CustomerActivityLog customer={customerQuery.data} />
         </>
       ) : (
         <Card className="text-sm text-zinc-500">العميل غير موجود</Card>

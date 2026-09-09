@@ -40,6 +40,9 @@ export const Tables = {
   attendanceRecords: 'attendance_records',
   incentiveRules: 'incentive_rules',
 
+  // ---- CRM (staff-facing, branch-scoped) ----
+  crmActivities: 'crm_activities',
+
   // ---- Immutable ledgers (append-only, server-written) ----
   stockLedger: 'stock_ledger_entries',
   generalLedger: 'general_ledger_entries',

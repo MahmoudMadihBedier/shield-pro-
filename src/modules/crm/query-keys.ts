@@ -18,4 +18,5 @@ export const portalKeys = {
 export const crmAdminKeys = {
   root: () => ['crm-admin'] as const,
   portalAccount: (customerId: string) => ['crm-admin', 'portal-account', customerId] as const,
+  activities: (customerId: string) => ['crm-admin', 'activities', customerId] as const,
 } as const
