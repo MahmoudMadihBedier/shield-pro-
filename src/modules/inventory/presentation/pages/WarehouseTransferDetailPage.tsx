@@ -17,6 +17,7 @@ import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 import { postTransferToLedger, type LedgerPostResult } from '../../data/post-movement'
 import { parseLines } from '../../domain/line-utils'
 import {
+  TRANSFER_STATUSES,
   transferLineSchema,
   type TransferStatus,
   type WarehouseTransferRow,
@@ -175,6 +176,7 @@ export function WarehouseTransferDetailPage() {
           <AdminOverridePanel
             table="warehouse_transfers"
             row={row}
+            statusOptions={TRANSFER_STATUSES}
             onDone={() => void query.refetch()}
           />
 

@@ -22,7 +22,7 @@ import { useState } from 'react'
 
 import { useAuth } from '@/application/auth/context'
 import { DocStatus } from '@/core/doc-status'
-import { Role } from '@/core/rbac'
+import { Role, isSystemAdmin } from '@/core/rbac'
 import { RequireRole } from '@/presentation/components/RequireRole'
 import { Button, Card } from '@/shared/ui'
 
@@ -50,7 +50,10 @@ export function QcActionBar({ batchId, qcStatus, docStatus, createdBy, onDone }:
 
   if (!isDraft || (!canRelease && !canReject)) return null
 
-  const selfCheck = principal?.userId != null && principal.userId === createdBy
+  // SoD: the batch creator may not sign off its own QC — but the System Admin
+  // (owner role) is exempt everywhere, including server-side (_submit_gates).
+  const isAdmin = principal != null && isSystemAdmin(principal)
+  const selfCheck = !isAdmin && principal?.userId != null && principal.userId === createdBy
   const rejectReady = reason.trim().length > 0
 
   const run = (next: QcStatus) => {

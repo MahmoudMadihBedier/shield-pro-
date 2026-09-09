@@ -11,12 +11,16 @@ import { useCallback, useMemo, useState } from 'react'
 
 import { useAuth } from '@/application/auth/context'
 import type { AppError } from '@/core/errors'
+import { isSystemAdmin } from '@/core/rbac'
 import { DataTable, type ColumnDef } from '@/shared/data-table'
 import { Badge, Button, PageHeader } from '@/shared/ui'
 
 import { bilingual, movementTypeLabel } from '../../domain/labels'
 import type { ApprovalRequestRow } from '../../domain/schemas'
-import { useDecideApprovalRequest, usePendingApprovalRequests } from '../hooks/useApprovalExceptions'
+import {
+  useDecideApprovalRequest,
+  usePendingApprovalRequests,
+} from '../hooks/useApprovalExceptions'
 
 const DEFAULT_PAGE_SIZE = 25
 const HOUR_MS = 3_600_000
@@ -74,6 +78,9 @@ function DecisionCell({
 
 export function ExceptionsDashboardPage() {
   const { principal } = useAuth()
+  // System Admin decides anything, own request included — matches the server,
+  // where `decide_approval` skips `_assert_no_self_approval` for `system_admin`.
+  const isAdmin = principal != null && isSystemAdmin(principal)
   const [pageIndex, setPageIndex] = useState(0)
   const [pageSize] = useState(DEFAULT_PAGE_SIZE)
   const [reasonDraft, setReasonDraft] = useState<Record<string, string>>({})
@@ -132,7 +139,7 @@ export function ExceptionsDashboardPage() {
         cell: (row) => (
           <DecisionCell
             row={row}
-            canDecide={principal != null && row.requested_by !== principal.userId}
+            canDecide={principal != null && (isAdmin || row.requested_by !== principal.userId)}
             reason={reasonDraft[row.$id] ?? ''}
             onReasonChange={(value) => setReasonDraft((prev) => ({ ...prev, [row.$id]: value }))}
             onDecide={(decision) => handleDecide(row, decision)}
@@ -141,7 +148,7 @@ export function ExceptionsDashboardPage() {
         ),
       },
     ],
-    [reasonDraft, decide.isPending, principal, handleDecide],
+    [reasonDraft, decide.isPending, principal, isAdmin, handleDecide],
   )
 
   return (
@@ -154,7 +161,10 @@ export function ExceptionsDashboardPage() {
       />
 
       {rowError ? (
-        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+        <p
+          role="alert"
+          className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300"
+        >
           {rowError.message}
         </p>
       ) : null}
