@@ -45,15 +45,12 @@ export const ServerRoute = {
   customerAging: '/reports/customer-aging',
   inventoryValuation: '/reports/inventory-valuation',
   supplierPerformance: '/reports/supplier-performance',
-  // CRM client portal (Phase 3) — see `functions/routes/portal-account.ts` and
-  // `functions/routes/portal-data.ts`.
+  // CRM client portal (Phase 3): staff-side account lifecycle only. The
+  // customer-facing reads run on the dedicated portal client — see
+  // `infrastructure/appwrite/portal.ts`.
   createPortalAccount: '/portal-account/create',
   resetPortalPin: '/portal-account/reset',
   revokePortalAccess: '/portal-account/revoke',
-  portalMe: '/portal/me',
-  portalInvoices: '/portal/invoices',
-  portalInvoiceDetail: '/portal/invoice-detail',
-  portalReceipts: '/portal/receipts',
 } as const
 
 export interface AllocatedReference {
@@ -386,22 +383,6 @@ const DISPATCH: Record<string, Dispatch> = {
     kind: 'edge',
     fn: 'portal-account',
     body: (p) => ({ action: 'revoke', customerId: p.customerId }),
-  },
-  [ServerRoute.portalMe]: { kind: 'rpc', fn: 'portal_me', args: () => ({}) },
-  [ServerRoute.portalInvoices]: {
-    kind: 'rpc',
-    fn: 'portal_invoices',
-    args: (p) => ({ p_page: p.page ?? 0, p_page_size: p.pageSize ?? null }),
-  },
-  [ServerRoute.portalInvoiceDetail]: {
-    kind: 'rpc',
-    fn: 'portal_invoice_detail',
-    args: (p) => ({ p_invoice_id: p.invoiceId }),
-  },
-  [ServerRoute.portalReceipts]: {
-    kind: 'rpc',
-    fn: 'portal_receipts',
-    args: (p) => ({ p_page: p.page ?? 0, p_page_size: p.pageSize ?? null }),
   },
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -841,30 +822,8 @@ export function revokePortalAccess(
   return invoke<RevokePortalAccessResult>(ServerRoute.revokePortalAccess, payload)
 }
 
-/** Portal-only: the signed-in customer's own profile. */
-export function getPortalMe(): Promise<Result<PortalMeResult>> {
-  return invoke<PortalMeResult>(ServerRoute.portalMe, {})
-}
-
-/** Portal-only: the signed-in customer's own invoices, paginated. */
-export function listPortalInvoices(
-  payload: PortalInvoiceListPayload = {},
-): Promise<Result<PortalInvoiceListResult>> {
-  return invoke<PortalInvoiceListResult>(ServerRoute.portalInvoices, payload)
-}
-
-/** Portal-only: one of the signed-in customer's own invoices, in full. */
-export function getPortalInvoiceDetail(
-  payload: PortalInvoiceDetailPayload,
-): Promise<Result<PortalInvoiceDetailResult>> {
-  return invoke<PortalInvoiceDetailResult>(ServerRoute.portalInvoiceDetail, payload)
-}
-
-/** Portal-only: the signed-in customer's own receipts, paginated. */
-export function listPortalReceipts(
-  payload: PortalReceiptListPayload = {},
-): Promise<Result<PortalReceiptListResult>> {
-  return invoke<PortalReceiptListResult>(ServerRoute.portalReceipts, payload)
-}
+// Customer-facing portal reads (`portal_me` / `portal_invoices` / …) run on the
+// dedicated portal client — see `infrastructure/appwrite/portal.ts`. The result
+// shapes below are shared with that module.
 
 export type { AppError }
