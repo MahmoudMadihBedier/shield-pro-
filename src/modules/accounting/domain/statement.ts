@@ -7,6 +7,7 @@
  *
  * `domain` is pure TypeScript — no framework imports.
  */
+import { RECEIVABLE_INVOICE_METHODS } from './aging'
 
 export type StatementEntryKind = 'invoice' | 'receipt' | 'return'
 
@@ -52,6 +53,17 @@ export interface CustomerStatement {
 
 const EPS = 1e-6
 
+/** Round to whole cents so float drift never surfaces as a stray balance. */
+function money(v: number): number {
+  return Math.round((v + Number.EPSILON) * 100) / 100
+}
+
+/** Epoch ms for a timestamp comparison (Postgres `+00:00` vs JS `.000Z`). */
+function t(iso: string): number {
+  const ms = Date.parse(iso)
+  return Number.isNaN(ms) ? 0 : ms
+}
+
 interface Raw {
   date: string
   kind: StatementEntryKind
@@ -90,37 +102,39 @@ export function buildCustomerStatement(input: StatementInput): CustomerStatement
       })),
   ]
 
-  const from = input.from ?? ''
-  const to = input.to ?? ''
+  const fromMs = input.from ? t(input.from) : -Infinity
+  const toMs = input.to ? t(input.to) : Infinity
 
   let openingBalance = 0
   const inPeriod: Raw[] = []
   for (const raw of raws) {
-    if (to && raw.date > to) continue
-    if (from && raw.date < from) {
+    const ms = t(raw.date)
+    if (ms > toMs) continue
+    if (ms < fromMs) {
       openingBalance += raw.debit - raw.credit
       continue
     }
     inPeriod.push(raw)
   }
+  openingBalance = money(openingBalance)
 
   // Stable chronological order; invoices before credits on the same instant.
   const kindRank: Record<StatementEntryKind, number> = { invoice: 0, return: 1, receipt: 2 }
-  inPeriod.sort((a, b) => a.date.localeCompare(b.date) || kindRank[a.kind] - kindRank[b.kind])
+  inPeriod.sort((a, b) => t(a.date) - t(b.date) || kindRank[a.kind] - kindRank[b.kind])
 
   let balance = openingBalance
   let totalDebit = 0
   let totalCredit = 0
   const lines: StatementLine[] = inPeriod.map((raw) => {
-    balance += raw.debit - raw.credit
+    balance = money(balance + raw.debit - raw.credit)
     totalDebit += raw.debit
     totalCredit += raw.credit
     return {
       date: raw.date,
       kind: raw.kind,
       reference: raw.reference,
-      debit: raw.debit,
-      credit: raw.credit,
+      debit: money(raw.debit),
+      credit: money(raw.credit),
       balance,
     }
   })
@@ -128,10 +142,35 @@ export function buildCustomerStatement(input: StatementInput): CustomerStatement
   return {
     openingBalance,
     lines,
-    totalDebit,
-    totalCredit,
+    totalDebit: money(totalDebit),
+    totalCredit: money(totalCredit),
     closingBalance: balance,
   }
+}
+
+/**
+ * Which submitted sales invoices land on a customer's statement, and their
+ * debit amount. Mirrors `RECEIVABLE_INVOICE_METHODS` in `./aging` — a cash /
+ * bank-transfer sale is settled at the till and never hits the account. The
+ * full `net_total` is the debit (receipts, incl. any at-sale cash, are separate
+ * credit lines), so the statement's closing balance matches the aging report.
+ */
+export function pickReceivableInvoices<
+  T extends {
+    reference_id: string
+    posting_datetime: string
+    net_total: number
+    payment_method: string
+  },
+>(invoices: readonly T[]): StatementInvoice[] {
+  const receivable: ReadonlySet<string> = new Set(RECEIVABLE_INVOICE_METHODS)
+  return invoices
+    .filter((i) => receivable.has(i.payment_method))
+    .map((i) => ({
+      reference: i.reference_id,
+      date: i.posting_datetime,
+      receivable: i.net_total,
+    }))
 }
 
 /** Flat rows for CSV / Excel export. */

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildCustomerStatement, customerStatementToRows } from '../statement'
+import {
+  buildCustomerStatement,
+  customerStatementToRows,
+  pickReceivableInvoices,
+} from '../statement'
 
 const inv = (reference: string, date: string, receivable: number) => ({
   reference,
@@ -69,6 +73,51 @@ describe('buildCustomerStatement', () => {
     })
     expect(s.lines.map((l) => l.kind)).toEqual(['invoice', 'receipt'])
     expect(s.closingBalance).toBe(0)
+  })
+
+  it('compares instants, not strings — Postgres `+00:00` vs JS `.000Z` at the `from` boundary', () => {
+    const s = buildCustomerStatement({
+      invoices: [inv('AT-FROM', '2026-03-01T00:00:00+00:00', 100)],
+      receipts: [],
+      returns: [],
+      from: '2026-03-01T00:00:00.000Z', // same instant, different serialisation
+    })
+    // the entry AT the `from` instant is in-period, not opening balance
+    expect(s.openingBalance).toBe(0)
+    expect(s.lines.map((l) => l.reference)).toEqual(['AT-FROM'])
+  })
+
+  it('rounds the running balance so a settled account reads exactly 0', () => {
+    const s = buildCustomerStatement({
+      invoices: [inv('I', '2026-03-01T00:00:00Z', 0.1), inv('I2', '2026-03-02T00:00:00Z', 0.2)],
+      receipts: [cr('R', '2026-03-03T00:00:00Z', 0.3)],
+      returns: [],
+    })
+    expect(s.closingBalance).toBe(0)
+  })
+})
+
+describe('pickReceivableInvoices', () => {
+  const mk = (payment_method: string, net_total: number) => ({
+    reference_id: `INV-${payment_method}`,
+    posting_datetime: '2026-03-01T00:00:00Z',
+    net_total,
+    payment_method,
+  })
+
+  it('keeps credit / partial / post_dated_cheque at full net_total; drops cash & bank', () => {
+    const out = pickReceivableInvoices([
+      mk('cash', 100),
+      mk('bank_transfer', 200),
+      mk('credit', 300),
+      mk('partial', 400),
+      mk('post_dated_cheque', 500),
+    ])
+    expect(out.map((i) => [i.reference, i.receivable])).toEqual([
+      ['INV-credit', 300],
+      ['INV-partial', 400],
+      ['INV-post_dated_cheque', 500],
+    ])
   })
 })
 

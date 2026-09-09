@@ -23,7 +23,11 @@ import { Query, tablesDB } from '@/infrastructure/appwrite/services'
 import { z } from 'zod'
 
 import { type CustomerAging } from '../domain/aging'
-import { buildCustomerStatement, type CustomerStatement } from '../domain/statement'
+import {
+  buildCustomerStatement,
+  pickReceivableInvoices,
+  type CustomerStatement,
+} from '../domain/statement'
 import {
   invoiceForAgingSchema,
   receiptRowSchema,
@@ -57,7 +61,15 @@ async function scanTable<T>(
 ): Promise<Result<T[]>> {
   const collected: T[] = []
   try {
-    for (let offset = 0; offset < SCAN_CAP; offset += SCAN_PAGE) {
+    for (let offset = 0; ; offset += SCAN_PAGE) {
+      if (offset >= SCAN_CAP) {
+        // Never silently truncate a financial figure.
+        return err(
+          appError('server', 'عدد السجلات كبير جدًا لعرضه هنا — تواصل مع الدعم لتقرير مفصّل.', {
+            detail: `${tableId}: exceeded ${SCAN_CAP} rows`,
+          }),
+        )
+      }
       const res = await tablesDB.listRows({
         databaseId: DATABASE_ID,
         tableId,
@@ -159,18 +171,9 @@ export async function customerStatement(
     buildCustomerStatement({
       from: range.from,
       to: range.to,
-      invoices: invoices.value.map((i) => ({
-        reference: i.reference_id,
-        date: i.posting_datetime,
-        // credit_amount is the amount left on account; fall back to net_total
-        // for older rows that predate the column when the sale was on credit.
-        receivable:
-          i.credit_amount > 0
-            ? i.credit_amount
-            : i.payment_method === 'credit' || i.payment_method === 'post_dated_cheque'
-              ? i.net_total
-              : 0,
-      })),
+      // Same credit-side rule + full net_total as the aging report, so the
+      // statement's closing balance matches `customer_aging`'s `outstanding`.
+      invoices: pickReceivableInvoices(invoices.value),
       receipts: receipts.value.map((r) => ({
         reference: r.reference_id,
         date: r.posting_datetime,
