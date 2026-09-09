@@ -228,18 +228,26 @@ inactive value selectable so an edit can't wipe it.
   gained `credit_amount`). Printable page + CSV/Excel export, linked from the
   nav / hub / aging drill-in.
 
+- **Inventory valuation (`/inventory/valuation`, Phase 4.2).** Migration 0025
+  `inventory_valuation()` RPC — on-hand qty (`bin_balances`) × weighted-average
+  unit cost from the stock ledger's IN-move `valuation_rate` (fallback: last
+  positive rate), warehouse-scoped. `domain/valuation.ts` groups by warehouse;
+  printable page + CSV/Excel export. "As of now" only.
+
+Migrations are now 0001–0025.
+
 Remaining backlog: Phase 4.1 still wants production-waste / rep-cash-up
 exports + opening-stock + bank-statement importers; Phase 4.2 could add
-inventory valuation, payroll cost, supplier performance, cash position. UI
-redesign Pass 2 (per-page polish) not started. Operational: rotate the DB
-password + service-role key, then disconnect Appwrite.
+payroll cost, supplier performance, cash position. UI redesign Pass 2
+(per-page polish) not started. Operational: rotate the DB password +
+service-role key, then disconnect Appwrite.
 
 Note: commit `88bda05` (the export feature's first commit) was auto-generated
 by tooling without the `Co-Authored-By` / `Claude-Session` trailers; the
 follow-up `cf6830d` has them.
 
 ## Gates (this session): `pnpm typecheck` · `pnpm lint` (17 pre-existing
-router.tsx fast-refresh warns) · `pnpm test` **723 / 95 files** · `pnpm build`.
+router.tsx fast-refresh warns) · `pnpm test` **729 / 96 files** · `pnpm build`.
 
 ## MCP
 `.mcp.json` has the Supabase HTTP MCP (`project_ref=ajrevsyyudfjrwiifekj`).
