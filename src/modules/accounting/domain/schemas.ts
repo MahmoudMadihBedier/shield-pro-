@@ -240,6 +240,8 @@ export const invoiceForAgingSchema = z.object({
   reference_id: z.string(),
   customer_id: z.string(),
   net_total: rowNum0,
+  /** The portion left on the customer's account (0 for a fully-settled sale). */
+  credit_amount: rowNum0,
   payment_method: invoicePaymentMethodSchema,
   posting_datetime: z.string(),
   doc_status: z.union([z.literal(0), z.literal(1), z.literal(2)]),

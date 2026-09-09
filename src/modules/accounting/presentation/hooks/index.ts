@@ -10,7 +10,13 @@ export {
   useCapitalContributionActions,
 } from './useAccountingDocuments'
 export { useGlEntries, useAccountBalance, useTrialBalance, useProfitAndLoss } from './useGlEntries'
-export { useCustomerAging, useCustomerLedger, type CustomerLedger } from './useCustomerAging'
+export {
+  useCustomerAging,
+  useCustomerLedger,
+  useCustomerStatement,
+  type CustomerLedger,
+  type StatementRange,
+} from './useCustomerAging'
 export {
   useCustomerOptions,
   useSubmittedInvoiceOptions,

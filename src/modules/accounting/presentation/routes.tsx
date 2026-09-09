@@ -39,6 +39,9 @@ const CapitalContributionDetailPage = lazy(() =>
 const CustomerAgingPage = lazy(() =>
   import('./pages').then((m) => ({ default: m.CustomerAgingPage })),
 )
+const CustomerStatementPage = lazy(() =>
+  import('./pages').then((m) => ({ default: m.CustomerStatementPage })),
+)
 const TrialBalancePage = lazy(() =>
   import('./pages').then((m) => ({ default: m.TrialBalancePage })),
 )
@@ -143,6 +146,14 @@ export const accountingRoutes: RouteObject[] = [
     element: (
       <Lazy>
         <CustomerAgingPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'accounting/statement',
+    element: (
+      <Lazy>
+        <CustomerStatementPage />
       </Lazy>
     ),
   },

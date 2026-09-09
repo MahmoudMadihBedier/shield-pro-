@@ -29,6 +29,12 @@ const SECTIONS = [
     desc: 'أرصدة العملاء موزّعة على فترات 0–30 / 31–60 / 61–90 / +90.',
   },
   {
+    to: '/accounting/statement',
+    ar: 'كشف حساب عميل',
+    en: 'Customer statement',
+    desc: 'حركة حساب عميل بالفواتير والتحصيلات والمرتجعات، برصيد جارٍ، قابلة للطباعة والتصدير.',
+  },
+  {
     to: '/accounting/trial-balance',
     ar: 'ميزان المراجعة',
     en: 'Trial balance',
