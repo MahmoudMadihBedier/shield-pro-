@@ -33,12 +33,23 @@ typecheck` · `pnpm lint` (only pre-existing router.tsx warns) · `pnpm test`
   from `functions.ts`. Staff client keeps the default key → existing staff
   sessions untouched. Fixes: a customer login at `/portal/login` no longer
   clobbers a staff session in the same browser.
+- **CRM portal — printable invoice + server-side statement** (`a40aff0`,
+  `d593742`). `PortalInvoiceDetailPage`: "فاتورة إلى: <name>" letterhead,
+  3-row totals footer, `no-print` chrome (portal header + back links).
+  `PortalStatementPage` now renders **migration 0028 `portal_statement()`** —
+  a full-history running-balance RPC (credit-side invoices as debits, return
+  credit notes + receipts as credits, whole-cent rounding), same pattern as
+  `customer_aging`. The first-cut client-side `buildPortalStatement` was
+  reverted per code review (wrong on payment method, returns, opening balance,
+  and re-implemented the canonical statement).
 
 ### Deploy debt (blocked in-session — `supabase db push` / curl-with-secret
 ### are classifier-blocked here; run locally)
-1. **`npx supabase db push --include-all`** — migrations **0026** + **0027**
-   are local-only. Frontend tolerates the pre-0026 `inventory_valuation`
-   payload (Zod defaults), so no hard ordering, but push both.
+1. **`npx supabase db push --include-all`** — migrations **0026** + **0027** +
+   **0028** are local-only. 0028 (`portal_statement`) is required for the
+   portal statement page to load — it errors "بيانات غير متوقعة" until pushed.
+   Frontend tolerates the pre-0026 `inventory_valuation` payload (Zod
+   defaults), so 0026/0027 have no hard ordering, but push all three.
 2. **CRM "إنشاء حساب البوابة" button reportedly errors.** `portal-account`
    Edge Function IS deployed (v1, ACTIVE, `verify_jwt: true`). With the new
    error surfacing the real message will now show — likely one of: the
@@ -51,9 +62,10 @@ typecheck` · `pnpm lint` (only pre-existing router.tsx warns) · `pnpm test`
 
 ### Remaining backlog
 Phase 4.1: production-waste / rep-cash-up exports, opening-stock +
-bank-statement importers. Phase 4.2: payroll cost, cash position. CRM: portal
-page polish (letterhead, printable invoice/statement); Story 3.2 mid-session
-revocation (banned user's existing JWT lives to expiry). UI redesign Pass 2.
+bank-statement importers. Phase 4.2: payroll cost, cash position. CRM: Story
+3.2 mid-session revocation (banned user's existing JWT lives to expiry);
+staff-facing CRM (leads / contacts / follow-ups) is net-new, not yet started.
+UI redesign Pass 2.
 
 ---
 
