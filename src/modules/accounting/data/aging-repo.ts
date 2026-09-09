@@ -62,14 +62,6 @@ async function scanTable<T>(
   const collected: T[] = []
   try {
     for (let offset = 0; ; offset += SCAN_PAGE) {
-      if (offset >= SCAN_CAP) {
-        // Never silently truncate a financial figure.
-        return err(
-          appError('server', 'عدد السجلات كبير جدًا لعرضه هنا — تواصل مع الدعم لتقرير مفصّل.', {
-            detail: `${tableId}: exceeded ${SCAN_CAP} rows`,
-          }),
-        )
-      }
       const res = await tablesDB.listRows({
         databaseId: DATABASE_ID,
         tableId,
@@ -85,9 +77,58 @@ async function scanTable<T>(
         if (!parsed.success) return err(appError('server', SHAPE_ERROR, { detail: parsed.message }))
         collected.push(parsed.data)
       }
+      // Short page ⇒ end of the result set, whatever the running total.
       if (res.rows.length < SCAN_PAGE) break
+      // A full page that reaches the cap: only bail if there is genuinely more
+      // beyond it — a result set of exactly SCAN_CAP rows is fully readable and
+      // must not error (off-by-one).
+      if (collected.length >= SCAN_CAP) {
+        const probe = await tablesDB.listRows({
+          databaseId: DATABASE_ID,
+          tableId,
+          queries: [...baseQueries, Query.limit(1), Query.offset(collected.length)],
+        })
+        if (probe.rows.length === 0) break
+        // Never silently truncate a financial figure.
+        return err(
+          appError('server', 'عدد السجلات كبير جدًا لعرضه هنا — تواصل مع الدعم لتقرير مفصّل.', {
+            detail: `${tableId}: exceeded ${SCAN_CAP} rows`,
+          }),
+        )
+      }
     }
     return ok(collected)
+  } catch (e) {
+    return err(mapAppwriteError(e))
+  }
+}
+
+/**
+ * The most recent `limit` submitted invoices (newest first) — a bounded read
+ * for pickers that only need a working set, not the whole book. `scanTable`'s
+ * hard cap makes an unbounded `listSubmittedInvoices()` unusable once a tenant
+ * crosses `SCAN_CAP` invoices; this reader stays O(limit).
+ */
+export async function listRecentSubmittedInvoices(
+  limit: number,
+): Promise<Result<InvoiceForAging[]>> {
+  try {
+    const res = await tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId: Tables.salesInvoices,
+      queries: [
+        Query.equal('doc_status', DocStatus.Submitted),
+        Query.orderDesc('posting_datetime'),
+        Query.limit(limit),
+      ],
+    })
+    const out: InvoiceForAging[] = []
+    for (const raw of res.rows) {
+      const parsed = parseInvoice(raw)
+      if (!parsed.success) return err(appError('server', SHAPE_ERROR, { detail: parsed.message }))
+      out.push(parsed.data)
+    }
+    return ok(out)
   } catch (e) {
     return err(mapAppwriteError(e))
   }

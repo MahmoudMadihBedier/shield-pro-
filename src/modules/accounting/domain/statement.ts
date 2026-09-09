@@ -7,6 +7,8 @@
  *
  * `domain` is pure TypeScript — no framework imports.
  */
+import { roundCents } from '@/core/money'
+
 import { RECEIVABLE_INVOICE_METHODS } from './aging'
 
 export type StatementEntryKind = 'invoice' | 'receipt' | 'return'
@@ -54,14 +56,16 @@ export interface CustomerStatement {
 const EPS = 1e-6
 
 /** Round to whole cents so float drift never surfaces as a stray balance. */
-function money(v: number): number {
-  return Math.round((v + Number.EPSILON) * 100) / 100
-}
+const money = roundCents
 
-/** Epoch ms for a timestamp comparison (Postgres `+00:00` vs JS `.000Z`). */
+/**
+ * Epoch ms for a timestamp comparison (Postgres `+00:00` vs JS `.000Z`).
+ * Returns `NaN` for an unparseable value — the caller must decide what to do
+ * rather than silently treating a bad date as the epoch (which would fold the
+ * row into the opening balance and quietly move money).
+ */
 function t(iso: string): number {
-  const ms = Date.parse(iso)
-  return Number.isNaN(ms) ? 0 : ms
+  return Date.parse(iso)
 }
 
 interface Raw {
@@ -109,6 +113,13 @@ export function buildCustomerStatement(input: StatementInput): CustomerStatement
   const inPeriod: Raw[] = []
   for (const raw of raws) {
     const ms = t(raw.date)
+    // A row with an unparseable date is a data-integrity problem: keep it
+    // visible on the statement (it sorts last) rather than folding it into the
+    // opening balance or dropping it.
+    if (Number.isNaN(ms)) {
+      inPeriod.push(raw)
+      continue
+    }
     if (ms > toMs) continue
     if (ms < fromMs) {
       openingBalance += raw.debit - raw.credit
@@ -119,8 +130,13 @@ export function buildCustomerStatement(input: StatementInput): CustomerStatement
   openingBalance = money(openingBalance)
 
   // Stable chronological order; invoices before credits on the same instant.
+  // Unparseable dates (NaN) sort to the end.
   const kindRank: Record<StatementEntryKind, number> = { invoice: 0, return: 1, receipt: 2 }
-  inPeriod.sort((a, b) => t(a.date) - t(b.date) || kindRank[a.kind] - kindRank[b.kind])
+  const sortMs = (iso: string) => {
+    const ms = t(iso)
+    return Number.isNaN(ms) ? Infinity : ms
+  }
+  inPeriod.sort((a, b) => sortMs(a.date) - sortMs(b.date) || kindRank[a.kind] - kindRank[b.kind])
 
   let balance = openingBalance
   let totalDebit = 0

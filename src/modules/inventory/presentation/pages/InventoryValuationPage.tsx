@@ -6,6 +6,7 @@
  */
 import { useMemo } from 'react'
 
+import { roundCents } from '@/core/money'
 import { formatCurrency, formatNumber } from '@/shared/formatters'
 import { ExportButton } from '@/shared/excel'
 import { Card, PageHeader, PrintButton } from '@/shared/ui'
@@ -39,9 +40,9 @@ export function InventoryValuationPage() {
       product: (id) => productLabel.get(id) ?? id,
     }).map((r) => ({
       ...r,
-      qty: round2(r.qty),
-      unit_cost: round2(r.unit_cost),
-      value: round2(r.value),
+      qty: roundCents(r.qty),
+      unit_cost: roundCents(r.unit_cost),
+      value: roundCents(r.value),
     }))
   }, [report, warehouseLabel, productLabel])
 
@@ -93,6 +94,14 @@ export function InventoryValuationPage() {
             </span>
           </Card>
 
+          {report.uncostedLineCount > 0 ? (
+            <Card className="text-xs text-amber-700 dark:text-amber-300">
+              {formatNumber(report.uncostedLineCount)} بند بلا تكلفة مسجّلة في دفتر المخزون — قيمته
+              محسوبة صفرًا، فالإجمالي أقل من الواقع. راجع أسعار الشراء أو أرصدة الافتتاح لتلك
+              الأصناف.
+            </Card>
+          ) : null}
+
           {groups.map((group) => (
             <Card key={group.warehouseId} className="p-0">
               <div className="flex items-center justify-between border-b border-black/10 px-3 py-2 text-sm font-semibold dark:border-white/10">
@@ -138,8 +147,4 @@ export function InventoryValuationPage() {
       )}
     </div>
   )
-}
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100
 }

@@ -8,6 +8,7 @@ const row = (warehouseId: string, productId: string, qty: number, unitCost: numb
   qty,
   unitCost,
   value: qty * unitCost,
+  hasCost: unitCost > 0,
 })
 
 describe('groupByWarehouse', () => {
@@ -34,6 +35,7 @@ describe('valuationToRows', () => {
       rows: [row('W1', 'P1', 3, 7)],
       totalValue: 21,
       lineCount: 1,
+      uncostedLineCount: 0,
     }
     expect(
       valuationToRows(report, {

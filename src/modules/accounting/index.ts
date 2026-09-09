@@ -37,6 +37,7 @@ export {
 } from './data/gl-repo'
 export {
   listSubmittedInvoices,
+  listRecentSubmittedInvoices,
   listReceiptsForCustomer,
   customerAgingReport,
   type CustomerAgingRow,

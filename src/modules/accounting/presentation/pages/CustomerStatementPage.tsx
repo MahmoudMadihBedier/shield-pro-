@@ -5,8 +5,11 @@
  * aging repo; the running-balance maths is the pure `domain/statement`.
  */
 import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 
+import { roundCents } from '@/core/money'
+import { customersRepo } from '@/modules/admin'
 import { formatCurrency, formatDate } from '@/shared/formatters'
 import { ExportButton } from '@/shared/excel'
 import { Card, PageHeader, PrintButton } from '@/shared/ui'
@@ -28,10 +31,25 @@ export function CustomerStatementPage() {
   const [to, setTo] = useState('')
 
   const customers = useCustomerOptions()
-  const customerName = useMemo(
-    () => customers.data?.find((c) => c.value === customerId)?.label ?? '',
+  const inOptions = useMemo(
+    () => customers.data?.find((c) => c.value === customerId),
     [customers.data, customerId],
   )
+  // The customer picker is capped at MAX_ROWS; a deep link (`?customer=<id>`
+  // from the aging report) can point at one past the cap. Fetch that single
+  // row so the name still resolves and the <select> has an entry to show.
+  const deepLinked = useQuery({
+    queryKey: ['customer-statement', 'deep-linked-customer', customerId],
+    enabled: Boolean(customerId) && !customers.isLoading && !inOptions,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const res = await customersRepo.get(customerId)
+      if (!res.ok) throw res.error
+      return { value: res.value.$id, label: `${res.value.code} — ${res.value.name}` }
+    },
+  })
+  const customerOption = inOptions ?? deepLinked.data
+  const customerName = customerOption?.label ?? ''
 
   const range = useMemo(
     () => ({
@@ -48,9 +66,9 @@ export function CustomerStatementPage() {
       statement
         ? customerStatementToRows(statement).map((r) => ({
             ...r,
-            debit: round2(r.debit),
-            credit: round2(r.credit),
-            balance: round2(r.balance),
+            debit: roundCents(r.debit),
+            credit: roundCents(r.credit),
+            balance: roundCents(r.balance),
           }))
         : [],
     [statement],
@@ -100,6 +118,9 @@ export function CustomerStatementPage() {
             className="min-w-56 rounded-lg border border-black/15 bg-transparent px-3 py-2 text-sm dark:border-white/15"
           >
             <option value="">اختر عميلًا…</option>
+            {!inOptions && customerOption ? (
+              <option value={customerOption.value}>{customerOption.label}</option>
+            ) : null}
             {(customers.data ?? []).map((c) => (
               <option key={c.value} value={c.value}>
                 {c.label}
@@ -214,8 +235,4 @@ export function CustomerStatementPage() {
       ) : null}
     </div>
   )
-}
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100
 }

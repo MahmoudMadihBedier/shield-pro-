@@ -10,10 +10,12 @@ import type { AppError } from '@/core/errors'
 import { customersRepo } from '@/modules/admin'
 import type { SelectOption } from '@/shared/forms'
 
-import { listSubmittedInvoices } from '../../data/aging-repo'
+import { listRecentSubmittedInvoices } from '../../data/aging-repo'
 import { accountingKeys } from '../query-keys'
 
 const MAX_ROWS = 200
+/** The receipt form only needs a recent working set, not every invoice ever. */
+const INVOICE_PICKER_LIMIT = 500
 
 export interface CustomerOption extends SelectOption {
   creditLimit: number
@@ -54,7 +56,7 @@ export function useSubmittedInvoiceOptions() {
     queryKey: accountingKeys.options.submittedInvoices(),
     staleTime: 30_000,
     queryFn: async () => {
-      const res = await listSubmittedInvoices()
+      const res = await listRecentSubmittedInvoices(INVOICE_PICKER_LIMIT)
       if (!res.ok) throw res.error
       return res.value.map((inv) => ({
         value: inv.reference_id,

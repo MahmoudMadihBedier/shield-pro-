@@ -726,11 +726,15 @@ export interface InventoryValuationRpcRow {
   qty: number
   unitCost: number
   value: number
+  /** `false` ⇒ no rate anywhere in the ledger; `value` is 0 and not trustworthy. */
+  hasCost: boolean
 }
 export interface InventoryValuationRpc {
   rows: InventoryValuationRpcRow[]
   totalValue: number
   lineCount: number
+  /** How many `rows` have `hasCost === false` — the total excludes their real worth. */
+  uncostedLineCount: number
 }
 
 /**

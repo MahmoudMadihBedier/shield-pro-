@@ -11,12 +11,16 @@ export interface ValuationRow {
   qty: number
   unitCost: number
   value: number
+  /** `false` ⇒ no cost rate found for this bin; `value` is 0 and understates. */
+  hasCost: boolean
 }
 
 export interface ValuationReport {
   rows: ValuationRow[]
   totalValue: number
   lineCount: number
+  /** Rows with `hasCost === false` — `totalValue` omits their real worth. */
+  uncostedLineCount: number
 }
 
 export interface WarehouseGroup {
