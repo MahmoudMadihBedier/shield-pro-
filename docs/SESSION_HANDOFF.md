@@ -220,18 +220,26 @@ inactive value selectable so an edit can't wipe it.
   print` in `index.css` strips chrome via a `.no-print` class, forces light,
   never inverts the logo — so any page prints as a letterheaded sheet.
 
-Remaining backlog: Phase 4.1 still wants production-waste / rep-cash-up /
-customer-statement exports + opening-stock + bank-statement importers; Phase
-4.2 could add inventory valuation, payroll cost, supplier performance, cash
-position. UI redesign Pass 2 (per-page polish) not started. Operational:
-rotate the DB password + service-role key, then disconnect Appwrite.
+- **Customer account statement (`/accounting/statement`, Phase 4.1/4.2).**
+  `domain/statement.ts` `buildCustomerStatement` — running-balance ledger of
+  credit-side invoices (debit) vs. receipts + return credit notes (credit),
+  history before `from` folded into an opening balance. `aging-repo`
+  `customerStatement(id, range)` composes the reads (`invoiceForAgingSchema`
+  gained `credit_amount`). Printable page + CSV/Excel export, linked from the
+  nav / hub / aging drill-in.
+
+Remaining backlog: Phase 4.1 still wants production-waste / rep-cash-up
+exports + opening-stock + bank-statement importers; Phase 4.2 could add
+inventory valuation, payroll cost, supplier performance, cash position. UI
+redesign Pass 2 (per-page polish) not started. Operational: rotate the DB
+password + service-role key, then disconnect Appwrite.
 
 Note: commit `88bda05` (the export feature's first commit) was auto-generated
 by tooling without the `Co-Authored-By` / `Claude-Session` trailers; the
 follow-up `cf6830d` has them.
 
 ## Gates (this session): `pnpm typecheck` · `pnpm lint` (17 pre-existing
-router.tsx fast-refresh warns) · `pnpm test` **718 / 94 files** · `pnpm build`.
+router.tsx fast-refresh warns) · `pnpm test` **723 / 95 files** · `pnpm build`.
 
 ## MCP
 `.mcp.json` has the Supabase HTTP MCP (`project_ref=ajrevsyyudfjrwiifekj`).
