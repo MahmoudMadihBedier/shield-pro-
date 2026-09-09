@@ -52,8 +52,6 @@ export interface LogActivityInput {
   customerId: string
   /** Auth user id of the staff member logging this (RLS: must equal auth.uid()). */
   createdBy: string
-  /** Copied from the customer so the row is branch-scoped like every customer-linked table. */
-  branchId: string | null
   kind: ActivityKind
   subject: string
   note?: string | null
@@ -68,10 +66,11 @@ export async function logActivity(input: LogActivityInput): Promise<Result<Activ
       databaseId: DATABASE_ID,
       tableId: Tables.crmActivities,
       rowId: ID.unique(),
+      // `branch_id` is set server-side by the `crm_activities_branch` trigger
+      // from the customer — never sent from here.
       data: {
         customer_id: input.customerId,
         created_by: input.createdBy,
-        branch_id: input.branchId,
         kind: input.kind,
         subject: input.subject,
         note: input.note?.trim() ? input.note.trim() : null,
@@ -93,6 +92,16 @@ export async function deleteActivity(id: string): Promise<Result<null>> {
       tableId: Tables.crmActivities,
       rowId: id,
     })
+    // `deleteRow` cannot report an RLS-filtered no-op — confirm the row is gone
+    // so a denied delete surfaces as an error, not a silent "success".
+    const check = await tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId: Tables.crmActivities,
+      queries: [Query.equal('$id', id), Query.limit(1), Query.noCount()],
+    })
+    if (check.rows.length > 0) {
+      return err(appError('forbidden', 'لا تملك صلاحية حذف هذا النشاط.'))
+    }
     return ok(null)
   } catch (e) {
     return err(mapAppwriteError(e))

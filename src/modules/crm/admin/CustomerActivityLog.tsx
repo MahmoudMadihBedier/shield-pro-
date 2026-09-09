@@ -27,13 +27,11 @@ import {
 import { useCustomerActivities, useDeleteActivity, useLogActivity } from './useCustomerActivities'
 
 export interface CustomerActivityLogProps {
-  customer: { $id: string; name: string; branch_id?: string | null }
+  customer: { $id: string; name: string }
 }
 
-const KIND_TONE: Record<string, 'neutral' | 'warning' | 'danger'> = {
-  complaint: 'danger',
-  follow_up: 'warning',
-}
+/** Only complaints get a non-neutral badge; everything else falls back below. */
+const KIND_TONE: Record<string, 'danger'> = { complaint: 'danger' }
 
 function todayLocalDate(): string {
   const d = new Date()
@@ -67,7 +65,6 @@ export function CustomerActivityLog({ customer }: CustomerActivityLogProps) {
       await logMutation.mutateAsync({
         customerId: customer.$id,
         createdBy: principal?.userId ?? '',
-        branchId: customer.branch_id ?? null,
         kind: values.kind,
         subject: values.subject.trim(),
         note: values.note ?? null,
