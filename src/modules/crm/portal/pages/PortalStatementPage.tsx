@@ -1,78 +1,139 @@
 /**
- * Account statement: a client-side merge of the customer's own invoices and
- * receipts into one running list, sorted by date. No server-side statement
- * route exists (or is needed) for this — it's a display merge of two routes
- * that already exist.
+ * Customer account statement — a running-balance ledger of the customer's own
+ * submitted invoices (debits) vs. receipts (credits). The maths is the pure
+ * `buildPortalStatement`; this page only renders and prints it. There is no
+ * server statement route — it folds the two `portal_*` list reads the portal
+ * already makes.
  */
 import { useMemo } from 'react'
 
 import { formatCurrency, formatDate } from '@/shared/formatters'
 import { Card, PageHeader } from '@/shared/ui'
+import { DocumentLetterhead } from '@/shared/documents'
 
+import { usePortalAuth } from '../auth/portal-context'
 import { usePortalInvoices, usePortalReceipts } from '../hooks'
-import { portalPaymentMethodLabel } from '../labels'
+import { buildPortalStatement } from '../statement'
 
 const STATEMENT_PAGE_SIZE = 100
 
-type StatementRow =
-  | { kind: 'invoice'; id: string; date: string; label: string; amount: number }
-  | { kind: 'receipt'; id: string; date: string; label: string; amount: number }
-
 export function PortalStatementPage() {
+  const { customer } = usePortalAuth()
   const invoices = usePortalInvoices({ page: 0, pageSize: STATEMENT_PAGE_SIZE })
   const receipts = usePortalReceipts({ page: 0, pageSize: STATEMENT_PAGE_SIZE })
 
   const isLoading = invoices.isLoading || receipts.isLoading
   const isError = invoices.isError || receipts.isError
 
-  const rows = useMemo<StatementRow[]>(() => {
-    const invoiceRows: StatementRow[] = (invoices.data?.rows ?? []).map((inv) => ({
-      kind: 'invoice',
-      id: inv.id,
-      date: inv.postingDatetime,
-      label: `فاتورة ${inv.referenceId} (${portalPaymentMethodLabel(inv.paymentMethod)})`,
-      amount: inv.netTotal,
-    }))
-    const receiptRows: StatementRow[] = (receipts.data?.rows ?? []).map((r) => ({
-      kind: 'receipt',
-      id: r.id,
-      date: r.postingDatetime,
-      label: `تحصيل ${r.invoiceRef}`,
-      amount: -r.amount,
-    }))
-    return [...invoiceRows, ...receiptRows].sort((a, b) => b.date.localeCompare(a.date))
-  }, [invoices.data, receipts.data])
+  const statement = useMemo(
+    () =>
+      buildPortalStatement({
+        invoices: invoices.data?.rows ?? [],
+        receipts: receipts.data?.rows ?? [],
+      }),
+    [invoices.data, receipts.data],
+  )
+
+  // The two reads are capped at STATEMENT_PAGE_SIZE — say so rather than
+  // present a partial ledger as complete.
+  const truncated =
+    (invoices.data ? invoices.data.total > STATEMENT_PAGE_SIZE : false) ||
+    (receipts.data ? receipts.data.total > STATEMENT_PAGE_SIZE : false)
 
   return (
     <div className="space-y-4">
-      <PageHeader title="كشف الحساب" description="الفواتير والتحصيلات مرتّبة حسب التاريخ" />
+      <DocumentLetterhead
+        reference="كشف حساب / Account statement"
+        subtitle={customer ? `${customer.name} — ${customer.code}` : undefined}
+      />
+      <PageHeader
+        title="كشف الحساب"
+        description="الفواتير والتحصيلات مرتّبة حسب التاريخ، برصيد جارٍ"
+      />
 
-      <Card>
-        {isLoading ? (
-          <p className="text-sm text-zinc-500">جارٍ التحميل…</p>
-        ) : isError ? (
-          <p className="text-sm text-red-600 dark:text-red-400">تعذّر تحميل كشف الحساب.</p>
-        ) : rows.length === 0 ? (
-          <p className="text-sm text-zinc-500">لا توجد حركات بعد.</p>
-        ) : (
-          <ul className="divide-y divide-black/5 text-sm dark:divide-white/5">
-            {rows.map((row) => (
-              <li key={`${row.kind}-${row.id}`} className="flex items-center justify-between gap-3 py-2">
-                <span className="min-w-0 truncate">{row.label}</span>
-                <span dir="ltr" className="shrink-0 text-xs text-zinc-400">
-                  {formatDate(row.date)}
-                </span>
-                <span
-                  dir="ltr"
-                  className={`shrink-0 tabular-nums ${row.amount < 0 ? 'text-emerald-700 dark:text-emerald-400' : ''}`}
-                >
-                  {formatCurrency(row.amount)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+      {isLoading ? (
+        <Card className="text-sm text-zinc-500">جارٍ التحميل…</Card>
+      ) : isError ? (
+        <Card className="text-sm text-red-600 dark:text-red-400">تعذّر تحميل كشف الحساب.</Card>
+      ) : statement.rows.length === 0 ? (
+        <Card className="text-sm text-zinc-500">لا توجد حركات بعد.</Card>
+      ) : (
+        <>
+          {truncated ? (
+            <Card className="text-xs text-amber-700 dark:text-amber-300">
+              يعرض هذا الكشف أحدث {STATEMENT_PAGE_SIZE} فاتورة و{STATEMENT_PAGE_SIZE} تحصيل فقط.
+              للحصول على كشف كامل تواصل مع المحاسبة.
+            </Card>
+          ) : null}
+
+          <Card className="p-0">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-black/[0.02] text-xs text-zinc-500 dark:bg-white/[0.03]">
+                  <tr>
+                    <th className="p-2 text-start">التاريخ</th>
+                    <th className="p-2 text-start">البيان</th>
+                    <th className="p-2 text-end">مدين</th>
+                    <th className="p-2 text-end">دائن</th>
+                    <th className="p-2 text-end">الرصيد</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {statement.rows.map((row) => (
+                    <tr
+                      key={`${row.kind}-${row.id}`}
+                      className="border-t border-black/5 dark:border-white/5"
+                    >
+                      <td className="p-2" dir="ltr">
+                        {formatDate(row.date)}
+                      </td>
+                      <td className="p-2">
+                        {row.kind === 'invoice' ? 'فاتورة' : 'تحصيل'}{' '}
+                        <span className="font-mono text-xs" dir="ltr">
+                          {row.reference}
+                        </span>
+                      </td>
+                      <td className="p-2 text-end tabular-nums" dir="ltr">
+                        {row.debit ? formatCurrency(row.debit) : '—'}
+                      </td>
+                      <td
+                        className="p-2 text-end tabular-nums text-emerald-700 dark:text-emerald-400"
+                        dir="ltr"
+                      >
+                        {row.credit ? formatCurrency(row.credit) : '—'}
+                      </td>
+                      <td className="p-2 text-end tabular-nums" dir="ltr">
+                        {formatCurrency(row.balance)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="border-t border-black/20 text-sm font-bold dark:border-white/20">
+                  <tr>
+                    <td className="p-2" colSpan={2}>
+                      الإجمالي / رصيد ختامي
+                    </td>
+                    <td className="p-2 text-end tabular-nums" dir="ltr">
+                      {formatCurrency(statement.totalDebit)}
+                    </td>
+                    <td className="p-2 text-end tabular-nums" dir="ltr">
+                      {formatCurrency(statement.totalCredit)}
+                    </td>
+                    <td
+                      className={`p-2 text-end tabular-nums ${
+                        statement.closingBalance > 0 ? 'text-red-600 dark:text-red-400' : ''
+                      }`}
+                      dir="ltr"
+                    >
+                      {formatCurrency(statement.closingBalance)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { formatCurrency, formatDateTime, formatNumber } from '@/shared/formatter
 import { Button, Card, PageHeader } from '@/shared/ui'
 import { DocumentLetterhead } from '@/shared/documents/DocumentLetterhead'
 
+import { usePortalAuth } from '../auth/portal-context'
 import { PortalDocStatusBadge } from '../components/PortalDocStatusBadge'
 import { usePortalInvoiceDetail } from '../hooks'
 import { portalPaymentMethodLabel } from '../labels'
@@ -38,6 +39,7 @@ function parseLines(raw: string): InvoiceLine[] {
 export function PortalInvoiceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { customer } = usePortalAuth()
   const query = usePortalInvoiceDetail(id)
 
   if (query.isLoading) return <p className="text-sm text-zinc-500">جارٍ تحميل الفاتورة…</p>
@@ -75,11 +77,14 @@ export function PortalInvoiceDetailPage() {
 
   return (
     <div className="space-y-5">
-      <DocumentLetterhead reference={invoice.referenceId} />
+      <DocumentLetterhead
+        reference={invoice.referenceId}
+        subtitle={customer ? `فاتورة إلى: ${customer.name} — ${customer.code}` : undefined}
+      />
       <PageHeader
         title={`فاتورة ${invoice.referenceId}`}
         actions={
-          <Button variant="ghost" onClick={() => navigate('/portal/invoices')}>
+          <Button variant="ghost" className="no-print" onClick={() => navigate('/portal/invoices')}>
             رجوع
           </Button>
         }
@@ -133,13 +138,28 @@ export function PortalInvoiceDetailPage() {
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="text-sm font-semibold">
+              <tfoot className="text-sm">
                 <tr className="border-t border-black/10 dark:border-white/10">
-                  <td className="p-2" colSpan={4}>
-                    الإجمالي / الخصم / الصافي
+                  <td className="p-2 text-end text-zinc-500" colSpan={4}>
+                    الإجمالي
                   </td>
-                  <td className="p-2 text-end" dir="ltr">
-                    {formatCurrency(invoice.grossTotal)} / {formatCurrency(invoice.discountTotal)} /{' '}
+                  <td className="p-2 text-end tabular-nums" dir="ltr">
+                    {formatCurrency(invoice.grossTotal)}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="p-2 text-end text-zinc-500" colSpan={4}>
+                    الخصم
+                  </td>
+                  <td className="p-2 text-end tabular-nums" dir="ltr">
+                    {formatCurrency(invoice.discountTotal)}
+                  </td>
+                </tr>
+                <tr className="font-bold">
+                  <td className="p-2 text-end" colSpan={4}>
+                    الصافي
+                  </td>
+                  <td className="p-2 text-end tabular-nums" dir="ltr">
                     {formatCurrency(invoice.netTotal)}
                   </td>
                 </tr>
@@ -149,7 +169,7 @@ export function PortalInvoiceDetailPage() {
         )}
       </Card>
 
-      <p className="text-xs text-zinc-500">
+      <p className="no-print text-xs text-zinc-500">
         <Link to="/portal/invoices" className="underline">
           العودة إلى قائمة الفواتير
         </Link>
