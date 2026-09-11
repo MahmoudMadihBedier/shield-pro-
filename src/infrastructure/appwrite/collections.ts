@@ -43,6 +43,7 @@ export const Tables = {
   // ---- CRM (staff-facing, branch-scoped) ----
   crmActivities: 'crm_activities',
   crmFollowups: 'crm_followups',
+  leads: 'leads',
 
   // ---- Immutable ledgers (append-only, server-written) ----
   stockLedger: 'stock_ledger_entries',

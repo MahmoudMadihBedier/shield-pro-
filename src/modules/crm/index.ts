@@ -45,4 +45,16 @@ export {
   type FollowupStatus,
   type FollowupRow,
 } from './domain/followup'
-export { portalKeys, crmAdminKeys } from './query-keys'
+export {
+  LEAD_STAGES,
+  LEAD_SOURCES,
+  leadStageLabel,
+  leadSourceLabel,
+  isOpenStage,
+  sortLeads,
+  openPipelineValue,
+  type LeadStage,
+  type LeadSource,
+  type LeadRow,
+} from './domain/lead'
+export { portalKeys, crmAdminKeys, crmLeadsKeys } from './query-keys'

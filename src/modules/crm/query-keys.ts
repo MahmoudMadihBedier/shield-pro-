@@ -22,3 +22,8 @@ export const crmAdminKeys = {
   followups: (customerId: string) => ['crm-admin', 'followups', customerId] as const,
   staffOptions: () => ['crm-admin', 'staff-options'] as const,
 } as const
+
+export const crmLeadsKeys = {
+  root: () => ['crm-leads'] as const,
+  list: () => ['crm-leads', 'list'] as const,
+} as const

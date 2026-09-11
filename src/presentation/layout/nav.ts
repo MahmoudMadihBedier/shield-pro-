@@ -1,6 +1,7 @@
 import type { Role } from '@/core/rbac'
 import { accountingNavItems } from '@/modules/accounting/presentation/nav'
 import { adminNavItems } from '@/modules/admin/nav'
+import { crmNavItems } from '@/modules/crm/nav'
 import { inventoryNavItems } from '@/modules/inventory/presentation/nav'
 import { approvalsNavItems } from '@/modules/approvals/presentation/nav'
 import { hrNavItems } from '@/modules/hr/presentation/nav'
@@ -64,6 +65,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   group(inventoryNavItems),
   group(accountingNavItems),
   group(salesNavItems),
+  group(crmNavItems),
   group(returnsNavItems),
   group(fraudNavItems),
   group(approvalsNavItems),

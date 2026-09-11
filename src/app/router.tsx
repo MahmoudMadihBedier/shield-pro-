@@ -10,6 +10,7 @@ import { hrRoutes } from '@/modules/hr/presentation/routes'
 import { notificationsRoutes } from '@/shared/notifications/routes'
 import { reportsRoutes } from '@/modules/reports/routes'
 import { portalRoutes } from '@/modules/crm/portal/routes'
+import { crmLeadsRoutes } from '@/modules/crm/leads/routes'
 import { fraudRoutes } from '@/modules/fraud/routes'
 import { returnsRoutes } from '@/modules/returns/presentation/routes'
 import { salesRoutes } from '@/modules/sales/presentation/routes'
@@ -148,18 +149,102 @@ export const router = createBrowserRouter([
           </RequireRole>
         ),
       },
-      { path: 'admin', element: <AdminRoute><AdminHomePage /></AdminRoute> },
-      { path: 'admin/branches', element: <AdminRoute><BranchesListPage /></AdminRoute> },
-      { path: 'admin/warehouses', element: <AdminRoute><WarehousesListPage /></AdminRoute> },
-      { path: 'admin/users', element: <AdminRoute><UsersListPage /></AdminRoute> },
-      { path: 'admin/products', element: <AdminRoute><ProductsListPage /></AdminRoute> },
-      { path: 'admin/products/:id', element: <AdminRoute><ProductDetailPage /></AdminRoute> },
-      { path: 'admin/raw-materials', element: <AdminRoute><RawMaterialsListPage /></AdminRoute> },
-      { path: 'admin/suppliers', element: <AdminRoute><SuppliersListPage /></AdminRoute> },
-      { path: 'admin/customers', element: <AdminRoute><CustomersListPage /></AdminRoute> },
-      { path: 'admin/customers/:id', element: <AdminRoute><CustomerDetailPage /></AdminRoute> },
-      { path: 'admin/import', element: <AdminRoute><DataImportPage /></AdminRoute> },
-      { path: 'admin/export', element: <AdminRoute><DataExportPage /></AdminRoute> },
+      {
+        path: 'admin',
+        element: (
+          <AdminRoute>
+            <AdminHomePage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: 'admin/branches',
+        element: (
+          <AdminRoute>
+            <BranchesListPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: 'admin/warehouses',
+        element: (
+          <AdminRoute>
+            <WarehousesListPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: 'admin/users',
+        element: (
+          <AdminRoute>
+            <UsersListPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: 'admin/products',
+        element: (
+          <AdminRoute>
+            <ProductsListPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: 'admin/products/:id',
+        element: (
+          <AdminRoute>
+            <ProductDetailPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: 'admin/raw-materials',
+        element: (
+          <AdminRoute>
+            <RawMaterialsListPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: 'admin/suppliers',
+        element: (
+          <AdminRoute>
+            <SuppliersListPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: 'admin/customers',
+        element: (
+          <AdminRoute>
+            <CustomersListPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: 'admin/customers/:id',
+        element: (
+          <AdminRoute>
+            <CustomerDetailPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: 'admin/import',
+        element: (
+          <AdminRoute>
+            <DataImportPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: 'admin/export',
+        element: (
+          <AdminRoute>
+            <DataExportPage />
+          </AdminRoute>
+        ),
+      },
 
       // Business modules — each ships its own lazy+Suspense route objects; role
       // gating for these lives in-page (SubmitCancelBar etc.) and server-side.
@@ -168,6 +253,7 @@ export const router = createBrowserRouter([
       ...inventoryRoutes,
       ...accountingRoutes,
       ...salesRoutes,
+      ...crmLeadsRoutes,
       ...returnsRoutes,
       ...fraudRoutes,
       ...approvalsRoutes,
