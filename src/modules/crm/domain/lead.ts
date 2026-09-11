@@ -40,13 +40,23 @@ export const leadRowSchema = z.object({
 })
 export type LeadRow = z.infer<typeof leadRowSchema>
 
-/** The add-lead form shape (React Hook Form + Zod resolver). */
+/**
+ * `estimated_value` is a plain required number defaulting to 0 — NOT
+ * `.optional()`. The bound `NumberField` uses RHF's `valueAsNumber: true`,
+ * which yields `NaN` (not `undefined`) for an empty input; the shared `Form`
+ * component requires the schema's Zod input type to equal its output type
+ * (`ZodType<TValues, TValues>`), which rules out the `preprocess` + optional
+ * combo that would otherwise tolerate that (same constraint documented on
+ * `IncentiveRuleFormDialog`'s `amount_or_pct`). 0 already reads as "no
+ * estimate" everywhere this field is consulted (`openPipelineValue`), so
+ * defaulting to it is not a behavioural loss.
+ */
 export const leadFormSchema = z.object({
   name: z.string().trim().min(1, 'أدخل اسم العميل المحتمل').max(128, 'الاسم طويل جدًا'),
   phone: z.string().trim().max(32, 'رقم الهاتف طويل جدًا').optional(),
   email: z.union([z.literal(''), z.string().trim().email('بريد إلكتروني غير صحيح')]).optional(),
   source: z.union([z.literal(''), leadSourceSchema]).optional(),
-  estimated_value: z.number({ error: 'أدخل رقمًا' }).min(0, 'يجب ألا تكون القيمة سالبة').optional(),
+  estimated_value: z.number({ error: 'أدخل رقمًا' }).min(0, 'يجب ألا تكون القيمة سالبة'),
   notes: z.string().trim().max(2000, 'الملاحظة طويلة جدًا').optional(),
   assigned_to: z.string().min(1, 'اختر المسؤول عن المتابعة'),
 })
@@ -81,6 +91,30 @@ export function leadSourceLabel(source: string | null | undefined): string | nul
 /** `won` and `lost` are the pipeline's closed stages. */
 export function isOpenStage(stage: string): boolean {
   return stage !== 'won' && stage !== 'lost'
+}
+
+/**
+ * The pipeline's allowed forward moves: `new → contacted → qualified → won`,
+ * with `lost` reachable from any open stage. `won` and `lost` are terminal —
+ * reopening a closed lead is an explicit Admin Override action, not a normal
+ * stage change (`claude.md` A.6: workflow transitions are a business rule,
+ * not a free-form field).
+ */
+export const LEAD_STAGE_TRANSITIONS: Record<LeadStage, readonly LeadStage[]> = {
+  new: ['contacted', 'lost'],
+  contacted: ['qualified', 'lost'],
+  qualified: ['won', 'lost'],
+  won: [],
+  lost: [],
+}
+
+export function canTransitionLeadStage(from: LeadStage, to: LeadStage): boolean {
+  return from === to || LEAD_STAGE_TRANSITIONS[from].includes(to)
+}
+
+/** The stages selectable from `from`, including `from` itself. */
+export function nextLeadStages(from: LeadStage): readonly LeadStage[] {
+  return [from, ...LEAD_STAGE_TRANSITIONS[from]]
 }
 
 const STAGE_RANK: Record<LeadStage, number> = {

@@ -124,6 +124,23 @@ export function hasGlobalScope(principal: Principal): boolean {
   return principal.roles.some((r) => GLOBAL_SCOPE_ROLES.has(r))
 }
 
+/**
+ * `true` when `principal` is the System Admin, or `principal.userId` matches
+ * one of `ownerIds` (e.g. a row's `created_by` and/or `assigned_to`) — the
+ * "may I manage this row" check repeated across every module that lets a
+ * creator/assignee self-serve without an approval workflow (CRM activities,
+ * follow-ups, leads, …). `principal` may be `null` (anonymous / still
+ * loading), which is always `false`.
+ */
+export function isOwnerOrAdmin(
+  principal: Principal | null | undefined,
+  ...ownerIds: ReadonlyArray<string | null | undefined>
+): boolean {
+  if (principal == null) return false
+  if (isSystemAdmin(principal)) return true
+  return ownerIds.some((id) => id != null && id === principal.userId)
+}
+
 /** Can this principal see records belonging to `branchId`? */
 export function canSeeBranch(principal: Principal, branchId: string): boolean {
   if (hasGlobalScope(principal)) return true

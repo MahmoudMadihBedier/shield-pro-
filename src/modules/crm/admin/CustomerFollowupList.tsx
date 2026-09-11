@@ -9,11 +9,13 @@ import type { DefaultValues } from 'react-hook-form'
 
 import { useAuth } from '@/application/auth/context'
 import { appError, type AppError } from '@/core/errors'
-import { isSystemAdmin } from '@/core/rbac'
+import { isOwnerOrAdmin } from '@/core/rbac'
 import { err, ok, type Result } from '@/core/result'
 import { formatDate } from '@/shared/formatters'
 import { DateField, Form, FormError, SelectField, TextAreaField, TextField } from '@/shared/forms'
 import { Badge, Button, Card } from '@/shared/ui'
+
+import { AssignToDefaulter } from './AssignToDefaulter'
 
 import {
   countOverdue,
@@ -52,20 +54,18 @@ export function CustomerFollowupList({ customer }: CustomerFollowupListProps) {
   const reopenMutation = useReopenFollowup(customer.$id)
   const deleteMutation = useDeleteFollowup(customer.$id)
 
-  const rows = list.data ?? []
+  const rows = useMemo(() => list.data ?? [], [list.data])
   const overdueCount = useMemo(() => countOverdue(rows), [rows])
   const staffName = useMemo(
     () => new Map((staff.data ?? []).map((s) => [s.value, s.label])),
     [staff.data],
   )
 
+  const [actionError, setActionError] = useState<AppError | null>(null)
+
   const canManage = (row: { created_by: string; assigned_to: string }) =>
-    principal != null &&
-    (isSystemAdmin(principal) ||
-      principal.userId === row.created_by ||
-      principal.userId === row.assigned_to)
-  const canDelete = (createdBy: string) =>
-    principal != null && (isSystemAdmin(principal) || principal.userId === createdBy)
+    isOwnerOrAdmin(principal, row.created_by, row.assigned_to)
+  const canDelete = (createdBy: string) => isOwnerOrAdmin(principal, createdBy)
 
   const defaults: FollowupForm = {
     title: '',
@@ -95,6 +95,24 @@ export function CustomerFollowupList({ customer }: CustomerFollowupListProps) {
   const anyActionPending =
     statusMutation.isPending || reopenMutation.isPending || deleteMutation.isPending
 
+  // Clear any stale error before firing a new action, so a banner from a
+  // previous failed action never lingers next to a since-successful one.
+  function runSetStatus(id: string, status: 'done' | 'cancelled') {
+    setActionError(null)
+    statusMutation.mutate(
+      { id, status, doneBy: principal?.userId ?? '' },
+      { onError: setActionError },
+    )
+  }
+  function runReopen(id: string) {
+    setActionError(null)
+    reopenMutation.mutate(id, { onError: setActionError })
+  }
+  function runDelete(id: string) {
+    setActionError(null)
+    deleteMutation.mutate(id, { onError: setActionError })
+  }
+
   return (
     <Card className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -119,6 +137,10 @@ export function CustomerFollowupList({ customer }: CustomerFollowupListProps) {
           >
             {({ formError, isSubmitting }) => (
               <>
+                <AssignToDefaulter<FollowupForm>
+                  options={staff.data ?? []}
+                  selfId={principal?.userId ?? ''}
+                />
                 <TextField name="title" label="العنوان" labelEn="Title" required />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <DateField name="due_date" label="تاريخ الاستحقاق" labelEn="Due date" required />
@@ -157,9 +179,9 @@ export function CustomerFollowupList({ customer }: CustomerFollowupListProps) {
         </div>
       ) : null}
 
-      {statusMutation.isError || reopenMutation.isError || deleteMutation.isError ? (
+      {actionError ? (
         <p role="alert" className="text-xs text-red-600 dark:text-red-400">
-          {(statusMutation.error ?? reopenMutation.error ?? deleteMutation.error)?.message}
+          {actionError.message}
         </p>
       ) : null}
 
@@ -202,13 +224,7 @@ export function CustomerFollowupList({ customer }: CustomerFollowupListProps) {
                           type="button"
                           className="text-emerald-700 underline hover:no-underline dark:text-emerald-400"
                           disabled={anyActionPending}
-                          onClick={() =>
-                            statusMutation.mutate({
-                              id: row.$id,
-                              status: 'done',
-                              doneBy: principal?.userId ?? '',
-                            })
-                          }
+                          onClick={() => runSetStatus(row.$id, 'done')}
                         >
                           إنجاز
                         </button>
@@ -216,13 +232,7 @@ export function CustomerFollowupList({ customer }: CustomerFollowupListProps) {
                           type="button"
                           className="text-zinc-500 underline hover:no-underline"
                           disabled={anyActionPending}
-                          onClick={() =>
-                            statusMutation.mutate({
-                              id: row.$id,
-                              status: 'cancelled',
-                              doneBy: principal?.userId ?? '',
-                            })
-                          }
+                          onClick={() => runSetStatus(row.$id, 'cancelled')}
                         >
                           إلغاء
                         </button>
@@ -232,7 +242,7 @@ export function CustomerFollowupList({ customer }: CustomerFollowupListProps) {
                         type="button"
                         className="text-zinc-500 underline hover:no-underline"
                         disabled={anyActionPending}
-                        onClick={() => reopenMutation.mutate(row.$id)}
+                        onClick={() => runReopen(row.$id)}
                       >
                         إعادة فتح
                       </button>
@@ -242,7 +252,7 @@ export function CustomerFollowupList({ customer }: CustomerFollowupListProps) {
                         type="button"
                         className="text-zinc-400 underline hover:text-red-600"
                         disabled={anyActionPending}
-                        onClick={() => deleteMutation.mutate(row.$id)}
+                        onClick={() => runDelete(row.$id)}
                       >
                         حذف
                       </button>

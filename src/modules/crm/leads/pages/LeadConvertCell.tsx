@@ -7,6 +7,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { useAuth } from '@/application/auth/context'
+import { isSystemAdmin } from '@/core/rbac'
 import { Button } from '@/shared/ui'
 
 import type { LeadRow } from '../../domain/lead'
@@ -14,6 +16,7 @@ import { useLinkConvertedCustomer } from '../hooks'
 import { useCustomerLinkOptions } from '../useCustomerLinkOptions'
 
 export function LeadConvertCell({ lead }: { lead: LeadRow }) {
+  const { principal } = useAuth()
   const [linking, setLinking] = useState(false)
   const [customerId, setCustomerId] = useState('')
   const customers = useCustomerLinkOptions()
@@ -22,13 +25,18 @@ export function LeadConvertCell({ lead }: { lead: LeadRow }) {
   if (lead.stage !== 'won') return null
 
   if (lead.converted_customer_id) {
-    return (
+    // `/admin/customers/:id` is System-Admin-only (AdminRoute) — the sales
+    // roles who actually work leads would hit an access-denied page, so only
+    // render the link for the role that can follow it.
+    return principal != null && isSystemAdmin(principal) ? (
       <Link
         to={`/admin/customers/${lead.converted_customer_id}`}
         className="text-xs text-emerald-700 underline dark:text-emerald-400"
       >
         مرتبط بعميل ✓
       </Link>
+    ) : (
+      <span className="text-xs text-emerald-700 dark:text-emerald-400">مرتبط بعميل ✓</span>
     )
   }
 
