@@ -29,3 +29,13 @@ export const crmLeadsKeys = {
   detail: (id: string) => ['crm-leads', 'detail', id] as const,
   events: (id: string) => ['crm-leads', 'events', id] as const,
 } as const
+
+export const crmHubKeys = {
+  root: () => ['crm-hub'] as const,
+  myFollowups: (userId: string) => ['crm-hub', 'my-followups', userId] as const,
+} as const
+
+/** Shared across every CRM surface — see `useCustomerDirectory`. */
+export const crmDirectoryKeys = {
+  customers: () => ['crm-directory', 'customers'] as const,
+} as const
