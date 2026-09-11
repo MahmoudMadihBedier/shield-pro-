@@ -86,17 +86,33 @@ Ordered by effort-to-value, not by any fixed deadline — pick up wherever
 makes sense.
 
 ### Phase A — close the loop on what exists (small, high value)
-1. **Lead detail page** — `/crm/leads/:id`: full field edit, the stage
-   history as a timeline, and (once "won" is linked) a jump to the customer.
-   This is the single biggest usability gap today.
-2. **Overdue follow-ups → notifications.** Reuse `NotificationService`
-   (already wired for fraud flags / pending approvals) with a new
-   `overdue_followup` kind; a cron-less approach: check on read (cheap) or a
-   scheduled Edge Function (matches how other periodic checks in this
-   codebase are done).
-3. **CRM hub page** (mirrors `PurchasingHomePage`/module hub pattern) at
-   `/crm` — "my open follow-ups", "my leads by stage", entry cards. Replaces
-   the current single-item nav group with a real landing page.
+1. ✅ **Lead detail page** — `/crm/leads/:id`: full field edit, a
+   server-written stage-change timeline (migration 0034 `lead_stage_events`,
+   not synthesized client-side), and the same convert/link flow the list
+   uses. Done.
+2. **Overdue follow-ups → notifications** — not started. Reuse
+   `NotificationService` (already wired for fraud flags / pending approvals)
+   with a new `overdue_followup` kind; a cron-less approach: check on read
+   (cheap) or a scheduled Edge Function (matches how other periodic checks in
+   this codebase are done).
+3. ✅ **CRM hub page** at `/crm` — "my open follow-ups" (across every
+   customer, branch-scoped server-side) + "leads by stage", entry point into
+   the pipeline. Nav is now `/crm` (hub) + `/crm/leads` (pipeline), not a
+   single flat item. Done.
+
+**Surfaced while building #1/#3, not yet resolved — needs a decision:**
+`/admin/customers/:id` (which hosts the activity-log and follow-up panels)
+is gated to `system_admin` only. The CRM roles who are actually assigned
+follow-ups and work leads — `sales_rep`, `branch_accountant`,
+`chief_accountant` — can reach `/crm` and `/crm/leads` fine, but can't
+navigate to a customer's own page to see/act on that CRM history; the hub
+and `LeadConvertCell` currently just hide the link for non-admins rather
+than send them to an access-denied page. Two real options: widen
+`/admin/customers/:id` access for these roles (that page also exposes full
+customer master-data edit + portal-account lifecycle, so this needs to be a
+deliberate scoping decision, not a blanket gate change), or split a lighter
+`/crm/customers/:id` route that shows only the CRM panels. Not something to
+decide silently.
 
 ### Phase B — operational completeness
 4. **Bulk lead import** via the existing `CsvImportPanel` (pick/paste → Zod
