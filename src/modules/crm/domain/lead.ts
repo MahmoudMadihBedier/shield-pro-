@@ -41,6 +41,37 @@ export const leadRowSchema = z.object({
 export type LeadRow = z.infer<typeof leadRowSchema>
 
 /**
+ * Exactly what the `tablesDB` shim returns for a `lead_stage_events` row
+ * (migration 0034) — an append-only log written server-side by the same
+ * trigger that guards the stage transition, never by the client.
+ */
+export const leadStageEventRowSchema = z.object({
+  $id: z.string(),
+  lead_id: z.string(),
+  from_stage: leadStageSchema.nullish(),
+  to_stage: leadStageSchema,
+  reason: rowOptStr,
+  changed_by: z.string(),
+  changed_at: z.string(),
+})
+export type LeadStageEvent = z.infer<typeof leadStageEventRowSchema>
+
+/**
+ * The lead detail page's edit form — every field except `stage` (its own
+ * dedicated, guarded control) and the read-only `converted_customer_id`.
+ */
+export const leadEditFormSchema = z.object({
+  name: z.string().trim().min(1, 'أدخل اسم العميل المحتمل').max(128, 'الاسم طويل جدًا'),
+  phone: z.string().trim().max(32, 'رقم الهاتف طويل جدًا').optional(),
+  email: z.union([z.literal(''), z.string().trim().email('بريد إلكتروني غير صحيح')]).optional(),
+  source: z.union([z.literal(''), leadSourceSchema]).optional(),
+  estimated_value: z.number({ error: 'أدخل رقمًا' }).min(0, 'يجب ألا تكون القيمة سالبة'),
+  notes: z.string().trim().max(2000, 'الملاحظة طويلة جدًا').optional(),
+  assigned_to: z.string().min(1, 'اختر المسؤول عن المتابعة'),
+})
+export type LeadEditForm = z.infer<typeof leadEditFormSchema>
+
+/**
  * `estimated_value` is a plain required number defaulting to 0 — NOT
  * `.optional()`. The bound `NumberField` uses RHF's `valueAsNumber: true`,
  * which yields `NaN` (not `undefined`) for an empty input; the shared `Form`
@@ -143,4 +174,17 @@ export function openPipelineValue(
   return rows
     .filter((r) => isOpenStage(r.stage))
     .reduce((sum, r) => sum + Math.max(0, r.estimated_value ?? 0), 0)
+}
+
+/** A one-line description of a stage-history event, oldest-first display. */
+export function describeStageEvent(e: Pick<LeadStageEvent, 'from_stage' | 'to_stage'>): string {
+  if (!e.from_stage) return `أُنشئ بمرحلة ${leadStageLabel(e.to_stage)}`
+  return `من ${leadStageLabel(e.from_stage)} إلى ${leadStageLabel(e.to_stage)}`
+}
+
+/** Newest first. */
+export function sortStageEvents<T extends Pick<LeadStageEvent, 'changed_at'>>(
+  events: readonly T[],
+): T[] {
+  return [...events].sort((a, b) => Date.parse(b.changed_at) - Date.parse(a.changed_at))
 }

@@ -10,10 +10,18 @@ import { DATABASE_ID, Tables } from '@/infrastructure/appwrite/collections'
 import { mapAppwriteError } from '@/infrastructure/appwrite/errors'
 import { ID, Query, tablesDB } from '@/infrastructure/appwrite/services'
 
-import { leadRowSchema, type LeadRow, type LeadStage } from '../domain/lead'
+import {
+  leadRowSchema,
+  leadStageEventRowSchema,
+  type LeadRow,
+  type LeadStage,
+  type LeadStageEvent,
+} from '../domain/lead'
 
 const SHAPE_ERROR =
   'تعذّر قراءة قائمة العملاء المحتملين — البنية غير متوقعة. أبلغ الدعم إذا استمر ذلك.'
+const EVENT_SHAPE_ERROR =
+  'تعذّر قراءة سجل تغييرات المرحلة — البنية غير متوقعة. أبلغ الدعم إذا استمر ذلك.'
 
 const MAX_ROWS = 300
 
@@ -37,6 +45,71 @@ export async function listLeads(): Promise<Result<LeadRow[]>> {
       const parsed = parseRow(raw)
       if (!parsed.ok) return parsed
       out.push(parsed.value)
+    }
+    return ok(out)
+  } catch (e) {
+    return err(mapAppwriteError(e))
+  }
+}
+
+/** One lead by id. */
+export async function getLead(id: string): Promise<Result<LeadRow>> {
+  try {
+    const row = await tablesDB.getRow({ databaseId: DATABASE_ID, tableId: Tables.leads, rowId: id })
+    return parseRow(row)
+  } catch (e) {
+    return err(mapAppwriteError(e))
+  }
+}
+
+export interface UpdateLeadInput {
+  name: string
+  phone?: string | null
+  email?: string | null
+  source?: string | null
+  estimatedValue: number
+  notes?: string | null
+  assignedTo: string
+}
+
+/** Edit a lead's plain fields (not `stage` — see `setLeadStage`). */
+export async function updateLead(id: string, input: UpdateLeadInput): Promise<Result<LeadRow>> {
+  try {
+    const updated = await tablesDB.updateRow({
+      databaseId: DATABASE_ID,
+      tableId: Tables.leads,
+      rowId: id,
+      data: {
+        name: input.name,
+        phone: input.phone?.trim() ? input.phone.trim() : null,
+        email: input.email?.trim() ? input.email.trim() : null,
+        source: input.source || null,
+        estimated_value: input.estimatedValue,
+        notes: input.notes?.trim() ? input.notes.trim() : null,
+        assigned_to: input.assignedTo,
+      },
+    })
+    return parseRow(updated)
+  } catch (e) {
+    return err(mapAppwriteError(e))
+  }
+}
+
+/** The stage-change history for one lead, written server-side (migration 0034). */
+export async function listLeadStageEvents(leadId: string): Promise<Result<LeadStageEvent[]>> {
+  try {
+    const res = await tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId: Tables.leadStageEvents,
+      queries: [Query.equal('lead_id', leadId), Query.orderDesc('changed_at'), Query.limit(100)],
+    })
+    const out: LeadStageEvent[] = []
+    for (const raw of res.rows) {
+      const parsed = leadStageEventRowSchema.safeParse(raw)
+      if (!parsed.success) {
+        return err(appError('server', EVENT_SHAPE_ERROR, { detail: parsed.error.message }))
+      }
+      out.push(parsed.data)
     }
     return ok(out)
   } catch (e) {

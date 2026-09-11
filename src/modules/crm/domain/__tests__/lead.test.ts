@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   canTransitionLeadStage,
+  describeStageEvent,
   isOpenStage,
   leadFormSchema,
   leadSourceLabel,
@@ -9,6 +10,7 @@ import {
   nextLeadStages,
   openPipelineValue,
   sortLeads,
+  sortStageEvents,
 } from '../lead'
 
 const row = (over: Partial<Record<string, unknown>> = {}) => ({
@@ -146,5 +148,29 @@ describe('nextLeadStages', () => {
     expect(nextLeadStages('new')).toEqual(['new', 'contacted', 'lost'])
     expect(nextLeadStages('won')).toEqual(['won'])
     expect(nextLeadStages('lost')).toEqual(['lost'])
+  })
+})
+
+describe('describeStageEvent', () => {
+  it('describes creation distinctly from a transition', () => {
+    expect(describeStageEvent({ from_stage: null, to_stage: 'new' })).toBe('أُنشئ بمرحلة جديد')
+    expect(describeStageEvent({ from_stage: 'new', to_stage: 'contacted' })).toBe(
+      'من جديد إلى تم التواصل',
+    )
+  })
+})
+
+describe('sortStageEvents', () => {
+  it('orders newest first', () => {
+    const events = [
+      { changed_at: '2026-03-01T00:00:00Z' },
+      { changed_at: '2026-03-10T00:00:00Z' },
+      { changed_at: '2026-03-05T00:00:00Z' },
+    ]
+    expect(sortStageEvents(events).map((e) => e.changed_at)).toEqual([
+      '2026-03-10T00:00:00Z',
+      '2026-03-05T00:00:00Z',
+      '2026-03-01T00:00:00Z',
+    ])
   })
 })

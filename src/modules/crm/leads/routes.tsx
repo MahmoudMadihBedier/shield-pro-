@@ -4,6 +4,9 @@
  */
 import type { RouteObject } from 'react-router-dom'
 
-import { LeadsListRoute } from './route-elements'
+import { LeadDetailRoute, LeadsListRoute } from './route-elements'
 
-export const crmLeadsRoutes: RouteObject[] = [{ path: 'crm/leads', element: <LeadsListRoute /> }]
+export const crmLeadsRoutes: RouteObject[] = [
+  { path: 'crm/leads', element: <LeadsListRoute /> },
+  { path: 'crm/leads/:id', element: <LeadDetailRoute /> },
+]

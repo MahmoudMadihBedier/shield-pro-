@@ -7,6 +7,7 @@
  */
 import { useCallback, useMemo, useState } from 'react'
 import type { DefaultValues } from 'react-hook-form'
+import { Link } from 'react-router-dom'
 
 import { useAuth } from '@/application/auth/context'
 import { isOwnerOrAdmin } from '@/core/rbac'
@@ -115,7 +116,9 @@ export function LeadsListPage() {
         accessor: (r) => r.name,
         cell: (r) => (
           <div className="min-w-0">
-            <p className="truncate font-medium">{r.name}</p>
+            <Link to={`/crm/leads/${r.$id}`} className="truncate font-medium underline">
+              {r.name}
+            </Link>
             <p className="truncate text-xs text-zinc-400" dir="ltr">
               {[r.phone, r.email].filter(Boolean).join(' · ') || '—'}
             </p>

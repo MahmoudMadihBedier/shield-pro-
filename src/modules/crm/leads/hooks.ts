@@ -9,12 +9,22 @@ import type { AppError } from '@/core/errors'
 import {
   createLead,
   deleteLead,
+  getLead,
   linkConvertedCustomer,
   listLeads,
+  listLeadStageEvents,
   setLeadStage,
+  updateLead,
   type CreateLeadInput,
+  type UpdateLeadInput,
 } from '../data/leads-repo'
-import { sortLeads, type LeadRow, type LeadStage } from '../domain/lead'
+import {
+  sortLeads,
+  sortStageEvents,
+  type LeadRow,
+  type LeadStage,
+  type LeadStageEvent,
+} from '../domain/lead'
 import { crmLeadsKeys } from '../query-keys'
 
 export function useLeads() {
@@ -28,6 +38,44 @@ export function useLeads() {
   })
 }
 
+export function useLead(id: string | undefined) {
+  return useQuery<LeadRow, AppError>({
+    queryKey: crmLeadsKeys.detail(id ?? ''),
+    enabled: Boolean(id),
+    queryFn: async () => {
+      const res = await getLead(id as string)
+      if (!res.ok) throw res.error
+      return res.value
+    },
+  })
+}
+
+export function useLeadStageEvents(id: string | undefined) {
+  return useQuery<LeadStageEvent[], AppError>({
+    queryKey: crmLeadsKeys.events(id ?? ''),
+    enabled: Boolean(id),
+    queryFn: async () => {
+      const res = await listLeadStageEvents(id as string)
+      if (!res.ok) throw res.error
+      return sortStageEvents(res.value)
+    },
+  })
+}
+
+export function useUpdateLead(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation<LeadRow, AppError, UpdateLeadInput>({
+    mutationFn: async (input) => {
+      const res = await updateLead(id, input)
+      if (!res.ok) throw res.error
+      return res.value
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: crmLeadsKeys.root() })
+    },
+  })
+}
+
 export function useCreateLead() {
   const queryClient = useQueryClient()
   return useMutation<LeadRow, AppError, CreateLeadInput>({
@@ -37,7 +85,7 @@ export function useCreateLead() {
       return res.value
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: crmLeadsKeys.list() })
+      void queryClient.invalidateQueries({ queryKey: crmLeadsKeys.root() })
     },
   })
 }
@@ -55,7 +103,7 @@ export function useSetLeadStage() {
       return res.value
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: crmLeadsKeys.list() })
+      void queryClient.invalidateQueries({ queryKey: crmLeadsKeys.root() })
     },
   })
 }
@@ -69,7 +117,7 @@ export function useLinkConvertedCustomer() {
       return res.value
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: crmLeadsKeys.list() })
+      void queryClient.invalidateQueries({ queryKey: crmLeadsKeys.root() })
     },
   })
 }
@@ -83,7 +131,7 @@ export function useDeleteLead() {
       return res.value
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: crmLeadsKeys.list() })
+      void queryClient.invalidateQueries({ queryKey: crmLeadsKeys.root() })
     },
   })
 }

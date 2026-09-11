@@ -8,6 +8,9 @@ import { lazy, Suspense, type ReactNode } from 'react'
 const LeadsListPage = lazy(() =>
   import('./pages/LeadsListPage').then((m) => ({ default: m.LeadsListPage })),
 )
+const LeadDetailPage = lazy(() =>
+  import('./pages/LeadDetailPage').then((m) => ({ default: m.LeadDetailPage })),
+)
 
 function Lazy({ children }: { children: ReactNode }) {
   return (
@@ -27,6 +30,14 @@ export function LeadsListRoute() {
   return (
     <Lazy>
       <LeadsListPage />
+    </Lazy>
+  )
+}
+
+export function LeadDetailRoute() {
+  return (
+    <Lazy>
+      <LeadDetailPage />
     </Lazy>
   )
 }
