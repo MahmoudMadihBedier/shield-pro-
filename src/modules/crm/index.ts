@@ -36,4 +36,13 @@ export {
   type ActivityKind,
   type ActivityRow,
 } from './domain/activity'
+export {
+  FOLLOWUP_STATUSES,
+  followupStatusLabel,
+  isOverdue,
+  sortFollowups,
+  countOverdue,
+  type FollowupStatus,
+  type FollowupRow,
+} from './domain/followup'
 export { portalKeys, crmAdminKeys } from './query-keys'
