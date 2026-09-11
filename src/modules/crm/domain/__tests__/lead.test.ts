@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  canTransitionLeadStage,
   isOpenStage,
   leadFormSchema,
   leadSourceLabel,
   leadStageLabel,
+  nextLeadStages,
   openPipelineValue,
   sortLeads,
 } from '../lead'
@@ -75,15 +77,74 @@ describe('labels', () => {
 describe('leadFormSchema', () => {
   it('accepts a minimal valid lead', () => {
     expect(
-      leadFormSchema.safeParse({ name: 'Acme', assigned_to: 'u1', source: '', email: '' }).success,
+      leadFormSchema.safeParse({
+        name: 'Acme',
+        assigned_to: 'u1',
+        source: '',
+        email: '',
+        estimated_value: 0,
+      }).success,
     ).toBe(true)
   })
 
   it('rejects an empty name, a bad email, and a missing assignee', () => {
-    expect(leadFormSchema.safeParse({ name: '  ', assigned_to: 'u1' }).success).toBe(false)
-    expect(leadFormSchema.safeParse({ name: 'x', assigned_to: 'u1', email: 'nope' }).success).toBe(
-      false,
-    )
-    expect(leadFormSchema.safeParse({ name: 'x', assigned_to: '' }).success).toBe(false)
+    expect(
+      leadFormSchema.safeParse({ name: '  ', assigned_to: 'u1', estimated_value: 0 }).success,
+    ).toBe(false)
+    expect(
+      leadFormSchema.safeParse({ name: 'x', assigned_to: 'u1', email: 'nope', estimated_value: 0 })
+        .success,
+    ).toBe(false)
+    expect(
+      leadFormSchema.safeParse({ name: 'x', assigned_to: '', estimated_value: 0 }).success,
+    ).toBe(false)
+  })
+
+  it('rejects a NaN estimated_value (RHF valueAsNumber on an empty NumberField) — the field is a required 0-default, not optional', () => {
+    expect(
+      leadFormSchema.safeParse({ name: 'x', assigned_to: 'u1', estimated_value: Number.NaN })
+        .success,
+    ).toBe(false)
+  })
+
+  it('rejects a negative estimated_value', () => {
+    expect(
+      leadFormSchema.safeParse({ name: 'x', assigned_to: 'u1', estimated_value: -1 }).success,
+    ).toBe(false)
+  })
+
+  it('accepts estimated_value: 0 — "no estimate"', () => {
+    expect(
+      leadFormSchema.safeParse({ name: 'x', assigned_to: 'u1', estimated_value: 0 }).success,
+    ).toBe(true)
+  })
+})
+
+describe('canTransitionLeadStage', () => {
+  it('allows the pipeline forward path and "lost" from any open stage', () => {
+    expect(canTransitionLeadStage('new', 'contacted')).toBe(true)
+    expect(canTransitionLeadStage('contacted', 'qualified')).toBe(true)
+    expect(canTransitionLeadStage('qualified', 'won')).toBe(true)
+    expect(canTransitionLeadStage('new', 'lost')).toBe(true)
+    expect(canTransitionLeadStage('qualified', 'lost')).toBe(true)
+  })
+
+  it('allows staying on the same stage (a no-op save)', () => {
+    expect(canTransitionLeadStage('contacted', 'contacted')).toBe(true)
+  })
+
+  it('rejects skipping stages and reopening a closed lead', () => {
+    expect(canTransitionLeadStage('new', 'won')).toBe(false)
+    expect(canTransitionLeadStage('new', 'qualified')).toBe(false)
+    expect(canTransitionLeadStage('won', 'qualified')).toBe(false)
+    expect(canTransitionLeadStage('lost', 'new')).toBe(false)
+  })
+})
+
+describe('nextLeadStages', () => {
+  it('includes the current stage plus its allowed moves', () => {
+    expect(nextLeadStages('new')).toEqual(['new', 'contacted', 'lost'])
+    expect(nextLeadStages('won')).toEqual(['won'])
+    expect(nextLeadStages('lost')).toEqual(['lost'])
   })
 })

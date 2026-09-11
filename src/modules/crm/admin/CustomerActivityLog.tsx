@@ -9,7 +9,7 @@ import type { DefaultValues } from 'react-hook-form'
 
 import { useAuth } from '@/application/auth/context'
 import { appError, type AppError } from '@/core/errors'
-import { isSystemAdmin } from '@/core/rbac'
+import { isOwnerOrAdmin } from '@/core/rbac'
 import { err, ok, type Result } from '@/core/result'
 import { formatDate } from '@/shared/formatters'
 import { DateField, Form, FormError, SelectField, TextAreaField, TextField } from '@/shared/forms'
@@ -47,10 +47,9 @@ export function CustomerActivityLog({ customer }: CustomerActivityLogProps) {
   const logMutation = useLogActivity(customer.$id)
   const deleteMutation = useDeleteActivity(customer.$id)
 
-  const rows = list.data ?? []
+  const rows = useMemo(() => list.data ?? [], [list.data])
   const summary = useMemo(() => countByKind(rows), [rows])
-  const canDelete = (createdBy: string) =>
-    principal != null && (isSystemAdmin(principal) || principal.userId === createdBy)
+  const canDelete = (createdBy: string) => isOwnerOrAdmin(principal, createdBy)
 
   const defaults: ActivityForm = {
     kind: 'call',

@@ -5,11 +5,11 @@
  * geo, code, credit terms — belong in the normal Customers form, not defaulted
  * silently here); a won lead can then be linked back via a customer picker.
  */
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { DefaultValues } from 'react-hook-form'
 
 import { useAuth } from '@/application/auth/context'
-import { isSystemAdmin } from '@/core/rbac'
+import { isOwnerOrAdmin } from '@/core/rbac'
 import { appError, type AppError } from '@/core/errors'
 import { err, ok, type Result } from '@/core/result'
 import { formatCurrency, formatDate } from '@/shared/formatters'
@@ -17,6 +17,7 @@ import { DataTable, type ColumnDef } from '@/shared/data-table'
 import { Form, FormError, NumberField, SelectField, TextAreaField, TextField } from '@/shared/forms'
 import { Button, Card, PageHeader } from '@/shared/ui'
 
+import { AssignToDefaulter } from '../../admin/AssignToDefaulter'
 import { useStaffOptions } from '../../admin/useStaffOptions'
 import {
   LEAD_SOURCES,
@@ -32,11 +33,13 @@ import {
 } from '../../domain/lead'
 import { useCreateLead, useDeleteLead, useLeads, useSetLeadStage } from '../hooks'
 import { LeadConvertCell } from './LeadConvertCell'
+import { LeadStageCell } from './LeadStageCell'
 
 export function LeadsListPage() {
   const { principal } = useAuth()
   const [adding, setAdding] = useState(false)
   const [stageFilter, setStageFilter] = useState<'all' | LeadStage>('all')
+  const [actionError, setActionError] = useState<AppError | null>(null)
 
   const list = useLeads()
   const staff = useStaffOptions()
@@ -44,7 +47,7 @@ export function LeadsListPage() {
   const stageMutation = useSetLeadStage()
   const deleteMutation = useDeleteLead()
 
-  const rows = list.data ?? []
+  const rows = useMemo(() => list.data ?? [], [list.data])
   const filteredRows = useMemo(
     () => (stageFilter === 'all' ? rows : rows.filter((r) => r.stage === stageFilter)),
     [rows, stageFilter],
@@ -55,14 +58,31 @@ export function LeadsListPage() {
   )
   const pipelineValue = useMemo(() => openPipelineValue(rows), [rows])
 
-  const canDelete = (createdBy: string) =>
-    principal != null && (isSystemAdmin(principal) || principal.userId === createdBy)
+  const canDelete = useCallback(
+    (createdBy: string) => isOwnerOrAdmin(principal, createdBy),
+    [principal],
+  )
+  const runSetStage = useCallback(
+    (id: string, stage: LeadStage, lostReason?: string) => {
+      setActionError(null)
+      stageMutation.mutate({ id, stage, lostReason }, { onError: setActionError })
+    },
+    [stageMutation],
+  )
+  const runDelete = useCallback(
+    (id: string) => {
+      setActionError(null)
+      deleteMutation.mutate(id, { onError: setActionError })
+    },
+    [deleteMutation],
+  )
 
   const defaults: LeadForm = {
     name: '',
     phone: '',
     email: '',
     source: '',
+    estimated_value: 0,
     notes: '',
     assigned_to: principal?.userId ?? '',
   }
@@ -76,7 +96,7 @@ export function LeadsListPage() {
         phone: values.phone ?? null,
         email: values.email ?? null,
         source: values.source || null,
-        estimatedValue: values.estimated_value ?? null,
+        estimatedValue: values.estimated_value,
         notes: values.notes ?? null,
       })
       setAdding(false)
@@ -87,110 +107,108 @@ export function LeadsListPage() {
     }
   }
 
-  const columns: ColumnDef<LeadRow>[] = [
-    {
-      id: 'name',
-      header: 'الاسم / Name',
-      accessor: (r) => r.name,
-      cell: (r) => (
-        <div className="min-w-0">
-          <p className="truncate font-medium">{r.name}</p>
-          <p className="truncate text-xs text-zinc-400" dir="ltr">
-            {[r.phone, r.email].filter(Boolean).join(' · ') || '—'}
-          </p>
-        </div>
-      ),
-      width: 'minmax(12rem, 1.4fr)',
-    },
-    {
-      id: 'stage',
-      header: 'المرحلة / Stage',
-      accessor: (r) => r.stage,
-      cell: (r) => (
-        <select
-          value={r.stage}
-          disabled={stageMutation.isPending}
-          onChange={(e) => {
-            const next = e.target.value as LeadStage
-            const lostReason =
-              next === 'lost' ? (window.prompt('سبب الخسارة (اختياري):') ?? '') : undefined
-            stageMutation.mutate({ id: r.$id, stage: next, lostReason })
-          }}
-          className="rounded-lg border border-black/15 bg-transparent px-2 py-1 text-xs dark:border-white/15"
-        >
-          {LEAD_STAGES.map((s) => (
-            <option key={s} value={s}>
-              {leadStageLabel(s)}
-            </option>
-          ))}
-        </select>
-      ),
-      width: '10rem',
-    },
-    {
-      id: 'source',
-      header: 'المصدر / Source',
-      accessor: (r) => r.source ?? '',
-      cell: (r) => leadSourceLabel(r.source) ?? '—',
-      width: '8rem',
-    },
-    {
-      id: 'value',
-      header: 'القيمة المتوقعة / Value',
-      accessor: (r) => r.estimated_value ?? 0,
-      align: 'end',
-      cell: (r) =>
-        r.estimated_value ? (
-          <span dir="ltr" className="tabular-nums">
-            {formatCurrency(r.estimated_value)}
-          </span>
-        ) : (
-          '—'
+  const columns = useMemo<ColumnDef<LeadRow>[]>(
+    () => [
+      {
+        id: 'name',
+        header: 'الاسم / Name',
+        accessor: (r) => r.name,
+        cell: (r) => (
+          <div className="min-w-0">
+            <p className="truncate font-medium">{r.name}</p>
+            <p className="truncate text-xs text-zinc-400" dir="ltr">
+              {[r.phone, r.email].filter(Boolean).join(' · ') || '—'}
+            </p>
+          </div>
         ),
-      width: '8rem',
-    },
-    {
-      id: 'assigned',
-      header: 'المسؤول / Owner',
-      accessor: (r) => r.assigned_to,
-      cell: (r) => staffName.get(r.assigned_to) ?? r.assigned_to,
-      width: '9rem',
-    },
-    {
-      id: 'created',
-      header: 'التاريخ / Date',
-      accessor: (r) => r.$createdAt,
-      align: 'end',
-      cell: (r) => (
-        <span dir="ltr" className="text-zinc-500">
-          {formatDate(r.$createdAt)}
-        </span>
-      ),
-      width: '7rem',
-    },
-    {
-      id: '__actions',
-      header: '',
-      accessor: () => null,
-      align: 'end',
-      width: 'minmax(10rem, 1fr)',
-      cell: (r) => (
-        <div className="flex items-center justify-end gap-2">
-          <LeadConvertCell lead={r} />
-          {canDelete(r.created_by) ? (
-            <button
-              type="button"
-              className="text-xs text-zinc-400 underline hover:text-red-600"
-              disabled={deleteMutation.isPending}
-              onClick={() => deleteMutation.mutate(r.$id)}
-            >
-              حذف
-            </button>
-          ) : null}
-        </div>
-      ),
-    },
-  ]
+        width: 'minmax(12rem, 1.4fr)',
+      },
+      {
+        id: 'stage',
+        header: 'المرحلة / Stage',
+        accessor: (r) => r.stage,
+        cell: (r) => (
+          <LeadStageCell
+            lead={r}
+            pending={stageMutation.isPending}
+            onChange={(stage, lostReason) => runSetStage(r.$id, stage, lostReason)}
+          />
+        ),
+        width: '10rem',
+      },
+      {
+        id: 'source',
+        header: 'المصدر / Source',
+        accessor: (r) => r.source ?? '',
+        cell: (r) => leadSourceLabel(r.source) ?? '—',
+        width: '8rem',
+      },
+      {
+        id: 'value',
+        header: 'القيمة المتوقعة / Value',
+        accessor: (r) => r.estimated_value ?? 0,
+        align: 'end',
+        cell: (r) =>
+          r.estimated_value != null ? (
+            <span dir="ltr" className="tabular-nums">
+              {formatCurrency(r.estimated_value)}
+            </span>
+          ) : (
+            '—'
+          ),
+        width: '8rem',
+      },
+      {
+        id: 'assigned',
+        header: 'المسؤول / Owner',
+        accessor: (r) => r.assigned_to,
+        cell: (r) => staffName.get(r.assigned_to) ?? r.assigned_to,
+        width: '9rem',
+      },
+      {
+        id: 'created',
+        header: 'التاريخ / Date',
+        accessor: (r) => r.$createdAt,
+        align: 'end',
+        cell: (r) => (
+          <span dir="ltr" className="text-zinc-500">
+            {formatDate(r.$createdAt)}
+          </span>
+        ),
+        width: '7rem',
+      },
+      {
+        id: '__actions',
+        header: '',
+        accessor: () => null,
+        align: 'end',
+        width: 'minmax(10rem, 1fr)',
+        cell: (r) => (
+          <div className="flex items-center justify-end gap-2">
+            <LeadConvertCell lead={r} />
+            {canDelete(r.created_by) ? (
+              <button
+                type="button"
+                className="text-xs text-zinc-400 underline hover:text-red-600"
+                disabled={deleteMutation.isPending}
+                onClick={() => runDelete(r.$id)}
+              >
+                حذف
+              </button>
+            ) : null}
+          </div>
+        ),
+      },
+    ],
+    [
+      staffName,
+      stageMutation.isPending,
+      deleteMutation.isPending,
+      canDelete,
+      runSetStage,
+      runDelete,
+    ],
+  )
 
   return (
     <div className="space-y-4">
@@ -227,6 +245,10 @@ export function LeadsListPage() {
           >
             {({ formError, isSubmitting }) => (
               <>
+                <AssignToDefaulter<LeadForm>
+                  options={staff.data ?? []}
+                  selfId={principal?.userId ?? ''}
+                />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <TextField name="name" label="الاسم" labelEn="Name" required />
                   <TextField name="phone" label="الهاتف" labelEn="Phone" dir="ltr" />
@@ -243,8 +265,9 @@ export function LeadsListPage() {
                   />
                   <NumberField
                     name="estimated_value"
-                    label="القيمة المتوقعة (اختياري)"
+                    label="القيمة المتوقعة"
                     labelEn="Estimated value"
+                    hint="اترك 0 إن لم يوجد تقدير"
                     min={0}
                   />
                   <SelectField
@@ -282,9 +305,9 @@ export function LeadsListPage() {
         </Card>
       ) : null}
 
-      {stageMutation.isError || deleteMutation.isError ? (
+      {actionError ? (
         <p role="alert" className="text-xs text-red-600 dark:text-red-400">
-          {(stageMutation.error ?? deleteMutation.error)?.message}
+          {actionError.message}
         </p>
       ) : null}
 
