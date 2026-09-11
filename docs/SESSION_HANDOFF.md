@@ -42,21 +42,41 @@ typecheck` · `pnpm lint` (only pre-existing router.tsx warns) · `pnpm test`
   `customer_aging`. The first-cut client-side `buildPortalStatement` was
   reverted per code review (wrong on payment method, returns, opening balance,
   and re-implemented the canonical statement).
-- **CRM — customer activity log** (`dd1109e`). First slice of a staff-facing
-  CRM: **migration 0029 `crm_activities`** (branch-scoped interaction timeline
-  — call/visit/whatsapp/complaint/…, `branch_id` copied from the customer,
-  rep edits own rows, admin override). `crm/domain/activity.ts` +
-  `crm/data/activities-repo.ts` + `CustomerActivityLog` panel +
-  `useCustomerActivities`/`useLogActivity`/`useDeleteActivity`, mounted on
-  `CustomerDetailPage`. `crm/index.ts` barrel kept portal-only + pure domain
-  (AppProviders imports it) — the RHF panels are leaf-imported.
+- **CRM — customer activity log** (`dd1109e`, `cacc6d0`). First slice of a
+  staff-facing CRM: **migration 0029 `crm_activities`** (branch-scoped
+  interaction timeline — call/visit/whatsapp/complaint/…, `branch_id` forced
+  server-side by a BEFORE trigger from the customer — never trusted from the
+  client after a code-review catch, rep edits own rows, admin override).
+  `crm/domain/activity.ts` + `crm/data/activities-repo.ts` (delete verifies
+  the row is actually gone — RLS silently no-ops otherwise) +
+  `CustomerActivityLog` panel + hooks, mounted on `CustomerDetailPage`.
+  `crm/index.ts` barrel kept portal-only + pure domain (AppProviders imports
+  it) — the RHF panels are leaf-imported so the vendor chunk split holds.
+- **CRM — follow-up tasks/reminders** (`3c5385f`). Second slice: **migration
+  0030 `crm_followups`** — a due-dated task tied to a customer, assigned to a
+  staff member (`useStaffOptions`, reads `admin`'s `usersRepo`), same
+  trigger-forced `branch_id` pattern as 0029. RLS: creator OR assignee may
+  mark done/cancelled/reopen; only the creator deletes; admin override.
+  `crm/domain/followup.ts` (`isOverdue`, `sortFollowups`, `countOverdue`) +
+  `CustomerFollowupList` panel, mounted above the activity log.
+- **CRM — leads / opportunity pipeline** (`3b9a1d2`). Third slice, and the
+  first CRM surface with its own routed page: **migration 0031 `leads`** (new
+  → contacted → qualified → won/lost). No customer row exists yet to derive
+  branch from, so `branch_id` is forced from the CALLER's own
+  `user_branch_id()` at INSERT and pinned immutable on UPDATE by the same
+  trigger (`TG_OP` branch) — the update policy alone would otherwise let a
+  client spoof it. `LeadsListPage` (`/crm/leads`, new top-level nav group) uses
+  the shared `DataTable` per claude.md B.6 ("deal pipelines"); converting to a
+  real customer is a deliberate manual step (geo/code/credit-terms are a
+  business decision) — a `won` lead gets a "link to customer" picker instead
+  of an automated conversion.
 
 ### Deploy debt (blocked in-session — `supabase db push` / curl-with-secret
 ### are classifier-blocked here; run locally)
-1. **`npx supabase db push --include-all`** — migrations **0026**–**0029** are
-   local-only. 0028 (`portal_statement`) is required for the portal statement
-   page; 0029 (`crm_activities`) for the customer activity log — both error
-   until pushed. 0026/0027 have no hard frontend ordering. Push all four.
+1. **`npx supabase db push --include-all`** — migrations **0026**–**0031** are
+   local-only. 0028 (`portal_statement`), 0029 (`crm_activities`), 0030
+   (`crm_followups`), 0031 (`leads`) each error in the UI until pushed.
+   0026/0027 have no hard frontend ordering. Push all six.
 2. **CRM "إنشاء حساب البوابة" button reportedly errors.** `portal-account`
    Edge Function IS deployed (v1, ACTIVE, `verify_jwt: true`). With the new
    error surfacing the real message will now show — likely one of: the
@@ -70,9 +90,9 @@ typecheck` · `pnpm lint` (only pre-existing router.tsx warns) · `pnpm test`
 ### Remaining backlog
 Phase 4.1: production-waste / rep-cash-up exports, opening-stock +
 bank-statement importers. Phase 4.2: payroll cost, cash position. CRM: Story
-3.2 mid-session revocation (banned user's existing JWT lives to expiry);
-staff-facing CRM next slices — follow-up tasks/reminders (`crm_followups`),
-then a leads→opportunity pipeline. UI redesign Pass 2.
+3.2 mid-session revocation (banned user's existing JWT lives to expiry); a
+lead detail page (currently list-only) and a lead→activity-log link would be
+natural next polish. UI redesign Pass 2.
 
 ---
 

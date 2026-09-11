@@ -1,0 +1,89 @@
+/**
+ * Staff-side hooks for the leads pipeline. Read + create + stage change +
+ * link-converted-customer + delete, against `leads` (branch-scoped RLS).
+ */
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
+import type { AppError } from '@/core/errors'
+
+import {
+  createLead,
+  deleteLead,
+  linkConvertedCustomer,
+  listLeads,
+  setLeadStage,
+  type CreateLeadInput,
+} from '../data/leads-repo'
+import { sortLeads, type LeadRow, type LeadStage } from '../domain/lead'
+import { crmLeadsKeys } from '../query-keys'
+
+export function useLeads() {
+  return useQuery<LeadRow[], AppError>({
+    queryKey: crmLeadsKeys.list(),
+    queryFn: async () => {
+      const res = await listLeads()
+      if (!res.ok) throw res.error
+      return sortLeads(res.value)
+    },
+  })
+}
+
+export function useCreateLead() {
+  const queryClient = useQueryClient()
+  return useMutation<LeadRow, AppError, CreateLeadInput>({
+    mutationFn: async (input) => {
+      const res = await createLead(input)
+      if (!res.ok) throw res.error
+      return res.value
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: crmLeadsKeys.list() })
+    },
+  })
+}
+
+export function useSetLeadStage() {
+  const queryClient = useQueryClient()
+  return useMutation<
+    LeadRow,
+    AppError,
+    { id: string; stage: LeadStage; lostReason?: string | null }
+  >({
+    mutationFn: async ({ id, stage, lostReason }) => {
+      const res = await setLeadStage(id, stage, lostReason)
+      if (!res.ok) throw res.error
+      return res.value
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: crmLeadsKeys.list() })
+    },
+  })
+}
+
+export function useLinkConvertedCustomer() {
+  const queryClient = useQueryClient()
+  return useMutation<LeadRow, AppError, { id: string; customerId: string }>({
+    mutationFn: async ({ id, customerId }) => {
+      const res = await linkConvertedCustomer(id, customerId)
+      if (!res.ok) throw res.error
+      return res.value
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: crmLeadsKeys.list() })
+    },
+  })
+}
+
+export function useDeleteLead() {
+  const queryClient = useQueryClient()
+  return useMutation<null, AppError, string>({
+    mutationFn: async (id) => {
+      const res = await deleteLead(id)
+      if (!res.ok) throw res.error
+      return res.value
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: crmLeadsKeys.list() })
+    },
+  })
+}

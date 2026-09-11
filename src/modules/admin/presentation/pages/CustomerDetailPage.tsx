@@ -15,6 +15,7 @@ import { adminSetStatus } from '@/infrastructure/appwrite/functions'
 // Leaf imports (not the `@/modules/crm` barrel) so this page doesn't pull the
 // whole CRM module — portal pages, admin hooks, everything — into its chunk.
 import { CustomerActivityLog } from '@/modules/crm/admin/CustomerActivityLog'
+import { CustomerFollowupList } from '@/modules/crm/admin/CustomerFollowupList'
 import { PortalAccountPanel } from '@/modules/crm/admin/PortalAccountPanel'
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
@@ -118,6 +119,7 @@ export function CustomerDetailPage() {
               })
             }}
           />
+          <CustomerFollowupList customer={customerQuery.data} />
           <CustomerActivityLog customer={customerQuery.data} />
         </>
       ) : (
