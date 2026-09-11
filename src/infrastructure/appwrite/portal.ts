@@ -11,6 +11,8 @@
  *
  * Everything returns a `Result<T, AppError>`; raw Supabase errors never escape.
  */
+import { z } from 'zod'
+
 import { appError } from '@/core/errors'
 import { err, ok, type Result } from '@/core/result'
 
@@ -114,4 +116,43 @@ export function portalReceipts(
     p_page: payload.page ?? 0,
     p_page_size: payload.pageSize ?? null,
   })
+}
+
+// --- account statement (portal_statement RPC, migration 0028) -------------
+
+const statementRowSchema = z.object({
+  date: z.string(),
+  kind: z.enum(['invoice', 'return', 'receipt']),
+  reference: z.string(),
+  debit: z.number().finite(),
+  credit: z.number().finite(),
+  balance: z.number().finite(),
+})
+const statementSchema = z.object({
+  rows: z.array(statementRowSchema),
+  totalDebit: z.number().finite(),
+  totalCredit: z.number().finite(),
+  closingBalance: z.number().finite(),
+})
+export type PortalStatementRow = z.infer<typeof statementRowSchema>
+export type PortalStatementResult = z.infer<typeof statementSchema>
+
+/**
+ * The signed-in customer's full running-balance account statement — computed
+ * server-side over the whole history (credit-side invoices as debits, return
+ * credit notes and submitted receipts as credits), so it never depends on the
+ * newest-100 page cap of the list reads.
+ */
+export async function portalStatement(): Promise<Result<PortalStatementResult>> {
+  const res = await portalRpc<unknown>('portal_statement', {})
+  if (!res.ok) return res
+  const parsed = statementSchema.safeParse(res.value)
+  if (!parsed.success) {
+    return err(
+      appError('server', 'تعذّر إعداد كشف الحساب — بيانات غير متوقعة من الخادم.', {
+        detail: parsed.error.message,
+      }),
+    )
+  }
+  return ok(parsed.data)
 }

@@ -11,6 +11,8 @@ import {
   portalInvoiceDetail,
   portalInvoices,
   portalReceipts,
+  portalStatement,
+  type PortalStatementResult,
 } from '@/infrastructure/appwrite/portal'
 import type {
   PortalInvoiceDetailResult,
@@ -50,6 +52,17 @@ export function usePortalReceipts(params: PortalReceiptListPayload = {}) {
     queryKey: portalKeys.receipts(params),
     queryFn: async () => {
       const result = await portalReceipts(params)
+      if (!result.ok) throw result.error
+      return result.value
+    },
+  })
+}
+
+export function usePortalStatement() {
+  return useQuery<PortalStatementResult, AppError>({
+    queryKey: portalKeys.statement(),
+    queryFn: async () => {
+      const result = await portalStatement()
       if (!result.ok) throw result.error
       return result.value
     },

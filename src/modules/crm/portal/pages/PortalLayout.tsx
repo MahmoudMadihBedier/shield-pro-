@@ -21,7 +21,9 @@ export function PortalLayout() {
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <header className="border-b border-black/10 bg-white dark:border-white/10 dark:bg-zinc-900">
+      {/* portal chrome — hidden on print; printable pages render their own
+          <DocumentLetterhead> so a saved invoice / statement leads with the logo */}
+      <header className="no-print border-b border-black/10 bg-white dark:border-white/10 dark:bg-zinc-900">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-5 py-4">
           <div className="flex items-center gap-3">
             <Logo className="h-8" />
