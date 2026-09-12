@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AppError } from '@/core/errors'
 
 import {
+  bulkImportLeads,
   createLead,
   deleteLead,
   getLead,
@@ -15,12 +16,14 @@ import {
   listLeadStageEvents,
   setLeadStage,
   updateLead,
+  type BulkImportLeadsResult,
   type CreateLeadInput,
   type UpdateLeadInput,
 } from '../data/leads-repo'
 import {
   sortLeads,
   sortStageEvents,
+  type LeadImportRow,
   type LeadRow,
   type LeadStage,
   type LeadStageEvent,
@@ -81,6 +84,24 @@ export function useCreateLead() {
   return useMutation<LeadRow, AppError, CreateLeadInput>({
     mutationFn: async (input) => {
       const res = await createLead(input)
+      if (!res.ok) throw res.error
+      return res.value
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: crmLeadsKeys.root() })
+    },
+  })
+}
+
+export function useBulkImportLeads() {
+  const queryClient = useQueryClient()
+  return useMutation<
+    BulkImportLeadsResult,
+    AppError,
+    { rows: readonly LeadImportRow[]; createdBy: string }
+  >({
+    mutationFn: async ({ rows, createdBy }) => {
+      const res = await bulkImportLeads(rows, createdBy)
       if (!res.ok) throw res.error
       return res.value
     },

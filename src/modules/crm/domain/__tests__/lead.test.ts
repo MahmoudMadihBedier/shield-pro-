@@ -5,6 +5,7 @@ import {
   describeStageEvent,
   isOpenStage,
   leadFormSchema,
+  leadImportRowSchema,
   leadsToRows,
   leadSourceLabel,
   leadStageLabel,
@@ -211,5 +212,32 @@ describe('leadsToRows', () => {
   it('falls back to empty strings for missing optional fields', () => {
     const [row] = leadsToRows([fullLead({ phone: null, email: null, source: null })], () => 'محمود')
     expect(row).toMatchObject({ phone: '', email: '', source: '' })
+  })
+})
+
+describe('leadImportRowSchema', () => {
+  it('accepts a minimal row (only name) — every other CSV column is optional', () => {
+    expect(leadImportRowSchema.safeParse({ name: 'Acme' }).success).toBe(true)
+  })
+
+  it('coerces a CSV numeric string for estimated_value', () => {
+    const r = leadImportRowSchema.safeParse({ name: 'Acme', estimated_value: '1500' })
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.estimated_value).toBe(1500)
+  })
+
+  it('rejects a blank name and a negative estimated_value', () => {
+    expect(leadImportRowSchema.safeParse({ name: '' }).success).toBe(false)
+    expect(leadImportRowSchema.safeParse({ name: 'Acme', estimated_value: '-1' }).success).toBe(
+      false,
+    )
+  })
+
+  it('rejects a source outside the known enum, accepts a known one or blank', () => {
+    expect(leadImportRowSchema.safeParse({ name: 'Acme', source: 'not_a_source' }).success).toBe(
+      false,
+    )
+    expect(leadImportRowSchema.safeParse({ name: 'Acme', source: 'referral' }).success).toBe(true)
+    expect(leadImportRowSchema.safeParse({ name: 'Acme', source: '' }).success).toBe(true)
   })
 })

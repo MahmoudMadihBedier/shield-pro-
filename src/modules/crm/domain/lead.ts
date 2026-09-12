@@ -72,6 +72,30 @@ export const leadEditFormSchema = z.object({
 export type LeadEditForm = z.infer<typeof leadEditFormSchema>
 
 /**
+ * Bulk-import CSV row (`CsvImportPanel`, Phase B #4 — docs/CRM_PLAN.md).
+ * No `assigned_to` column: a spreadsheet only has a staff member's name, not
+ * their `auth_user_id`, and matching by name is unreliable — every imported
+ * lead is self-assigned to whoever runs the import, same as the single-lead
+ * form's default; reassigning afterward is a normal one-click edit.
+ */
+export const leadImportRowSchema = z.object({
+  name: z.string().trim().min(1, 'name مطلوب'),
+  phone: z.string().trim().optional(),
+  email: z.string().trim().optional(),
+  source: z
+    .union([z.literal(''), leadSourceSchema], {
+      error: `source يجب أن يكون أحد: ${LEAD_SOURCES.join(', ')}، أو فارغًا`,
+    })
+    .optional(),
+  estimated_value: z.coerce
+    .number({ error: 'estimated_value يجب أن يكون رقمًا' })
+    .nonnegative('estimated_value يجب ألا يكون سالبًا')
+    .optional(),
+  notes: z.string().trim().optional(),
+})
+export type LeadImportRow = z.infer<typeof leadImportRowSchema>
+
+/**
  * `estimated_value` is a plain required number defaulting to 0 — NOT
  * `.optional()`. The bound `NumberField` uses RHF's `valueAsNumber: true`,
  * which yields `NaN` (not `undefined`) for an empty input; the shared `Form`

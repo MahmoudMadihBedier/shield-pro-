@@ -13,6 +13,7 @@ import { ID, Query, tablesDB } from '@/infrastructure/appwrite/services'
 import {
   leadRowSchema,
   leadStageEventRowSchema,
+  type LeadImportRow,
   type LeadRow,
   type LeadStage,
   type LeadStageEvent,
@@ -166,6 +167,43 @@ export async function createLead(input: CreateLeadInput): Promise<Result<LeadRow
   } catch (e) {
     return err(mapAppwriteError(e))
   }
+}
+
+export interface BulkImportLeadsResult {
+  applied: number
+  skipped: number
+  /** One message per row that failed, in input order — surfaced to the importer. */
+  errors: string[]
+}
+
+/**
+ * Create one lead per validated CSV row (`CsvImportPanel`), all self-assigned
+ * to `createdBy` (see `leadImportRowSchema`'s doc comment for why). Applies
+ * rows one at a time and keeps going past a single row's failure — a bad row
+ * in a 50-row import should not cost the other 49 (no partial-import
+ * transaction exists to roll back to anyway; `leads` is not a ledger).
+ */
+export async function bulkImportLeads(
+  rows: readonly LeadImportRow[],
+  createdBy: string,
+): Promise<Result<BulkImportLeadsResult>> {
+  let applied = 0
+  const errors: string[] = []
+  for (const row of rows) {
+    const res = await createLead({
+      createdBy,
+      assignedTo: createdBy,
+      name: row.name,
+      phone: row.phone || null,
+      email: row.email || null,
+      source: row.source || null,
+      estimatedValue: row.estimated_value ?? null,
+      notes: row.notes || null,
+    })
+    if (res.ok) applied += 1
+    else errors.push(`${row.name}: ${res.error.message}`)
+  }
+  return ok({ applied, skipped: errors.length, errors })
 }
 
 /** Move a lead to any stage; `lost` should carry `lostReason`. */

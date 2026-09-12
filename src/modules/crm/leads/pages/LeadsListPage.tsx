@@ -15,7 +15,7 @@ import { appError, type AppError } from '@/core/errors'
 import { err, ok, type Result } from '@/core/result'
 import { formatCurrency, formatDate } from '@/shared/formatters'
 import { DataTable, type ColumnDef } from '@/shared/data-table'
-import { ExportButton } from '@/shared/excel'
+import { CsvImportPanel, ExportButton } from '@/shared/excel'
 import { Form, FormError, NumberField, SelectField, TextAreaField, TextField } from '@/shared/forms'
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
@@ -26,27 +26,37 @@ import {
   LEAD_STAGES,
   isOpenStage,
   leadFormSchema,
+  leadImportRowSchema,
   leadsToRows,
   leadSourceLabel,
   leadStageLabel,
   openPipelineValue,
   type LeadForm,
+  type LeadImportRow,
   type LeadRow,
   type LeadStage,
 } from '../../domain/lead'
-import { useCreateLead, useDeleteLead, useLeads, useSetLeadStage } from '../hooks'
+import {
+  useBulkImportLeads,
+  useCreateLead,
+  useDeleteLead,
+  useLeads,
+  useSetLeadStage,
+} from '../hooks'
 import { LeadConvertCell } from './LeadConvertCell'
 import { LeadStageCell } from './LeadStageCell'
 
 export function LeadsListPage() {
   const { principal } = useAuth()
   const [adding, setAdding] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [stageFilter, setStageFilter] = useState<'all' | LeadStage>('all')
   const [actionError, setActionError] = useState<AppError | null>(null)
 
   const list = useLeads()
   const staff = useStaffOptions()
   const createMutation = useCreateLead()
+  const importMutation = useBulkImportLeads()
   const stageMutation = useSetLeadStage()
   const deleteMutation = useDeleteLead()
 
@@ -255,6 +265,11 @@ export function LeadsListPage() {
               ]}
               disabled={rows.length === 0}
             />
+            {!importing ? (
+              <Button size="sm" variant="secondary" onClick={() => setImporting(true)}>
+                استيراد CSV
+              </Button>
+            ) : null}
             {!adding ? (
               <Button size="sm" onClick={() => setAdding(true)}>
                 + عميل محتمل جديد
@@ -342,6 +357,36 @@ export function LeadsListPage() {
             )}
           </Form>
         </Card>
+      ) : null}
+
+      {importing ? (
+        <div className="space-y-2">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="text-xs text-zinc-500 underline"
+              onClick={() => setImporting(false)}
+            >
+              إغلاق
+            </button>
+          </div>
+          <CsvImportPanel<LeadImportRow>
+            title="استيراد عملاء محتملين / Import leads"
+            templateHeaders={['name', 'phone', 'email', 'source', 'estimated_value', 'notes']}
+            rowSchema={leadImportRowSchema}
+            onCommit={async (importRows) => {
+              const res = await importMutation.mutateAsync({
+                rows: importRows,
+                createdBy: principal?.userId ?? '',
+              })
+              return {
+                applied: res.applied,
+                skipped: res.skipped,
+                message: res.errors.length > 0 ? res.errors.join(' — ') : undefined,
+              }
+            }}
+          />
+        </div>
       ) : null}
 
       {actionError ? (
