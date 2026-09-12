@@ -1,9 +1,10 @@
 import { AppwriteException } from '@/infrastructure/appwrite/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockListRows, mockUpdateRow } = vi.hoisted(() => ({
+const { mockListRows, mockUpdateRow, mockRpc } = vi.hoisted(() => ({
   mockListRows: vi.fn(),
   mockUpdateRow: vi.fn(),
+  mockRpc: vi.fn(),
 }))
 
 vi.mock('@/infrastructure/appwrite/services', async () => {
@@ -11,7 +12,11 @@ vi.mock('@/infrastructure/appwrite/services', async () => {
   return { tablesDB: { listRows: mockListRows, updateRow: mockUpdateRow }, Query }
 })
 
-import { listNotifications, markAllRead, markRead } from '../repo'
+vi.mock('@/infrastructure/appwrite/client', () => ({
+  supabase: { rpc: mockRpc },
+}))
+
+import { listNotifications, markAllRead, markRead, syncOverdueFollowupNotifications } from '../repo'
 
 function notifRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -32,6 +37,7 @@ function notifRow(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   mockListRows.mockReset()
   mockUpdateRow.mockReset()
+  mockRpc.mockReset()
 })
 
 describe('listNotifications', () => {
@@ -142,5 +148,33 @@ describe('markAllRead', () => {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error.code).toBe('server')
+  })
+})
+
+describe('syncOverdueFollowupNotifications', () => {
+  it('returns the created-count the RPC reports', async () => {
+    mockRpc.mockResolvedValueOnce({ data: 3, error: null })
+
+    const result = await syncOverdueFollowupNotifications()
+
+    expect(mockRpc).toHaveBeenCalledWith('sync_overdue_followup_notifications')
+    expect(result).toEqual({ ok: true, value: 3 })
+  })
+
+  it('treats a non-numeric response as zero', async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: null })
+    const result = await syncOverdueFollowupNotifications()
+    expect(result).toEqual({ ok: true, value: 0 })
+  })
+
+  it('maps an RPC failure to a typed AppError', async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'a signed-in caller is required', code: '42501' },
+    })
+    const result = await syncOverdueFollowupNotifications()
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error.code).toBe('forbidden')
   })
 })

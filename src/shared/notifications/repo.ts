@@ -1,24 +1,20 @@
 /**
- * Read/write repository for `notifications`. The table is provisioned with
- * `rowSecurity: true` and a collection-level `read(users())` grant only
- * (`scripts/appwrite/schema.ts`) — every signed-in staff account can read
- * every row (a known, accepted platform limitation tracked as Phase 4 Story
- * 4.3; real row-scoping isn't enforced server-side yet). Every query here
- * therefore **always** filters by `recipient_user_id` so the UI is correct
- * regardless. Writes (`markRead`/`markAllRead`) work because
- * `functions/common/notifications.ts::createNotification` stamps each row
- * with an `update(user(recipientUserId))` permission at creation time — only
- * that one recipient can flip their own `is_read`, straight from this repo,
- * no Function round-trip needed for that narrow, self-scoped mutation.
+ * Read/write repository for `notifications`. RLS (migration 0001) scopes both
+ * SELECT and UPDATE to `recipient_user_id = auth.uid()` — a signed-in staff
+ * member only ever sees or marks-read their own rows; the query filters here
+ * are belt-and-suspenders, not the real enforcement. There is no client
+ * INSERT policy at all — every notification is written by a `SECURITY
+ * DEFINER` RPC (`_notify_system_admins`, `sync_overdue_followup_notifications`, …).
  *
  * Shape mirrors `src/modules/fraud/data/fraud-flags-repo.ts`.
  *
- * Contract (`claude.md` B.5): catch raw Appwrite errors → typed `AppError`;
+ * Contract (`claude.md` B.5): catch raw Supabase errors → typed `AppError`;
  * Zod-parse every row; return `Result<T, AppError>` — never throw across the
  * boundary.
  */
 import { appError } from '@/core/errors'
 import { err, ok, type Result } from '@/core/result'
+import { supabase } from '@/infrastructure/appwrite/client'
 import { DATABASE_ID, Tables } from '@/infrastructure/appwrite/collections'
 import { mapAppwriteError } from '@/infrastructure/appwrite/errors'
 import { Query, tablesDB } from '@/infrastructure/appwrite/services'
@@ -126,6 +122,23 @@ export async function markAllRead(recipientUserId: string): Promise<Result<void>
       })
     }
     return ok(undefined)
+  } catch (e) {
+    return err(mapAppwriteError(e))
+  }
+}
+
+/**
+ * "Check on read" sync for CRM follow-ups (docs/CRM_PLAN.md Phase A #2, no
+ * scheduled job yet): notifies the caller — server-side, idempotent — for
+ * each of their own follow-ups that has gone overdue since the last check.
+ * Returns how many new notifications were created. Called opportunistically
+ * on app load (`useSyncOverdueFollowupNotifications`), not on a timer.
+ */
+export async function syncOverdueFollowupNotifications(): Promise<Result<number>> {
+  try {
+    const { data, error } = await supabase.rpc('sync_overdue_followup_notifications')
+    if (error) return err(mapAppwriteError(error))
+    return ok(typeof data === 'number' ? data : 0)
   } catch (e) {
     return err(mapAppwriteError(e))
   }

@@ -17,6 +17,7 @@ import {
   listNotifications,
   markAllRead,
   markRead,
+  syncOverdueFollowupNotifications,
   type NotificationListPage,
   type NotificationListParams,
 } from './repo'
@@ -100,6 +101,32 @@ export function useMarkAllNotificationsRead() {
       if (isErr(result)) throw result.error
     },
     onSuccess: () => invalidateAll(queryClient),
+  })
+}
+
+/**
+ * "Check on read" for CRM follow-ups (docs/CRM_PLAN.md Phase A #2) — no
+ * scheduled job exists yet, so this fires the idempotent sync RPC once per
+ * signed-in session (react-query's cache dedupes repeats within
+ * `staleTime`; it is NOT a poll/timer) and refreshes the bell immediately if
+ * it created anything, rather than waiting for the next Realtime event.
+ * Side-effect only — mount it once, near `useNotificationsRealtime`.
+ */
+export function useSyncOverdueFollowupNotifications(): void {
+  const { principal } = useAuth()
+  const queryClient = useQueryClient()
+  const recipientUserId = principal?.userId ?? null
+
+  useQuery<number, AppError>({
+    queryKey: ['notifications', 'sync-overdue-followups', recipientUserId ?? ''],
+    enabled: recipientUserId !== null,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const result = await syncOverdueFollowupNotifications()
+      if (isErr(result)) throw result.error
+      if (result.value > 0) invalidateAll(queryClient)
+      return result.value
+    },
   })
 }
 

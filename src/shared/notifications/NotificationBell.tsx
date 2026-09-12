@@ -19,6 +19,7 @@ import {
   useMarkNotificationRead,
   useNotificationList,
   useNotificationsRealtime,
+  useSyncOverdueFollowupNotifications,
   useUnreadCount,
 } from './useNotifications'
 
@@ -49,6 +50,7 @@ export function NotificationBell() {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useNotificationsRealtime()
+  useSyncOverdueFollowupNotifications()
   const unread = useUnreadCount()
   const list = useNotificationList({ page: 0, pageSize: RECENT_COUNT })
   const markRead = useMarkNotificationRead()

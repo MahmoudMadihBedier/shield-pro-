@@ -6,10 +6,11 @@
  * `kind` is a free short string on the server (str48), not a closed enum —
  * new trigger kinds land over time (Implementation Plan §4 / Phase 2 Story
  * 2.6 lists low stock, pending approvals, overdue customers, missed cash-up,
- * fraud flags and high waste %; only `fraud_flag` and `approval_pending` are
- * wired to a real trigger so far). So the schema accepts any non-empty
- * string and {@link notificationKindLabel} supplies a graceful fallback for
- * a kind it doesn't recognise yet, instead of failing to parse the row.
+ * fraud flags and high waste %; `fraud_flag`, `approval_pending`, and
+ * `overdue_followup` (migration 0035) are wired to a real trigger so far).
+ * So the schema accepts any non-empty string and {@link notificationKindLabel}
+ * supplies a graceful fallback for a kind it doesn't recognise yet, instead
+ * of failing to parse the row.
  */
 import { z } from 'zod'
 
@@ -26,7 +27,9 @@ export const notificationRowSchema = z.object({
   kind: z.string().min(1).max(48),
   title: z.string().max(200),
   body: z.string().max(2000).nullish(),
-  entity_ref: z.string().max(32).nullish(),
+  // 40, not 32: a `crm_followups.id` (a full UUID, 36 chars) is a valid
+  // entity_ref (`overdue_followup`), and every other kind's ref is shorter.
+  entity_ref: z.string().max(40).nullish(),
   is_read: z.boolean().default(false),
   created_at: z.string(),
 })
@@ -52,6 +55,7 @@ export const NOTIFICATION_KIND_LABELS: Record<string, NotificationKindLabel> = {
   overdue_customer: { ar: 'عميل متأخر السداد', en: 'Overdue customer' },
   missed_cashup: { ar: 'تسوية نقدية فائتة', en: 'Missed cash-up' },
   high_waste: { ar: 'نسبة هدر مرتفعة', en: 'High waste %' },
+  overdue_followup: { ar: 'متابعة CRM متأخرة', en: 'Overdue CRM follow-up' },
 }
 
 const UNKNOWN_KIND_LABEL: NotificationKindLabel = { ar: 'إشعار', en: 'Notification' }
