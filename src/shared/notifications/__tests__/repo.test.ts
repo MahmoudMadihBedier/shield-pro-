@@ -161,10 +161,12 @@ describe('syncOverdueFollowupNotifications', () => {
     expect(result).toEqual({ ok: true, value: 3 })
   })
 
-  it('treats a non-numeric response as zero', async () => {
+  it('rejects a non-numeric response as a shape error instead of silently coercing to zero', async () => {
     mockRpc.mockResolvedValueOnce({ data: null, error: null })
     const result = await syncOverdueFollowupNotifications()
-    expect(result).toEqual({ ok: true, value: 0 })
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error.code).toBe('server')
   })
 
   it('maps an RPC failure to a typed AppError', async () => {

@@ -749,7 +749,10 @@ export const TABLES: TableDef[] = [
       str('kind', 48, true),
       str('title', 200, true),
       str('body', 2000),
-      str('entity_ref', 32),
+      // 40, not 32: `overdue_followup` (migration 0035) refs a
+      // `crm_followups.id` — a full UUID, 36 chars. Keep in lockstep with
+      // `notificationRowSchema.entity_ref` (src/shared/notifications/domain.ts).
+      str('entity_ref', 40),
       { key: 'is_read', type: 'boolean', default: false },
       { key: 'created_at', type: 'datetime', required: true },
     ],

@@ -16,6 +16,7 @@ import { Form, FormError, NumberField, SelectField, TextAreaField, TextField } f
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
 import { useStaffOptions } from '../../admin/useStaffOptions'
+import { LEAD_STAGE_EVENTS_CAP } from '../../data/leads-repo'
 import {
   LEAD_SOURCES,
   describeStageEvent,
@@ -91,8 +92,14 @@ export function LeadDetailPage() {
 
   async function handleDelete() {
     if (!window.confirm('حذف هذا العميل المحتمل نهائيًا؟')) return
-    await deleteMutation.mutateAsync(row!.$id)
-    navigate('/crm/leads')
+    try {
+      await deleteMutation.mutateAsync(row!.$id)
+      navigate('/crm/leads')
+    } catch {
+      // A rejected delete is rendered via `deleteMutation.isError` /
+      // `.error` above — swallow the rethrow here so it doesn't become an
+      // unhandled promise rejection; navigation simply does not happen.
+    }
   }
 
   return (
@@ -117,6 +124,11 @@ export function LeadDetailPage() {
           </div>
         }
       />
+      {deleteMutation.isError ? (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {deleteMutation.error.message}
+        </p>
+      ) : null}
 
       <Card className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -247,6 +259,11 @@ export function LeadDetailPage() {
             ))}
           </ul>
         )}
+        {events.data && events.data.length >= LEAD_STAGE_EVENTS_CAP ? (
+          <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+            قد يكون هناك سجل أقدم غير معروض (الحد {LEAD_STAGE_EVENTS_CAP} حدثًا).
+          </p>
+        ) : null}
       </Card>
     </div>
   )

@@ -112,15 +112,31 @@ export function useMarkAllNotificationsRead() {
  * it created anything, rather than waiting for the next Realtime event.
  * Side-effect only — mount it once, near `useNotificationsRealtime`.
  */
+/**
+ * Deliberately NOT under the `notifications` key prefix: `invalidateAll`
+ * targets `notificationKeys.root` (`['notifications']`), which prefix-matches
+ * any key starting with it — sharing that prefix would have this query
+ * invalidate (and immediately refetch) itself every time it found something
+ * to sync, firing the RPC twice in a row and defeating the "once per
+ * session" `staleTime` below.
+ */
+const SYNC_QUERY_KEY = (recipientUserId: string) =>
+  ['crm-followup-notification-sync', recipientUserId] as const
+
 export function useSyncOverdueFollowupNotifications(): void {
   const { principal } = useAuth()
   const queryClient = useQueryClient()
   const recipientUserId = principal?.userId ?? null
 
-  useQuery<number, AppError>({
-    queryKey: ['notifications', 'sync-overdue-followups', recipientUserId ?? ''],
+  const query = useQuery<number, AppError>({
+    queryKey: SYNC_QUERY_KEY(recipientUserId ?? ''),
     enabled: recipientUserId !== null,
     staleTime: 5 * 60_000,
+    // Best-effort background sync (same posture as `useNotificationsRealtime`
+    // degrading to "no live push" on a dropped connection) — a failure here
+    // must never surface as user-facing noise for what is, worst case, one
+    // missed notification. It is not silent to a developer: logged below.
+    retry: false,
     queryFn: async () => {
       const result = await syncOverdueFollowupNotifications()
       if (isErr(result)) throw result.error
@@ -128,6 +144,12 @@ export function useSyncOverdueFollowupNotifications(): void {
       return result.value
     },
   })
+
+  useEffect(() => {
+    if (query.isError) {
+      console.error('overdue-follow-up notification sync failed:', query.error)
+    }
+  }, [query.isError, query.error])
 }
 
 /**

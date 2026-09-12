@@ -12,6 +12,8 @@
  * Zod-parse every row; return `Result<T, AppError>` — never throw across the
  * boundary.
  */
+import { z } from 'zod'
+
 import { appError } from '@/core/errors'
 import { err, ok, type Result } from '@/core/result'
 import { supabase } from '@/infrastructure/appwrite/client'
@@ -134,11 +136,21 @@ export async function markAllRead(recipientUserId: string): Promise<Result<void>
  * Returns how many new notifications were created. Called opportunistically
  * on app load (`useSyncOverdueFollowupNotifications`), not on a timer.
  */
+const syncCountSchema = z.number().int().nonnegative()
+
 export async function syncOverdueFollowupNotifications(): Promise<Result<number>> {
   try {
     const { data, error } = await supabase.rpc('sync_overdue_followup_notifications')
     if (error) return err(mapAppwriteError(error))
-    return ok(typeof data === 'number' ? data : 0)
+    const parsed = syncCountSchema.safeParse(data)
+    if (!parsed.success) {
+      return err(
+        appError('server', 'تعذّر مزامنة إشعارات المتابعات المتأخرة — استجابة غير متوقعة.', {
+          detail: parsed.error.message,
+        }),
+      )
+    }
+    return ok(parsed.data)
   } catch (e) {
     return err(mapAppwriteError(e))
   }

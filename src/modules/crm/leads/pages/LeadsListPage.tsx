@@ -16,7 +16,7 @@ import { err, ok, type Result } from '@/core/result'
 import { formatCurrency, formatDate } from '@/shared/formatters'
 import { DataTable, type ColumnDef } from '@/shared/data-table'
 import { Form, FormError, NumberField, SelectField, TextAreaField, TextField } from '@/shared/forms'
-import { Button, Card, PageHeader } from '@/shared/ui'
+import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
 import { AssignToDefaulter } from '../../admin/AssignToDefaulter'
 import { useStaffOptions } from '../../admin/useStaffOptions'
@@ -61,6 +61,14 @@ export function LeadsListPage() {
 
   const canDelete = useCallback(
     (createdBy: string) => isOwnerOrAdmin(principal, createdBy),
+    [principal],
+  )
+  // Same gate as `LeadDetailPage` — the server rejects an unauthorized stage
+  // change either way, but showing a live control only to hit a rejection
+  // is a worse experience than a read-only badge for everyone else.
+  const canManageStage = useCallback(
+    (lead: Pick<LeadRow, 'created_by' | 'assigned_to'>) =>
+      isOwnerOrAdmin(principal, lead.created_by, lead.assigned_to),
     [principal],
   )
   const runSetStage = useCallback(
@@ -130,13 +138,16 @@ export function LeadsListPage() {
         id: 'stage',
         header: 'المرحلة / Stage',
         accessor: (r) => r.stage,
-        cell: (r) => (
-          <LeadStageCell
-            lead={r}
-            pending={stageMutation.isPending}
-            onChange={(stage, lostReason) => runSetStage(r.$id, stage, lostReason)}
-          />
-        ),
+        cell: (r) =>
+          canManageStage(r) ? (
+            <LeadStageCell
+              lead={r}
+              pending={stageMutation.isPending}
+              onChange={(stage, lostReason) => runSetStage(r.$id, stage, lostReason)}
+            />
+          ) : (
+            <Badge tone="neutral">{leadStageLabel(r.stage)}</Badge>
+          ),
         width: '10rem',
       },
       {
@@ -208,6 +219,7 @@ export function LeadsListPage() {
       stageMutation.isPending,
       deleteMutation.isPending,
       canDelete,
+      canManageStage,
       runSetStage,
       runDelete,
     ],

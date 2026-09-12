@@ -95,13 +95,27 @@ export async function updateLead(id: string, input: UpdateLeadInput): Promise<Re
   }
 }
 
+/**
+ * A lead's normal lifecycle produces a handful of these (one per stage move);
+ * `system_admin` is exempt from the transition guard (migration 0033) and
+ * could in principle rack up far more via repeated overrides, so the read is
+ * still capped rather than unbounded — `LEAD_STAGE_EVENTS_CAP` lets the UI
+ * show a "history may be truncated" note instead of silently dropping the
+ * oldest events with no signal.
+ */
+export const LEAD_STAGE_EVENTS_CAP = 100
+
 /** The stage-change history for one lead, written server-side (migration 0034). */
 export async function listLeadStageEvents(leadId: string): Promise<Result<LeadStageEvent[]>> {
   try {
     const res = await tablesDB.listRows({
       databaseId: DATABASE_ID,
       tableId: Tables.leadStageEvents,
-      queries: [Query.equal('lead_id', leadId), Query.orderDesc('changed_at'), Query.limit(100)],
+      queries: [
+        Query.equal('lead_id', leadId),
+        Query.orderDesc('changed_at'),
+        Query.limit(LEAD_STAGE_EVENTS_CAP),
+      ],
     })
     const out: LeadStageEvent[] = []
     for (const raw of res.rows) {
