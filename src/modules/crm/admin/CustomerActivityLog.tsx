@@ -12,12 +12,14 @@ import { appError, type AppError } from '@/core/errors'
 import { isOwnerOrAdmin } from '@/core/rbac'
 import { err, ok, type Result } from '@/core/result'
 import { formatDate } from '@/shared/formatters'
+import { ExportButton } from '@/shared/excel'
 import { DateField, Form, FormError, SelectField, TextAreaField, TextField } from '@/shared/forms'
 import { Badge, Button, Card } from '@/shared/ui'
 
 import {
   ACTIVITY_KINDS,
   ACTIVITY_OUTCOMES,
+  activitiesToRows,
   activityFormSchema,
   activityKindLabel,
   activityOutcomeLabel,
@@ -49,6 +51,7 @@ export function CustomerActivityLog({ customer }: CustomerActivityLogProps) {
 
   const rows = useMemo(() => list.data ?? [], [list.data])
   const summary = useMemo(() => countByKind(rows), [rows])
+  const exportRows = useMemo(() => activitiesToRows(rows), [rows])
   const canDelete = (createdBy: string) => isOwnerOrAdmin(principal, createdBy)
 
   const defaults: ActivityForm = {
@@ -85,11 +88,25 @@ export function CustomerActivityLog({ customer }: CustomerActivityLogProps) {
     <Card className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-sm font-semibold">سجل النشاط / Activity log</h3>
-        {!adding ? (
-          <Button size="sm" variant="secondary" onClick={() => setAdding(true)}>
-            + تسجيل نشاط
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-2">
+          <ExportButton
+            fileName={`customer-${customer.$id}-activity`}
+            rows={exportRows}
+            columns={[
+              { key: 'date', header: 'Date' },
+              { key: 'kind', header: 'Kind' },
+              { key: 'subject', header: 'Subject' },
+              { key: 'note', header: 'Note' },
+              { key: 'outcome', header: 'Outcome' },
+            ]}
+            disabled={rows.length === 0}
+          />
+          {!adding ? (
+            <Button size="sm" variant="secondary" onClick={() => setAdding(true)}>
+              + تسجيل نشاط
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {summary.length > 0 ? (

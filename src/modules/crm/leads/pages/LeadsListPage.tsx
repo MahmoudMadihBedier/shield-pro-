@@ -15,6 +15,7 @@ import { appError, type AppError } from '@/core/errors'
 import { err, ok, type Result } from '@/core/result'
 import { formatCurrency, formatDate } from '@/shared/formatters'
 import { DataTable, type ColumnDef } from '@/shared/data-table'
+import { ExportButton } from '@/shared/excel'
 import { Form, FormError, NumberField, SelectField, TextAreaField, TextField } from '@/shared/forms'
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
@@ -25,6 +26,7 @@ import {
   LEAD_STAGES,
   isOpenStage,
   leadFormSchema,
+  leadsToRows,
   leadSourceLabel,
   leadStageLabel,
   openPipelineValue,
@@ -58,6 +60,10 @@ export function LeadsListPage() {
     [staff.data],
   )
   const pipelineValue = useMemo(() => openPipelineValue(rows), [rows])
+  const exportRows = useMemo(
+    () => leadsToRows(rows, (id) => staffName.get(id) ?? id),
+    [rows, staffName],
+  )
 
   const canDelete = useCallback(
     (createdBy: string) => isOwnerOrAdmin(principal, createdBy),
@@ -232,11 +238,29 @@ export function LeadsListPage() {
         titleEn="Leads pipeline"
         description="من عميل محتمل إلى صفقة: تتبّع التواصل حتى التحويل إلى عميل فعلي."
         actions={
-          !adding ? (
-            <Button size="sm" onClick={() => setAdding(true)}>
-              + عميل محتمل جديد
-            </Button>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportButton
+              fileName="leads"
+              rows={exportRows}
+              columns={[
+                { key: 'name', header: 'Name' },
+                { key: 'phone', header: 'Phone' },
+                { key: 'email', header: 'Email' },
+                { key: 'source', header: 'Source' },
+                { key: 'stage', header: 'Stage' },
+                { key: 'estimated_value', header: 'Estimated value' },
+                { key: 'assigned_to', header: 'Assigned to' },
+                { key: 'created_at', header: 'Created' },
+                { key: 'converted', header: 'Converted' },
+              ]}
+              disabled={rows.length === 0}
+            />
+            {!adding ? (
+              <Button size="sm" onClick={() => setAdding(true)}>
+                + عميل محتمل جديد
+              </Button>
+            ) : null}
+          </div>
         }
       />
 

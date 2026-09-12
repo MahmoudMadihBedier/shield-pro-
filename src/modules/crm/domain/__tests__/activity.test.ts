@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  activitiesToRows,
   activityFormSchema,
   activityKindLabel,
   activityOutcomeLabel,
   countByKind,
   sortActivities,
+  type ActivityRow,
 } from '../activity'
 
 describe('sortActivities', () => {
@@ -68,5 +70,33 @@ describe('activityFormSchema', () => {
     expect(
       activityFormSchema.safeParse({ kind: 'call', subject: 'x', occurred_on: '' }).success,
     ).toBe(false)
+  })
+})
+
+describe('activitiesToRows', () => {
+  const fullActivity = (over: Partial<ActivityRow> = {}): ActivityRow => ({
+    $id: 'a1',
+    $createdAt: '2026-03-01T09:00:00Z',
+    $updatedAt: '2026-03-01T09:00:00Z',
+    customer_id: 'c1',
+    kind: 'call',
+    subject: 'تأكيد الطلب',
+    note: null,
+    occurred_at: '2026-03-01T00:00:00Z',
+    outcome: null,
+    created_by: 'u1',
+    branch_id: 'b1',
+    ...over,
+  })
+
+  it('resolves kind/outcome labels and defaults missing note/outcome to empty strings', () => {
+    const [row] = activitiesToRows([fullActivity({ kind: 'whatsapp', outcome: 'positive' })])
+    expect(row).toEqual({
+      date: '2026-03-01T00:00:00Z',
+      kind: 'واتساب',
+      subject: 'تأكيد الطلب',
+      note: '',
+      outcome: 'إيجابية',
+    })
   })
 })

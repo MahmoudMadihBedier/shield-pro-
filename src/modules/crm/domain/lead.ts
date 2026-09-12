@@ -188,3 +188,31 @@ export function sortStageEvents<T extends Pick<LeadStageEvent, 'changed_at'>>(
 ): T[] {
   return [...events].sort((a, b) => Date.parse(b.changed_at) - Date.parse(a.changed_at))
 }
+
+/** Flat rows for CSV / Excel export — `sortLeads`-ordered, names resolved by the caller. */
+export function leadsToRows(
+  rows: readonly LeadRow[],
+  staffName: (id: string) => string,
+): Array<{
+  name: string
+  phone: string
+  email: string
+  source: string
+  stage: string
+  estimated_value: number
+  assigned_to: string
+  created_at: string
+  converted: string
+}> {
+  return sortLeads(rows).map((r) => ({
+    name: r.name,
+    phone: r.phone ?? '',
+    email: r.email ?? '',
+    source: leadSourceLabel(r.source) ?? '',
+    stage: leadStageLabel(r.stage),
+    estimated_value: r.estimated_value ?? 0,
+    assigned_to: staffName(r.assigned_to),
+    created_at: r.$createdAt,
+    converted: r.converted_customer_id ? 'نعم' : 'لا',
+  }))
+}

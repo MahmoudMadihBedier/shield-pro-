@@ -5,12 +5,14 @@ import {
   describeStageEvent,
   isOpenStage,
   leadFormSchema,
+  leadsToRows,
   leadSourceLabel,
   leadStageLabel,
   nextLeadStages,
   openPipelineValue,
   sortLeads,
   sortStageEvents,
+  type LeadRow,
 } from '../lead'
 
 const row = (over: Partial<Record<string, unknown>> = {}) => ({
@@ -172,5 +174,42 @@ describe('sortStageEvents', () => {
       '2026-03-05T00:00:00Z',
       '2026-03-01T00:00:00Z',
     ])
+  })
+})
+
+describe('leadsToRows', () => {
+  const fullLead = (over: Partial<LeadRow> = {}): LeadRow => ({
+    $id: 'l1',
+    $createdAt: '2026-03-01T00:00:00Z',
+    $updatedAt: '2026-03-01T00:00:00Z',
+    name: 'Acme',
+    phone: '01000000000',
+    email: 'acme@example.com',
+    source: 'referral',
+    stage: 'new',
+    estimated_value: 500,
+    notes: null,
+    assigned_to: 'u1',
+    created_by: 'u1',
+    branch_id: 'b1',
+    converted_customer_id: null,
+    lost_reason: null,
+    ...over,
+  })
+
+  it('resolves labels and the assignee name, and flags conversion', () => {
+    const [row] = leadsToRows([fullLead({ converted_customer_id: 'c1' })], () => 'محمود')
+    expect(row).toMatchObject({
+      name: 'Acme',
+      source: 'إحالة',
+      stage: 'جديد',
+      assigned_to: 'محمود',
+      converted: 'نعم',
+    })
+  })
+
+  it('falls back to empty strings for missing optional fields', () => {
+    const [row] = leadsToRows([fullLead({ phone: null, email: null, source: null })], () => 'محمود')
+    expect(row).toMatchObject({ phone: '', email: '', source: '' })
   })
 })
