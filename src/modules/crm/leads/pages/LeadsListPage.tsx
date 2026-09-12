@@ -7,6 +7,7 @@
  */
 import { useCallback, useMemo, useState } from 'react'
 import type { DefaultValues } from 'react-hook-form'
+import { Link } from 'react-router-dom'
 
 import { useAuth } from '@/application/auth/context'
 import { isOwnerOrAdmin } from '@/core/rbac'
@@ -14,8 +15,9 @@ import { appError, type AppError } from '@/core/errors'
 import { err, ok, type Result } from '@/core/result'
 import { formatCurrency, formatDate } from '@/shared/formatters'
 import { DataTable, type ColumnDef } from '@/shared/data-table'
+import { CsvImportPanel, ExportButton } from '@/shared/excel'
 import { Form, FormError, NumberField, SelectField, TextAreaField, TextField } from '@/shared/forms'
-import { Button, Card, PageHeader } from '@/shared/ui'
+import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
 import { AssignToDefaulter } from '../../admin/AssignToDefaulter'
 import { useStaffOptions } from '../../admin/useStaffOptions'
@@ -24,26 +26,37 @@ import {
   LEAD_STAGES,
   isOpenStage,
   leadFormSchema,
+  leadImportRowSchema,
+  leadsToRows,
   leadSourceLabel,
   leadStageLabel,
   openPipelineValue,
   type LeadForm,
+  type LeadImportRow,
   type LeadRow,
   type LeadStage,
 } from '../../domain/lead'
-import { useCreateLead, useDeleteLead, useLeads, useSetLeadStage } from '../hooks'
+import {
+  useBulkImportLeads,
+  useCreateLead,
+  useDeleteLead,
+  useLeads,
+  useSetLeadStage,
+} from '../hooks'
 import { LeadConvertCell } from './LeadConvertCell'
 import { LeadStageCell } from './LeadStageCell'
 
 export function LeadsListPage() {
   const { principal } = useAuth()
   const [adding, setAdding] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [stageFilter, setStageFilter] = useState<'all' | LeadStage>('all')
   const [actionError, setActionError] = useState<AppError | null>(null)
 
   const list = useLeads()
   const staff = useStaffOptions()
   const createMutation = useCreateLead()
+  const importMutation = useBulkImportLeads()
   const stageMutation = useSetLeadStage()
   const deleteMutation = useDeleteLead()
 
@@ -57,9 +70,21 @@ export function LeadsListPage() {
     [staff.data],
   )
   const pipelineValue = useMemo(() => openPipelineValue(rows), [rows])
+  const exportRows = useMemo(
+    () => leadsToRows(rows, (id) => staffName.get(id) ?? id),
+    [rows, staffName],
+  )
 
   const canDelete = useCallback(
     (createdBy: string) => isOwnerOrAdmin(principal, createdBy),
+    [principal],
+  )
+  // Same gate as `LeadDetailPage` — the server rejects an unauthorized stage
+  // change either way, but showing a live control only to hit a rejection
+  // is a worse experience than a read-only badge for everyone else.
+  const canManageStage = useCallback(
+    (lead: Pick<LeadRow, 'created_by' | 'assigned_to'>) =>
+      isOwnerOrAdmin(principal, lead.created_by, lead.assigned_to),
     [principal],
   )
   const runSetStage = useCallback(
@@ -115,7 +140,9 @@ export function LeadsListPage() {
         accessor: (r) => r.name,
         cell: (r) => (
           <div className="min-w-0">
-            <p className="truncate font-medium">{r.name}</p>
+            <Link to={`/crm/leads/${r.$id}`} className="truncate font-medium underline">
+              {r.name}
+            </Link>
             <p className="truncate text-xs text-zinc-400" dir="ltr">
               {[r.phone, r.email].filter(Boolean).join(' · ') || '—'}
             </p>
@@ -127,13 +154,16 @@ export function LeadsListPage() {
         id: 'stage',
         header: 'المرحلة / Stage',
         accessor: (r) => r.stage,
-        cell: (r) => (
-          <LeadStageCell
-            lead={r}
-            pending={stageMutation.isPending}
-            onChange={(stage, lostReason) => runSetStage(r.$id, stage, lostReason)}
-          />
-        ),
+        cell: (r) =>
+          canManageStage(r) ? (
+            <LeadStageCell
+              lead={r}
+              pending={stageMutation.isPending}
+              onChange={(stage, lostReason) => runSetStage(r.$id, stage, lostReason)}
+            />
+          ) : (
+            <Badge tone="neutral">{leadStageLabel(r.stage)}</Badge>
+          ),
         width: '10rem',
       },
       {
@@ -205,6 +235,7 @@ export function LeadsListPage() {
       stageMutation.isPending,
       deleteMutation.isPending,
       canDelete,
+      canManageStage,
       runSetStage,
       runDelete,
     ],
@@ -217,11 +248,34 @@ export function LeadsListPage() {
         titleEn="Leads pipeline"
         description="من عميل محتمل إلى صفقة: تتبّع التواصل حتى التحويل إلى عميل فعلي."
         actions={
-          !adding ? (
-            <Button size="sm" onClick={() => setAdding(true)}>
-              + عميل محتمل جديد
-            </Button>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportButton
+              fileName="leads"
+              rows={exportRows}
+              columns={[
+                { key: 'name', header: 'Name' },
+                { key: 'phone', header: 'Phone' },
+                { key: 'email', header: 'Email' },
+                { key: 'source', header: 'Source' },
+                { key: 'stage', header: 'Stage' },
+                { key: 'estimated_value', header: 'Estimated value' },
+                { key: 'assigned_to', header: 'Assigned to' },
+                { key: 'created_at', header: 'Created' },
+                { key: 'converted', header: 'Converted' },
+              ]}
+              disabled={rows.length === 0}
+            />
+            {!importing ? (
+              <Button size="sm" variant="secondary" onClick={() => setImporting(true)}>
+                استيراد CSV
+              </Button>
+            ) : null}
+            {!adding ? (
+              <Button size="sm" onClick={() => setAdding(true)}>
+                + عميل محتمل جديد
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
@@ -303,6 +357,36 @@ export function LeadsListPage() {
             )}
           </Form>
         </Card>
+      ) : null}
+
+      {importing ? (
+        <div className="space-y-2">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="text-xs text-zinc-500 underline"
+              onClick={() => setImporting(false)}
+            >
+              إغلاق
+            </button>
+          </div>
+          <CsvImportPanel<LeadImportRow>
+            title="استيراد عملاء محتملين / Import leads"
+            templateHeaders={['name', 'phone', 'email', 'source', 'estimated_value', 'notes']}
+            rowSchema={leadImportRowSchema}
+            onCommit={async (importRows) => {
+              const res = await importMutation.mutateAsync({
+                rows: importRows,
+                createdBy: principal?.userId ?? '',
+              })
+              return {
+                applied: res.applied,
+                skipped: res.skipped,
+                message: res.errors.length > 0 ? res.errors.join(' — ') : undefined,
+              }
+            }}
+          />
+        </div>
       ) : null}
 
       {actionError ? (

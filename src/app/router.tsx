@@ -11,6 +11,7 @@ import { notificationsRoutes } from '@/shared/notifications/routes'
 import { reportsRoutes } from '@/modules/reports/routes'
 import { portalRoutes } from '@/modules/crm/portal/routes'
 import { crmLeadsRoutes } from '@/modules/crm/leads/routes'
+import { crmHubRoutes } from '@/modules/crm/hub/routes'
 import { fraudRoutes } from '@/modules/fraud/routes'
 import { returnsRoutes } from '@/modules/returns/presentation/routes'
 import { salesRoutes } from '@/modules/sales/presentation/routes'
@@ -253,6 +254,7 @@ export const router = createBrowserRouter([
       ...inventoryRoutes,
       ...accountingRoutes,
       ...salesRoutes,
+      ...crmHubRoutes,
       ...crmLeadsRoutes,
       ...returnsRoutes,
       ...fraudRoutes,

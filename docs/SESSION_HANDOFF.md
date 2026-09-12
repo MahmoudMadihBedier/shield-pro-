@@ -1,3 +1,48 @@
+# Session handoff — 2026-09-12 (CRM Phase A complete, first live portal account)
+
+Branch `feat/appwrite-scaffold`, committed, **not pushed** (to `origin`).
+Migrations **0001–0035 all live** on the Supabase project — `db push` is no
+longer blocked in this environment (was earlier this session; just retry it
+if it ever reports blocked again). Gates: `pnpm typecheck` · `pnpm lint`
+(only pre-existing router.tsx warns) · `pnpm test` **779 / 101 files** ·
+`pnpm build`.
+
+## What happened since the 2026-09-10 entry below
+- **First live CRM portal account**: البسملة ماركت (code 10001). The
+  "إنشاء حساب البوابة" button itself was never broken — it's role-gated to
+  `system_admin` / `branch_accountant` / `chief_accountant` by design; it
+  errors for any other signed-in role. `supabase.functions.invoke` failures
+  now surface the Edge Function's real message either way.
+- **Code review caught real RLS holes on the leads/follow-ups slice**, fixed
+  and live (0032, 0033): an assignee could hijack `created_by` and then
+  delete a row they never created; `leads` had no branch check on UPDATE at
+  all; no server-side guard stopped a direct API call from skipping pipeline
+  stages. All closed — see `git log --oneline 32dcc6c..9901735` for the
+  full trail if you need the detail.
+- **`docs/CRM_PLAN.md`** — the current, authoritative CRM concept + roadmap
+  (the Phase 3 sketch in `IMPLEMENTATION_PLAN.md` is Appwrite-era and stale
+  for this surface). Also published as an artifact for easy reading —
+  `action: "list"` on Artifact to find the link if needed.
+- **Phase A of that plan is now fully done**: lead detail page + server-
+  written stage history (0034 `lead_stage_events`), a real CRM hub page at
+  `/crm` (my open follow-ups + leads by stage — nav is `/crm` → `/crm/leads`
+  now, not one flat item), and overdue follow-ups reaching the notification
+  center (0035, "check on read" — no `pg_cron` set up, fires once per
+  session from `NotificationBell`).
+- **Open decision, not mine to make**: `/admin/customers/:id` (hosts the
+  activity-log/follow-up panels) is `system_admin`-only, but the CRM roles
+  who actually work leads/follow-ups (`sales_rep`, `branch_accountant`,
+  `chief_accountant`) can't reach it — the hub and lead-convert links just
+  hide themselves for non-admins rather than 404. Two options written up in
+  `docs/CRM_PLAN.md` §"Surfaced while building #1/#3" — needs the user's
+  call, not a silent RBAC change.
+- **`/code-review` hit the account's session rate limit once** mid-session
+  (resets pattern: a few hours) — not a code issue; retried successfully
+  later. If it happens again, do a careful manual review pass instead of
+  spamming retries.
+
+---
+
 # Session handoff — 2026-09-10 (admin gates, reports, CRM portal isolation)
 
 Branch `feat/appwrite-scaffold`, committed, **not pushed**. Gates: `pnpm

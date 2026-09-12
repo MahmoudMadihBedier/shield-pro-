@@ -2,13 +2,18 @@ import { describe, expect, it } from 'vitest'
 
 import {
   canTransitionLeadStage,
+  describeStageEvent,
   isOpenStage,
   leadFormSchema,
+  leadImportRowSchema,
+  leadsToRows,
   leadSourceLabel,
   leadStageLabel,
   nextLeadStages,
   openPipelineValue,
   sortLeads,
+  sortStageEvents,
+  type LeadRow,
 } from '../lead'
 
 const row = (over: Partial<Record<string, unknown>> = {}) => ({
@@ -146,5 +151,93 @@ describe('nextLeadStages', () => {
     expect(nextLeadStages('new')).toEqual(['new', 'contacted', 'lost'])
     expect(nextLeadStages('won')).toEqual(['won'])
     expect(nextLeadStages('lost')).toEqual(['lost'])
+  })
+})
+
+describe('describeStageEvent', () => {
+  it('describes creation distinctly from a transition', () => {
+    expect(describeStageEvent({ from_stage: null, to_stage: 'new' })).toBe('أُنشئ بمرحلة جديد')
+    expect(describeStageEvent({ from_stage: 'new', to_stage: 'contacted' })).toBe(
+      'من جديد إلى تم التواصل',
+    )
+  })
+})
+
+describe('sortStageEvents', () => {
+  it('orders newest first', () => {
+    const events = [
+      { changed_at: '2026-03-01T00:00:00Z' },
+      { changed_at: '2026-03-10T00:00:00Z' },
+      { changed_at: '2026-03-05T00:00:00Z' },
+    ]
+    expect(sortStageEvents(events).map((e) => e.changed_at)).toEqual([
+      '2026-03-10T00:00:00Z',
+      '2026-03-05T00:00:00Z',
+      '2026-03-01T00:00:00Z',
+    ])
+  })
+})
+
+describe('leadsToRows', () => {
+  const fullLead = (over: Partial<LeadRow> = {}): LeadRow => ({
+    $id: 'l1',
+    $createdAt: '2026-03-01T00:00:00Z',
+    $updatedAt: '2026-03-01T00:00:00Z',
+    name: 'Acme',
+    phone: '01000000000',
+    email: 'acme@example.com',
+    source: 'referral',
+    stage: 'new',
+    estimated_value: 500,
+    notes: null,
+    assigned_to: 'u1',
+    created_by: 'u1',
+    branch_id: 'b1',
+    converted_customer_id: null,
+    lost_reason: null,
+    ...over,
+  })
+
+  it('resolves labels and the assignee name, and flags conversion', () => {
+    const [row] = leadsToRows([fullLead({ converted_customer_id: 'c1' })], () => 'محمود')
+    expect(row).toMatchObject({
+      name: 'Acme',
+      source: 'إحالة',
+      stage: 'جديد',
+      assigned_to: 'محمود',
+      converted: 'نعم',
+    })
+  })
+
+  it('falls back to empty strings for missing optional fields', () => {
+    const [row] = leadsToRows([fullLead({ phone: null, email: null, source: null })], () => 'محمود')
+    expect(row).toMatchObject({ phone: '', email: '', source: '' })
+  })
+})
+
+describe('leadImportRowSchema', () => {
+  it('accepts a minimal row (only name) — every other CSV column is optional', () => {
+    expect(leadImportRowSchema.safeParse({ name: 'Acme' }).success).toBe(true)
+  })
+
+  it('coerces a CSV numeric string for estimated_value', () => {
+    const r = leadImportRowSchema.safeParse({ name: 'Acme', estimated_value: '1500' })
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.estimated_value).toBe(1500)
+  })
+
+  it('rejects a blank name and a negative estimated_value', () => {
+    expect(leadImportRowSchema.safeParse({ name: '' }).success).toBe(false)
+    expect(leadImportRowSchema.safeParse({ name: 'Acme', estimated_value: '-1' }).success).toBe(
+      false,
+    )
+  })
+
+  it('rejects a source outside the known enum, accepts a known one or blank', () => {
+    expect(leadImportRowSchema.safeParse({ name: 'Acme', source: 'not_a_source' }).success).toBe(
+      false,
+    )
+    expect(leadImportRowSchema.safeParse({ name: 'Acme', source: 'referral' }).success).toBe(true)
+    expect(leadImportRowSchema.safeParse({ name: 'Acme', source: '' }).success).toBe(true)
   })
 })

@@ -44,6 +44,7 @@ export const Tables = {
   crmActivities: 'crm_activities',
   crmFollowups: 'crm_followups',
   leads: 'leads',
+  leadStageEvents: 'lead_stage_events',
 
   // ---- Immutable ledgers (append-only, server-written) ----
   stockLedger: 'stock_ledger_entries',

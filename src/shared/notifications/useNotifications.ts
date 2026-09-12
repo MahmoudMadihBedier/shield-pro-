@@ -17,6 +17,7 @@ import {
   listNotifications,
   markAllRead,
   markRead,
+  syncOverdueFollowupNotifications,
   type NotificationListPage,
   type NotificationListParams,
 } from './repo'
@@ -101,6 +102,54 @@ export function useMarkAllNotificationsRead() {
     },
     onSuccess: () => invalidateAll(queryClient),
   })
+}
+
+/**
+ * "Check on read" for CRM follow-ups (docs/CRM_PLAN.md Phase A #2) — no
+ * scheduled job exists yet, so this fires the idempotent sync RPC once per
+ * signed-in session (react-query's cache dedupes repeats within
+ * `staleTime`; it is NOT a poll/timer) and refreshes the bell immediately if
+ * it created anything, rather than waiting for the next Realtime event.
+ * Side-effect only — mount it once, near `useNotificationsRealtime`.
+ */
+/**
+ * Deliberately NOT under the `notifications` key prefix: `invalidateAll`
+ * targets `notificationKeys.root` (`['notifications']`), which prefix-matches
+ * any key starting with it — sharing that prefix would have this query
+ * invalidate (and immediately refetch) itself every time it found something
+ * to sync, firing the RPC twice in a row and defeating the "once per
+ * session" `staleTime` below.
+ */
+const SYNC_QUERY_KEY = (recipientUserId: string) =>
+  ['crm-followup-notification-sync', recipientUserId] as const
+
+export function useSyncOverdueFollowupNotifications(): void {
+  const { principal } = useAuth()
+  const queryClient = useQueryClient()
+  const recipientUserId = principal?.userId ?? null
+
+  const query = useQuery<number, AppError>({
+    queryKey: SYNC_QUERY_KEY(recipientUserId ?? ''),
+    enabled: recipientUserId !== null,
+    staleTime: 5 * 60_000,
+    // Best-effort background sync (same posture as `useNotificationsRealtime`
+    // degrading to "no live push" on a dropped connection) — a failure here
+    // must never surface as user-facing noise for what is, worst case, one
+    // missed notification. It is not silent to a developer: logged below.
+    retry: false,
+    queryFn: async () => {
+      const result = await syncOverdueFollowupNotifications()
+      if (isErr(result)) throw result.error
+      if (result.value > 0) invalidateAll(queryClient)
+      return result.value
+    },
+  })
+
+  useEffect(() => {
+    if (query.isError) {
+      console.error('overdue-follow-up notification sync failed:', query.error)
+    }
+  }, [query.isError, query.error])
 }
 
 /**

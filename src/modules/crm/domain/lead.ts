@@ -41,6 +41,61 @@ export const leadRowSchema = z.object({
 export type LeadRow = z.infer<typeof leadRowSchema>
 
 /**
+ * Exactly what the `tablesDB` shim returns for a `lead_stage_events` row
+ * (migration 0034) — an append-only log written server-side by the same
+ * trigger that guards the stage transition, never by the client.
+ */
+export const leadStageEventRowSchema = z.object({
+  $id: z.string(),
+  lead_id: z.string(),
+  from_stage: leadStageSchema.nullish(),
+  to_stage: leadStageSchema,
+  reason: rowOptStr,
+  changed_by: z.string(),
+  changed_at: z.string(),
+})
+export type LeadStageEvent = z.infer<typeof leadStageEventRowSchema>
+
+/**
+ * The lead detail page's edit form — every field except `stage` (its own
+ * dedicated, guarded control) and the read-only `converted_customer_id`.
+ */
+export const leadEditFormSchema = z.object({
+  name: z.string().trim().min(1, 'أدخل اسم العميل المحتمل').max(128, 'الاسم طويل جدًا'),
+  phone: z.string().trim().max(32, 'رقم الهاتف طويل جدًا').optional(),
+  email: z.union([z.literal(''), z.string().trim().email('بريد إلكتروني غير صحيح')]).optional(),
+  source: z.union([z.literal(''), leadSourceSchema]).optional(),
+  estimated_value: z.number({ error: 'أدخل رقمًا' }).min(0, 'يجب ألا تكون القيمة سالبة'),
+  notes: z.string().trim().max(2000, 'الملاحظة طويلة جدًا').optional(),
+  assigned_to: z.string().min(1, 'اختر المسؤول عن المتابعة'),
+})
+export type LeadEditForm = z.infer<typeof leadEditFormSchema>
+
+/**
+ * Bulk-import CSV row (`CsvImportPanel`, Phase B #4 — docs/CRM_PLAN.md).
+ * No `assigned_to` column: a spreadsheet only has a staff member's name, not
+ * their `auth_user_id`, and matching by name is unreliable — every imported
+ * lead is self-assigned to whoever runs the import, same as the single-lead
+ * form's default; reassigning afterward is a normal one-click edit.
+ */
+export const leadImportRowSchema = z.object({
+  name: z.string().trim().min(1, 'name مطلوب'),
+  phone: z.string().trim().optional(),
+  email: z.string().trim().optional(),
+  source: z
+    .union([z.literal(''), leadSourceSchema], {
+      error: `source يجب أن يكون أحد: ${LEAD_SOURCES.join(', ')}، أو فارغًا`,
+    })
+    .optional(),
+  estimated_value: z.coerce
+    .number({ error: 'estimated_value يجب أن يكون رقمًا' })
+    .nonnegative('estimated_value يجب ألا يكون سالبًا')
+    .optional(),
+  notes: z.string().trim().optional(),
+})
+export type LeadImportRow = z.infer<typeof leadImportRowSchema>
+
+/**
  * `estimated_value` is a plain required number defaulting to 0 — NOT
  * `.optional()`. The bound `NumberField` uses RHF's `valueAsNumber: true`,
  * which yields `NaN` (not `undefined`) for an empty input; the shared `Form`
@@ -143,4 +198,45 @@ export function openPipelineValue(
   return rows
     .filter((r) => isOpenStage(r.stage))
     .reduce((sum, r) => sum + Math.max(0, r.estimated_value ?? 0), 0)
+}
+
+/** A one-line description of a stage-history event, oldest-first display. */
+export function describeStageEvent(e: Pick<LeadStageEvent, 'from_stage' | 'to_stage'>): string {
+  if (!e.from_stage) return `أُنشئ بمرحلة ${leadStageLabel(e.to_stage)}`
+  return `من ${leadStageLabel(e.from_stage)} إلى ${leadStageLabel(e.to_stage)}`
+}
+
+/** Newest first. */
+export function sortStageEvents<T extends Pick<LeadStageEvent, 'changed_at'>>(
+  events: readonly T[],
+): T[] {
+  return [...events].sort((a, b) => Date.parse(b.changed_at) - Date.parse(a.changed_at))
+}
+
+/** Flat rows for CSV / Excel export — `sortLeads`-ordered, names resolved by the caller. */
+export function leadsToRows(
+  rows: readonly LeadRow[],
+  staffName: (id: string) => string,
+): Array<{
+  name: string
+  phone: string
+  email: string
+  source: string
+  stage: string
+  estimated_value: number
+  assigned_to: string
+  created_at: string
+  converted: string
+}> {
+  return sortLeads(rows).map((r) => ({
+    name: r.name,
+    phone: r.phone ?? '',
+    email: r.email ?? '',
+    source: leadSourceLabel(r.source) ?? '',
+    stage: leadStageLabel(r.stage),
+    estimated_value: r.estimated_value ?? 0,
+    assigned_to: staffName(r.assigned_to),
+    created_at: r.$createdAt,
+    converted: r.converted_customer_id ? 'نعم' : 'لا',
+  }))
 }

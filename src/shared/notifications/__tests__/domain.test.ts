@@ -48,6 +48,15 @@ describe('notificationRowSchema', () => {
     expect(result.success).toBe(true)
     if (result.success) expect(result.data.is_read).toBe(false)
   })
+
+  it('accepts a full-UUID entity_ref (a crm_followups.id, migration 0035)', () => {
+    const result = notificationRowSchema.safeParse({
+      ...VALID_ROW,
+      kind: 'overdue_followup',
+      entity_ref: '0d1e2f3a-4b5c-46d7-8e9f-0a1b2c3d4e5f',
+    })
+    expect(result.success).toBe(true)
+  })
 })
 
 describe('notificationKindLabel / bilingualKindLabel', () => {
@@ -61,5 +70,12 @@ describe('notificationKindLabel / bilingualKindLabel', () => {
 
   it('renders a bilingual string', () => {
     expect(bilingualKindLabel('approval_pending')).toBe('طلب موافقة معلّق / Approval pending')
+  })
+
+  it('resolves the overdue-follow-up kind', () => {
+    expect(notificationKindLabel('overdue_followup')).toEqual({
+      ar: 'متابعة CRM متأخرة',
+      en: 'Overdue CRM follow-up',
+    })
   })
 })

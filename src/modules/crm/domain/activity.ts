@@ -102,3 +102,20 @@ export function countByKind(rows: readonly { kind: string }[]): Array<[string, n
   for (const r of rows) counts.set(r.kind, (counts.get(r.kind) ?? 0) + 1)
   return [...counts.entries()].sort((a, b) => b[1] - a[1])
 }
+
+/** Flat rows for CSV / Excel export — `sortActivities`-ordered. */
+export function activitiesToRows(rows: readonly ActivityRow[]): Array<{
+  date: string
+  kind: string
+  subject: string
+  note: string
+  outcome: string
+}> {
+  return sortActivities(rows).map((r) => ({
+    date: r.occurred_at,
+    kind: activityKindLabel(r.kind),
+    subject: r.subject,
+    note: r.note ?? '',
+    outcome: activityOutcomeLabel(r.outcome) ?? '',
+  }))
+}

@@ -24,6 +24,35 @@ function parseRow(raw: unknown): Result<FollowupRow> {
     : err(appError('server', SHAPE_ERROR, { detail: parsed.error.message }))
 }
 
+/**
+ * Every OPEN follow-up assigned to `userId`, across every customer
+ * (branch-scoped server-side via RLS — no `customer_id` filter needed). For
+ * the "my open follow-ups" widget on the CRM hub.
+ */
+export async function listMyOpenFollowups(userId: string): Promise<Result<FollowupRow[]>> {
+  try {
+    const res = await tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId: Tables.crmFollowups,
+      queries: [
+        Query.equal('assigned_to', userId),
+        Query.equal('status', 'open'),
+        Query.orderAsc('due_date'),
+        Query.limit(MAX_ROWS),
+      ],
+    })
+    const out: FollowupRow[] = []
+    for (const raw of res.rows) {
+      const parsed = parseRow(raw)
+      if (!parsed.ok) return parsed
+      out.push(parsed.value)
+    }
+    return ok(out)
+  } catch (e) {
+    return err(mapAppwriteError(e))
+  }
+}
+
 /** Every follow-up for one customer (open and closed). */
 export async function listFollowups(customerId: string): Promise<Result<FollowupRow[]>> {
   try {
