@@ -116,16 +116,17 @@ deliberate scoping decision, not a blanket gate change), or split a lighter
 decide silently.
 
 ### Phase B — operational completeness
-4. **Bulk lead import** via the existing `CsvImportPanel` (pick/paste → Zod
-   validate → preview → apply) — the exact tool this project already built
-   for opening-stock/price-list imports.
-5. **Export** leads + one customer's activity history to Excel
-   (`ExportButton`, already a one-line wire-up everywhere else).
-6. **Portal session hardening (Story 3.2 finish)** — either short-lived
-   access tokens + a revocation check, or accept the current "kills within
-   token lifetime" behavior as the documented trade-off. This is a real
-   design decision, not a quick fix — flag to the business owner before
-   committing effort.
+4. ✅ **Bulk lead import** via `CsvImportPanel` — name required, everything
+   else optional; every imported lead self-assigns to whoever runs the
+   import (a spreadsheet has no reliable way to name a staff member's
+   `auth_user_id`) and can be reassigned after, one click, like any lead.
+5. ✅ **Export** — leads (`LeadsListPage`) and one customer's activity
+   history (`CustomerActivityLog`) both have `<ExportButton>` now.
+6. **Portal session hardening (Story 3.2 finish)** — not started, and
+   deliberately not attempted without a decision: either short-lived access
+   tokens + a revocation check, or accept the current "kills within token
+   lifetime" behavior as the documented trade-off. Flag to the business
+   owner before committing effort.
 
 ### Phase C — deeper CRM (only if the business wants it)
 7. **Merge a won lead's timeline into the customer's activity log** post-
