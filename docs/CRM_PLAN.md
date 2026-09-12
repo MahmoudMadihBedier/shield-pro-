@@ -85,20 +85,21 @@ panel.
 Ordered by effort-to-value, not by any fixed deadline — pick up wherever
 makes sense.
 
-### Phase A — close the loop on what exists (small, high value)
+### Phase A — close the loop on what exists (small, high value) — ✅ done
 1. ✅ **Lead detail page** — `/crm/leads/:id`: full field edit, a
    server-written stage-change timeline (migration 0034 `lead_stage_events`,
    not synthesized client-side), and the same convert/link flow the list
-   uses. Done.
-2. **Overdue follow-ups → notifications** — not started. Reuse
-   `NotificationService` (already wired for fraud flags / pending approvals)
-   with a new `overdue_followup` kind; a cron-less approach: check on read
-   (cheap) or a scheduled Edge Function (matches how other periodic checks in
-   this codebase are done).
+   uses.
+2. ✅ **Overdue follow-ups → notifications** — migration 0035
+   `sync_overdue_followup_notifications()`, the "check on read" option (no
+   `pg_cron` / scheduled Edge Function set up yet): caller-scoped, idempotent,
+   fired once per session from `NotificationBell` (already mounted on every
+   page). A real scheduled job is a possible later upgrade if "only notified
+   after your next page load" turns out to be too slow in practice.
 3. ✅ **CRM hub page** at `/crm` — "my open follow-ups" (across every
    customer, branch-scoped server-side) + "leads by stage", entry point into
    the pipeline. Nav is now `/crm` (hub) + `/crm/leads` (pipeline), not a
-   single flat item. Done.
+   single flat item.
 
 **Surfaced while building #1/#3, not yet resolved — needs a decision:**
 `/admin/customers/:id` (which hosts the activity-log and follow-up panels)
