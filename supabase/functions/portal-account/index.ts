@@ -15,6 +15,8 @@
  */
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
+import { CORS_HEADERS, handleCorsPreflight } from '../_shared/cors.ts'
+
 const PORTAL_EMAIL_DOMAIN = 'portal.shieldpro.local'
 const PORTAL_ADMIN_ROLES = ['system_admin', 'branch_accountant', 'chief_accountant']
 /** ~100 years — effectively permanent, until an admin lifts it via `create`/reset flow. */
@@ -37,11 +39,13 @@ function generatePin(): string {
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json' },
+    headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
   })
 }
 
 Deno.serve(async (req) => {
+  const preflight = handleCorsPreflight(req)
+  if (preflight) return preflight
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405)
 
   const authHeader = req.headers.get('Authorization') ?? ''
