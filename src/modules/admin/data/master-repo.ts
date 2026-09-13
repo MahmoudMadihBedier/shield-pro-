@@ -25,10 +25,15 @@ export interface ListSort {
   dir: 'asc' | 'desc'
 }
 
-/** Exact-match column filter, e.g. `{ field: 'branch_id', value: 'br-1' }`. */
+/**
+ * Exact-match column filter, e.g. `{ field: 'branch_id', value: 'br-1' }`.
+ * An array `value` becomes an `IN (...)` match (`Query.equal` already
+ * supports this at the encoding layer — this just exposes it through the
+ * typed wrapper).
+ */
 export interface ListFilter {
   field: string
-  value: string
+  value: string | readonly string[]
 }
 
 export interface ListParams {
@@ -62,8 +67,7 @@ export interface MasterRepoConfig<TRow, TInput> {
   createDefaults?: Record<string, unknown>
 }
 
-const SHAPE_ERROR =
-  'تعذّر قراءة أحد السجلات — البنية غير متوقعة. أبلغ الدعم إذا استمر ذلك.'
+const SHAPE_ERROR = 'تعذّر قراءة أحد السجلات — البنية غير متوقعة. أبلغ الدعم إذا استمر ذلك.'
 
 function parseRows<TRow>(
   raw: unknown[],
@@ -113,7 +117,9 @@ export function makeMasterRepo<TRow, TInput>(
       const row = await tablesDB.getRow({ databaseId: DATABASE_ID, tableId, rowId: id })
       const parsed = rowSchema.safeParse(row)
       if (!parsed.success) {
-        return err(appError('server', SHAPE_ERROR, { detail: `${tableId}/${id}: ${parsed.error.message}` }))
+        return err(
+          appError('server', SHAPE_ERROR, { detail: `${tableId}/${id}: ${parsed.error.message}` }),
+        )
       }
       return ok(parsed.data)
     } catch (e) {
@@ -127,9 +133,17 @@ export function makeMasterRepo<TRow, TInput>(
   ): Promise<Result<TRow>> {
     const parsedInput = inputSchema.safeParse(input)
     if (!parsedInput.success) {
-      return err(appError('validation', 'البيانات المُدخلة غير صالحة.', { detail: parsedInput.error.message }))
+      return err(
+        appError('validation', 'البيانات المُدخلة غير صالحة.', {
+          detail: parsedInput.error.message,
+        }),
+      )
     }
-    const data = { ...(parsedInput.data as Record<string, unknown>), ...createDefaults, ...overrides }
+    const data = {
+      ...(parsedInput.data as Record<string, unknown>),
+      ...createDefaults,
+      ...overrides,
+    }
     try {
       const row = await tablesDB.createRow({
         databaseId: DATABASE_ID,
@@ -139,7 +153,9 @@ export function makeMasterRepo<TRow, TInput>(
       })
       const parsed = rowSchema.safeParse(row)
       if (!parsed.success) {
-        return err(appError('server', SHAPE_ERROR, { detail: `${tableId}: ${parsed.error.message}` }))
+        return err(
+          appError('server', SHAPE_ERROR, { detail: `${tableId}: ${parsed.error.message}` }),
+        )
       }
       return ok(parsed.data)
     } catch (e) {
@@ -148,10 +164,16 @@ export function makeMasterRepo<TRow, TInput>(
   }
 
   async function update(id: string, patch: Partial<TInput>): Promise<Result<TRow>> {
-    const partialSchema = (inputSchema as unknown as { partial: () => ZodType<Partial<TInput>> }).partial()
+    const partialSchema = (
+      inputSchema as unknown as { partial: () => ZodType<Partial<TInput>> }
+    ).partial()
     const parsedPatch = partialSchema.safeParse(patch)
     if (!parsedPatch.success) {
-      return err(appError('validation', 'البيانات المُدخلة غير صالحة.', { detail: parsedPatch.error.message }))
+      return err(
+        appError('validation', 'البيانات المُدخلة غير صالحة.', {
+          detail: parsedPatch.error.message,
+        }),
+      )
     }
     try {
       const row = await tablesDB.updateRow({
@@ -162,7 +184,9 @@ export function makeMasterRepo<TRow, TInput>(
       })
       const parsed = rowSchema.safeParse(row)
       if (!parsed.success) {
-        return err(appError('server', SHAPE_ERROR, { detail: `${tableId}/${id}: ${parsed.error.message}` }))
+        return err(
+          appError('server', SHAPE_ERROR, { detail: `${tableId}/${id}: ${parsed.error.message}` }),
+        )
       }
       return ok(parsed.data)
     } catch (e) {

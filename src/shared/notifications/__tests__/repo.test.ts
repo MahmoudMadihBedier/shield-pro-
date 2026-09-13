@@ -16,7 +16,13 @@ vi.mock('@/infrastructure/appwrite/client', () => ({
   supabase: { rpc: mockRpc },
 }))
 
-import { listNotifications, markAllRead, markRead, syncOverdueFollowupNotifications } from '../repo'
+import {
+  listNotifications,
+  markAllRead,
+  markRead,
+  syncHighWasteNotifications,
+  syncOverdueFollowupNotifications,
+} from '../repo'
 
 function notifRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -175,6 +181,36 @@ describe('syncOverdueFollowupNotifications', () => {
       error: { message: 'a signed-in caller is required', code: '42501' },
     })
     const result = await syncOverdueFollowupNotifications()
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error.code).toBe('forbidden')
+  })
+})
+
+describe('syncHighWasteNotifications', () => {
+  it('returns the created-count the RPC reports', async () => {
+    mockRpc.mockResolvedValueOnce({ data: 2, error: null })
+
+    const result = await syncHighWasteNotifications()
+
+    expect(mockRpc).toHaveBeenCalledWith('sync_high_waste_notifications')
+    expect(result).toEqual({ ok: true, value: 2 })
+  })
+
+  it('rejects a non-numeric response as a shape error instead of silently coercing to zero', async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: null })
+    const result = await syncHighWasteNotifications()
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error.code).toBe('server')
+  })
+
+  it('maps an RPC failure to a typed AppError', async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'a signed-in caller is required', code: '42501' },
+    })
+    const result = await syncHighWasteNotifications()
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error.code).toBe('forbidden')

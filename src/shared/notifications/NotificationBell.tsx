@@ -19,6 +19,7 @@ import {
   useMarkNotificationRead,
   useNotificationList,
   useNotificationsRealtime,
+  useSyncHighWasteNotifications,
   useSyncOverdueFollowupNotifications,
   useUnreadCount,
 } from './useNotifications'
@@ -51,6 +52,7 @@ export function NotificationBell() {
 
   useNotificationsRealtime()
   useSyncOverdueFollowupNotifications()
+  useSyncHighWasteNotifications()
   const unread = useUnreadCount()
   const list = useNotificationList({ page: 0, pageSize: RECENT_COUNT })
   const markRead = useMarkNotificationRead()

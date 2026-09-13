@@ -155,3 +155,27 @@ export async function syncOverdueFollowupNotifications(): Promise<Result<number>
     return err(mapAppwriteError(e))
   }
 }
+
+/**
+ * "Check on read" sync for high-waste production batches (Plan §2.6, the
+ * `high_waste` kind). Same shape as {@link syncOverdueFollowupNotifications};
+ * the RPC itself short-circuits to a no-op for a caller with no
+ * manufacturing-facing role, so this is safe to call unconditionally.
+ */
+export async function syncHighWasteNotifications(): Promise<Result<number>> {
+  try {
+    const { data, error } = await supabase.rpc('sync_high_waste_notifications')
+    if (error) return err(mapAppwriteError(error))
+    const parsed = syncCountSchema.safeParse(data)
+    if (!parsed.success) {
+      return err(
+        appError('server', 'تعذّر مزامنة إشعارات الهدر المرتفع — استجابة غير متوقعة.', {
+          detail: parsed.error.message,
+        }),
+      )
+    }
+    return ok(parsed.data)
+  } catch (e) {
+    return err(mapAppwriteError(e))
+  }
+}
