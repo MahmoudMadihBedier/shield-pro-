@@ -8,8 +8,10 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { useAuth } from '@/application/auth/context'
-import { formatCurrency, formatNumber } from '@/shared/formatters'
+import { DocStatus } from '@/core/doc-status'
 import { DataTable, type ColumnDef, type PaginationState } from '@/shared/data-table'
+import { ExportButton } from '@/shared/excel'
+import { formatCurrency, formatNumber } from '@/shared/formatters'
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
 import { canActOnSales } from '../../domain/permissions'
@@ -20,6 +22,14 @@ import { CLOSEOUT_STATUS_LABEL, CLOSEOUT_STATUS_TONE } from '../labels'
 
 const PAGE_SIZE = 25
 const EMPTY_OBJECT_BAG = JSON.stringify({ products: [], cash: [] })
+/** Export is a bounded read, independent of the visible page — newest first, capped. */
+const EXPORT_CAP = 500
+
+const DOC_STATUS_LABEL: Record<number, string> = {
+  [DocStatus.Draft]: 'مسودة',
+  [DocStatus.Submitted]: 'معتمد',
+  [DocStatus.Cancelled]: 'ملغى',
+}
 
 export function RepCloseoutListPage() {
   const navigate = useNavigate()
@@ -32,6 +42,12 @@ export function RepCloseoutListPage() {
   const [openError, setOpenError] = useState<string | null>(null)
 
   const query = useRepCloseoutList({ page: pageIndex, pageSize: PAGE_SIZE })
+  // Export reads independently of the visible page — exporting only the
+  // current 25-row page would silently drop the rest of the list.
+  const exportQuery = useRepCloseoutList({
+    pageSize: EXPORT_CAP,
+    sort: { column: 'business_date', dir: 'desc' },
+  })
   const reps = useRepOptions()
   const repLabel = useMemo(() => optionLabelMap(reps.data), [reps.data])
   const { createDraft } = useRepCloseoutActions()
@@ -132,9 +148,48 @@ export function RepCloseoutListPage() {
     [navigate, repLabel],
   )
 
+  const exportRows = useMemo(
+    () =>
+      (exportQuery.data?.rows ?? []).map((r) => ({
+        reference_id: r.reference_id,
+        rep: repLabel.get(r.rep_user_id) ?? r.rep_user_id,
+        business_date: r.business_date,
+        stock_variance: r.stock_variance,
+        cash_variance: r.cash_variance,
+        status: CLOSEOUT_STATUS_LABEL[r.status],
+        doc_status: DOC_STATUS_LABEL[r.doc_status] ?? String(r.doc_status),
+      })),
+    [exportQuery.data?.rows, repLabel],
+  )
+
   return (
     <div className="space-y-4">
-      <PageHeader title="تقفيلات المندوبين اليومية" titleEn="Rep daily close-outs" />
+      <PageHeader
+        title="تقفيلات المندوبين اليومية"
+        titleEn="Rep daily close-outs"
+        actions={
+          <ExportButton
+            rows={exportRows}
+            columns={[
+              { key: 'reference_id', header: 'المرجع' },
+              { key: 'rep', header: 'المندوب' },
+              { key: 'business_date', header: 'يوم العمل' },
+              { key: 'stock_variance', header: 'فرق المخزون' },
+              { key: 'cash_variance', header: 'فرق النقدية' },
+              { key: 'status', header: 'الحالة' },
+              { key: 'doc_status', header: 'حالة المستند' },
+            ]}
+            fileName={`rep-closeouts-${new Date().toISOString().slice(0, 10)}`}
+            disabled={exportQuery.isLoading}
+          />
+        }
+      />
+
+      {(exportQuery.data?.total ?? 0) > EXPORT_CAP ? (
+        <p className="text-xs text-amber-700 dark:text-amber-400">
+          هناك أكثر من {EXPORT_CAP} تقفيل — التصدير يشمل الأحدث {EXPORT_CAP} فقط.
+        </p>
+      ) : null}
 
       {canAct ? (
         <Card className="flex flex-wrap items-end gap-2">
