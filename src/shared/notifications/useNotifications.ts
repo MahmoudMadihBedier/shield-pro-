@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 
 import { useAuth } from '@/application/auth/context'
 import type { AppError } from '@/core/errors'
-import { isErr } from '@/core/result'
+import { isErr, type Result } from '@/core/result'
 import { supabase } from '@/infrastructure/appwrite/client'
 import { Tables } from '@/infrastructure/appwrite/collections'
 
@@ -106,88 +106,69 @@ export function useMarkAllNotificationsRead() {
 }
 
 /**
- * "Check on read" for CRM follow-ups (docs/CRM_PLAN.md Phase A #2) — no
- * scheduled job exists yet, so this fires the idempotent sync RPC once per
- * signed-in session (react-query's cache dedupes repeats within
- * `staleTime`; it is NOT a poll/timer) and refreshes the bell immediately if
- * it created anything, rather than waiting for the next Realtime event.
- * Side-effect only — mount it once, near `useNotificationsRealtime`.
+ * Shared shape behind every "check on read" notification sync (no scheduled
+ * job exists yet for any of these — docs/CRM_PLAN.md Phase A #2): fires an
+ * idempotent server-side sync RPC once per signed-in session (react-query's
+ * cache dedupes repeats within `staleTime`; this is NOT a poll/timer) and
+ * refreshes the bell immediately if it created anything, rather than waiting
+ * for the next Realtime event. Side-effect only — mount the returned hook
+ * once, near `useNotificationsRealtime`.
+ *
+ * `queryKeyPrefix` must NOT be (or share a prefix with) `notificationKeys.root`
+ * (`['notifications']`): `invalidateAll` prefix-matches that root, so a sync
+ * query living under it would invalidate — and immediately refetch — itself
+ * every time it found something to sync, firing the RPC twice in a row and
+ * defeating the "once per session" `staleTime` below.
+ *
+ * A sync failure is best-effort (same posture as `useNotificationsRealtime`
+ * degrading to "no live push" on a dropped connection) — it must never
+ * surface as user-facing noise for what is, worst case, one missed
+ * notification. It is not silent to a developer: logged via `errorLabel`.
  */
-/**
- * Deliberately NOT under the `notifications` key prefix: `invalidateAll`
- * targets `notificationKeys.root` (`['notifications']`), which prefix-matches
- * any key starting with it — sharing that prefix would have this query
- * invalidate (and immediately refetch) itself every time it found something
- * to sync, firing the RPC twice in a row and defeating the "once per
- * session" `staleTime` below.
- */
-const SYNC_QUERY_KEY = (recipientUserId: string) =>
-  ['crm-followup-notification-sync', recipientUserId] as const
+function makeSyncHook(
+  queryKeyPrefix: string,
+  syncFn: () => Promise<Result<number>>,
+  errorLabel: string,
+) {
+  return function useSync(): void {
+    const { principal } = useAuth()
+    const queryClient = useQueryClient()
+    const recipientUserId = principal?.userId ?? null
 
-export function useSyncOverdueFollowupNotifications(): void {
-  const { principal } = useAuth()
-  const queryClient = useQueryClient()
-  const recipientUserId = principal?.userId ?? null
+    const query = useQuery<number, AppError>({
+      queryKey: [queryKeyPrefix, recipientUserId ?? ''] as const,
+      enabled: recipientUserId !== null,
+      staleTime: 5 * 60_000,
+      retry: false,
+      queryFn: async () => {
+        const result = await syncFn()
+        if (isErr(result)) throw result.error
+        if (result.value > 0) invalidateAll(queryClient)
+        return result.value
+      },
+    })
 
-  const query = useQuery<number, AppError>({
-    queryKey: SYNC_QUERY_KEY(recipientUserId ?? ''),
-    enabled: recipientUserId !== null,
-    staleTime: 5 * 60_000,
-    // Best-effort background sync (same posture as `useNotificationsRealtime`
-    // degrading to "no live push" on a dropped connection) — a failure here
-    // must never surface as user-facing noise for what is, worst case, one
-    // missed notification. It is not silent to a developer: logged below.
-    retry: false,
-    queryFn: async () => {
-      const result = await syncOverdueFollowupNotifications()
-      if (isErr(result)) throw result.error
-      if (result.value > 0) invalidateAll(queryClient)
-      return result.value
-    },
-  })
-
-  useEffect(() => {
-    if (query.isError) {
-      console.error('overdue-follow-up notification sync failed:', query.error)
-    }
-  }, [query.isError, query.error])
+    useEffect(() => {
+      if (query.isError) {
+        console.error(`${errorLabel} sync failed:`, query.error)
+      }
+    }, [query.isError, query.error])
+  }
 }
 
-/**
- * "Check on read" for high-waste production batches (Plan §2.6, the
- * `high_waste` kind). Same shape and posture as
- * {@link useSyncOverdueFollowupNotifications} — see that hook's comments for
- * why this lives outside the `notifications` query-key prefix and treats a
- * sync failure as best-effort, not user-facing. Safe to mount globally: the
- * RPC itself no-ops for a caller with no manufacturing-facing role.
- */
-const WASTE_SYNC_QUERY_KEY = (recipientUserId: string) =>
-  ['high-waste-notification-sync', recipientUserId] as const
+/** "Check on read" for CRM follow-ups gone overdue (the `overdue_followup` kind). */
+export const useSyncOverdueFollowupNotifications = makeSyncHook(
+  'crm-followup-notification-sync',
+  syncOverdueFollowupNotifications,
+  'overdue-follow-up notification',
+)
 
-export function useSyncHighWasteNotifications(): void {
-  const { principal } = useAuth()
-  const queryClient = useQueryClient()
-  const recipientUserId = principal?.userId ?? null
-
-  const query = useQuery<number, AppError>({
-    queryKey: WASTE_SYNC_QUERY_KEY(recipientUserId ?? ''),
-    enabled: recipientUserId !== null,
-    staleTime: 5 * 60_000,
-    retry: false,
-    queryFn: async () => {
-      const result = await syncHighWasteNotifications()
-      if (isErr(result)) throw result.error
-      if (result.value > 0) invalidateAll(queryClient)
-      return result.value
-    },
-  })
-
-  useEffect(() => {
-    if (query.isError) {
-      console.error('high-waste notification sync failed:', query.error)
-    }
-  }, [query.isError, query.error])
-}
+/** "Check on read" for production batches over their waste allowance (the `high_waste` kind). */
+export const useSyncHighWasteNotifications = makeSyncHook(
+  'high-waste-notification-sync',
+  syncHighWasteNotifications,
+  'high-waste notification',
+)
 
 /**
  * The Supabase Realtime channel name for `notifications` row events. Postgres
