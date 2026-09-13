@@ -1,13 +1,14 @@
 /**
  * Production Waste Report (Plan §4.1 export, §4.2 "production output, waste
  * %"). Reads Submitted batches only (a Draft has no final produced/waste
- * figures yet), bounded to a capped, newest-first scan — same "bounded read,
- * not an unbounded scan" discipline as the reports dashboard
- * (`@/modules/reports/data/dashboard-repo.ts`).
+ * figures yet). The date range is pushed into the query itself (not filtered
+ * client-side over a fixed recency window) — same discipline as the other
+ * date-bounded reports (`CustomerStatementPage`, `gl-repo.ts`,
+ * `dashboard-repo.ts`) — so picking an older period still returns it instead
+ * of silently coming back empty.
  */
 import { useMemo, useState } from 'react'
 
-import { DocStatus } from '@/core/doc-status'
 import { DataTable, type ColumnDef } from '@/shared/data-table'
 import { ExportButton } from '@/shared/excel'
 import { formatDate, formatPercent, formatQuantity } from '@/shared/formatters'
@@ -20,39 +21,36 @@ import {
   wasteReportToCsvRows,
   type WasteReportRow,
 } from '../../domain/waste-report'
-import { useProductOptions } from '../hooks/catalog'
-import { useProductionBatchList } from '../hooks/documents'
-
-/** Newest-first, capped — a report is a bounded read, never an unbounded scan. */
-const SCAN_CAP = 500
+import { WASTE_REPORT_SCAN_CAP } from '../../data/waste-report-repo'
+import { useProductsByIds, useWasteReportBatches } from '../hooks/waste-report'
 
 export function ProductionWasteReportPage() {
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
 
-  const batches = useProductionBatchList({
-    docStatus: DocStatus.Submitted,
-    pageSize: SCAN_CAP,
-    sort: { column: 'posting_datetime', dir: 'desc' },
-  })
-  const products = useProductOptions()
+  // Local calendar days (`<input type="date">`) → full ISO instants at the
+  // local-day boundary, so the range lines up with the viewer's own calendar
+  // day rather than drifting by Egypt's UTC offset at midnight (same fix as
+  // `CustomerStatementPage`).
+  const range = useMemo(
+    () => ({
+      from: from ? new Date(`${from}T00:00:00`).toISOString() : undefined,
+      to: to ? new Date(`${to}T23:59:59.999`).toISOString() : undefined,
+    }),
+    [from, to],
+  )
+
+  const batches = useWasteReportBatches(range)
+  const productIds = useMemo(
+    () => (batches.data?.rows ?? []).map((b) => b.product_id),
+    [batches.data?.rows],
+  )
+  const products = useProductsByIds(productIds)
 
   const rows = useMemo<WasteReportRow[]>(() => {
     const lookup = buildProductWasteLookup(products.data ?? [])
-    const all = buildWasteReportRows(batches.data?.rows ?? [], lookup)
-    // `from`/`to` are local calendar days (`<input type="date">`); parsing them
-    // without a timezone designator makes `Date` treat them as local-day
-    // boundaries, so the comparison lines up with the viewer's own calendar
-    // day rather than drifting by Egypt's UTC offset at midnight.
-    const fromTime = from ? new Date(`${from}T00:00:00`).getTime() : null
-    const toTime = to ? new Date(`${to}T23:59:59.999`).getTime() : null
-    return all.filter((r) => {
-      const t = new Date(r.postingDatetime).getTime()
-      if (fromTime !== null && t < fromTime) return false
-      if (toTime !== null && t > toTime) return false
-      return true
-    })
-  }, [batches.data?.rows, products.data, from, to])
+    return buildWasteReportRows(batches.data?.rows ?? [], lookup)
+  }, [batches.data?.rows, products.data])
 
   const summary = useMemo(() => summarizeWasteReport(rows), [rows])
   const exportRows = useMemo(() => wasteReportToCsvRows(rows), [rows])
@@ -190,10 +188,10 @@ export function ProductionWasteReportPage() {
         }
       />
 
-      {(batches.data?.total ?? 0) > SCAN_CAP ? (
+      {(batches.data?.total ?? 0) > WASTE_REPORT_SCAN_CAP ? (
         <p className="text-xs text-amber-700 dark:text-amber-400">
-          هناك أكثر من {SCAN_CAP} أمر تشغيل معتمد — هذا التقرير يعرض الأحدث {SCAN_CAP} فقط. ضيّق
-          نطاق التاريخ لعرض فترة أقدم.
+          هناك أكثر من {WASTE_REPORT_SCAN_CAP} أمر تشغيل معتمد في هذه الفترة — هذا التقرير يعرض
+          الأحدث {WASTE_REPORT_SCAN_CAP} فقط. ضيّق نطاق التاريخ لعرض النتائج كاملة.
         </p>
       ) : null}
     </div>
