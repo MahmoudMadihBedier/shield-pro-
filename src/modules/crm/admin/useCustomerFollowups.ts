@@ -15,7 +15,18 @@ import {
   type CreateFollowupInput,
 } from '../data/followups-repo'
 import { sortFollowups, type FollowupRow, type FollowupStatus } from '../domain/followup'
-import { crmAdminKeys } from '../query-keys'
+import { crmAdminKeys, crmHubKeys } from '../query-keys'
+
+/**
+ * A follow-up mutated from the customer detail page also shows up on the CRM
+ * hub's "my open follow-ups" widget (`crmHubKeys`) — a separate query-key
+ * namespace from `crmAdminKeys`, so it needs its own invalidation call or it
+ * silently goes stale (still shows a just-completed follow-up as open).
+ */
+function invalidateFollowups(queryClient: ReturnType<typeof useQueryClient>, customerId: string) {
+  void queryClient.invalidateQueries({ queryKey: crmAdminKeys.followups(customerId) })
+  void queryClient.invalidateQueries({ queryKey: crmHubKeys.root() })
+}
 
 export function useCustomerFollowups(customerId: string | undefined) {
   return useQuery<FollowupRow[], AppError>({
@@ -38,7 +49,7 @@ export function useCreateFollowup(customerId: string) {
       return res.value
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: crmAdminKeys.followups(customerId) })
+      invalidateFollowups(queryClient, customerId)
     },
   })
 }
@@ -56,7 +67,7 @@ export function useSetFollowupStatus(customerId: string) {
       return res.value
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: crmAdminKeys.followups(customerId) })
+      invalidateFollowups(queryClient, customerId)
     },
   })
 }
@@ -70,7 +81,7 @@ export function useReopenFollowup(customerId: string) {
       return res.value
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: crmAdminKeys.followups(customerId) })
+      invalidateFollowups(queryClient, customerId)
     },
   })
 }
@@ -84,7 +95,7 @@ export function useDeleteFollowup(customerId: string) {
       return res.value
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: crmAdminKeys.followups(customerId) })
+      invalidateFollowups(queryClient, customerId)
     },
   })
 }
