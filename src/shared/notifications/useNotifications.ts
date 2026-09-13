@@ -17,6 +17,7 @@ import {
   listNotifications,
   markAllRead,
   markRead,
+  syncHighWasteNotifications,
   syncOverdueFollowupNotifications,
   type NotificationListPage,
   type NotificationListParams,
@@ -148,6 +149,42 @@ export function useSyncOverdueFollowupNotifications(): void {
   useEffect(() => {
     if (query.isError) {
       console.error('overdue-follow-up notification sync failed:', query.error)
+    }
+  }, [query.isError, query.error])
+}
+
+/**
+ * "Check on read" for high-waste production batches (Plan §2.6, the
+ * `high_waste` kind). Same shape and posture as
+ * {@link useSyncOverdueFollowupNotifications} — see that hook's comments for
+ * why this lives outside the `notifications` query-key prefix and treats a
+ * sync failure as best-effort, not user-facing. Safe to mount globally: the
+ * RPC itself no-ops for a caller with no manufacturing-facing role.
+ */
+const WASTE_SYNC_QUERY_KEY = (recipientUserId: string) =>
+  ['high-waste-notification-sync', recipientUserId] as const
+
+export function useSyncHighWasteNotifications(): void {
+  const { principal } = useAuth()
+  const queryClient = useQueryClient()
+  const recipientUserId = principal?.userId ?? null
+
+  const query = useQuery<number, AppError>({
+    queryKey: WASTE_SYNC_QUERY_KEY(recipientUserId ?? ''),
+    enabled: recipientUserId !== null,
+    staleTime: 5 * 60_000,
+    retry: false,
+    queryFn: async () => {
+      const result = await syncHighWasteNotifications()
+      if (isErr(result)) throw result.error
+      if (result.value > 0) invalidateAll(queryClient)
+      return result.value
+    },
+  })
+
+  useEffect(() => {
+    if (query.isError) {
+      console.error('high-waste notification sync failed:', query.error)
     }
   }, [query.isError, query.error])
 }
