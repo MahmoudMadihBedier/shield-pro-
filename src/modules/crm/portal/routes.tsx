@@ -12,8 +12,14 @@ import type { RouteObject } from 'react-router-dom'
 
 import { RequirePortalAuth } from './components/RequirePortalAuth'
 
-const PortalLoginPage = lazy(() =>
-  import('./pages/PortalLoginPage').then((m) => ({ default: m.PortalLoginPage })),
+// The one login page for both staff and portal (see its own doc comment).
+// `router.tsx` lazy-loads the same module specifier for `/login` — the
+// bundler resolves both `lazy()` wrappers to one shared chunk, so this is
+// NOT a second copy; a static import here would instead pull the whole page
+// (RHF, zod, the portal form) eagerly into the main bundle, since this route
+// manifest is imported statically at the top of `router.tsx`.
+const LoginPage = lazy(() =>
+  import('@/presentation/pages/LoginPage').then((m) => ({ default: m.LoginPage })),
 )
 const PortalLayout = lazy(() =>
   import('./pages/PortalLayout').then((m) => ({ default: m.PortalLayout })),
@@ -47,7 +53,7 @@ export const portalRoutes: RouteObject[] = [
     path: '/portal/login',
     element: (
       <Lazy>
-        <PortalLoginPage />
+        <LoginPage initialMode="portal" />
       </Lazy>
     ),
   },
