@@ -34,7 +34,16 @@ export const ProductionBatchDetailPage = lazy(() =>
     default: m.ProductionBatchDetailPage,
   })),
 )
+export const ProductionWasteReportPage = lazy(() =>
+  import('./pages/ProductionWasteReportPage').then((m) => ({
+    default: m.ProductionWasteReportPage,
+  })),
+)
 
 export function Boundary({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<div className="p-6 text-sm text-zinc-500">جارٍ التحميل…</div>}>{children}</Suspense>
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-zinc-500">جارٍ التحميل…</div>}>
+      {children}
+    </Suspense>
+  )
 }

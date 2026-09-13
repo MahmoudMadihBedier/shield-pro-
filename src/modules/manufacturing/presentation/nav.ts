@@ -6,11 +6,7 @@
 import { Role } from '@/core/rbac'
 import type { NavItem } from '@/presentation/layout/nav'
 
-const MANUFACTURING_ROLES = [
-  Role.FactoryManager,
-  Role.FactoryAccountant,
-  Role.SystemAdmin,
-] as const
+const MANUFACTURING_ROLES = [Role.FactoryManager, Role.FactoryAccountant, Role.SystemAdmin] as const
 
 export const manufacturingNavItems: NavItem[] = [
   {
@@ -30,6 +26,12 @@ export const manufacturingNavItems: NavItem[] = [
     to: '/manufacturing/batches',
     label: 'أوامر التشغيل',
     labelEn: 'Production batches',
+    roles: MANUFACTURING_ROLES,
+  },
+  {
+    to: '/manufacturing/waste-report',
+    label: 'تقرير الهالك',
+    labelEn: 'Waste report',
     roles: MANUFACTURING_ROLES,
   },
 ]
