@@ -14,6 +14,8 @@
  */
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
+import { CORS_HEADERS, handleCorsPreflight } from '../_shared/cors.ts'
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
@@ -36,7 +38,7 @@ const BAN_FOREVER = '876000h'
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json' },
+    headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
   })
 }
 
@@ -50,6 +52,8 @@ function str(v: unknown): string {
 }
 
 Deno.serve(async (req) => {
+  const preflight = handleCorsPreflight(req)
+  if (preflight) return preflight
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405)
 
   const authHeader = req.headers.get('Authorization') ?? ''
