@@ -9,7 +9,7 @@
  *
  * Presentation only — all money maths comes from `domain/pricing`.
  */
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 
 import { formatCurrency, formatNumber } from '@/shared/formatters'
 import { Button } from '@/shared/ui'
@@ -31,6 +31,59 @@ const EMPTY_LINE: InvoiceLine = {
   base_price: 0,
   discount_pct: 0,
   net_price: 0,
+}
+
+/**
+ * A keyboard-wedge barcode scanner types into a focused input and sends
+ * Enter — no special hardware API needed. Looks the code up against the
+ * already-loaded `productOptions` (same list the picker uses) and appends a
+ * line on a match.
+ */
+function BarcodeScanBox({
+  onScan,
+  disabled,
+}: {
+  onScan: (barcode: string) => boolean
+  disabled?: boolean
+}) {
+  const [value, setValue] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const submit = () => {
+    const code = value.trim()
+    if (!code) return
+    const found = onScan(code)
+    setError(found ? null : 'لم يتم العثور على صنف بهذا الباركود')
+    setValue('')
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-dashed border-[var(--border-strong)] p-2">
+      <input
+        ref={inputRef}
+        dir="ltr"
+        inputMode="text"
+        disabled={disabled}
+        placeholder="امسح الباركود / Scan barcode"
+        className={`${CONTROL} max-w-xs`}
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value)
+          if (error) setError(null)
+        }}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter') return
+          e.preventDefault()
+          submit()
+        }}
+      />
+      <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={submit}>
+        إضافة
+      </Button>
+      {error ? <span className="text-xs text-red-600 dark:text-red-400">{error}</span> : null}
+    </div>
+  )
 }
 
 export interface InvoiceLineEditorProps {
@@ -127,10 +180,30 @@ export function InvoiceLineEditor({
     [value, onChange, customerDiscountPct],
   )
 
+  /** Append a line for the product whose `barcode` matches exactly. `false` = no match. */
+  const addByBarcode = useCallback(
+    (barcode: string): boolean => {
+      const product = productOptions.find((o) => o.barcode && o.barcode === barcode)
+      if (!product) return false
+      const startingDiscount = Math.min(
+        customerDiscountPct,
+        product.defaultDiscountPct > 0 ? product.defaultDiscountPct : customerDiscountPct,
+      )
+      const line = reprice(
+        { ...EMPTY_LINE, discount_pct: startingDiscount },
+        { product_id: product.value, sale_unit: product.saleUnits[0]?.unit ?? '' },
+      )
+      onChange([...value, line])
+      return true
+    },
+    [productOptions, customerDiscountPct, value, onChange, reprice],
+  )
+
   const totals = useMemo(() => invoiceTotals(value), [value])
 
   return (
     <div className="space-y-2">
+      <BarcodeScanBox onScan={addByBarcode} disabled={disabled} />
       <div className="grid gap-2 px-2 text-xs font-semibold text-[var(--text-muted)]" style={GRID}>
         <span>الصنف / Product</span>
         <span className="text-start">الكمية / Qty</span>

@@ -22,12 +22,6 @@ export const accountingNavItems: NavItem[] = [
     end: true,
   },
   {
-    to: '/accounting/receipts',
-    label: 'التحصيلات',
-    labelEn: 'Collections',
-    roles: ACCOUNTING_NAV_ROLES,
-  },
-  {
     to: '/accounting/vouchers',
     label: 'سندات الصرف والقبض',
     labelEn: 'Vouchers',

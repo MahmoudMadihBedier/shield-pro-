@@ -253,6 +253,7 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
     columns: [
       { field: 'code', sortable: true },
       { field: 'name', sortable: true },
+      { field: 'barcode' },
       { field: 'uom', format: 'unit' },
       { field: 'base_price', format: 'currency', align: 'end' },
       { field: 'default_discount_pct', format: 'number', align: 'end' },
@@ -262,6 +263,7 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
       { name: 'code', kind: 'text', required: true },
       { name: 'name', kind: 'text', required: true },
       { name: 'name_ar', kind: 'text' },
+      { name: 'barcode', kind: 'text', placeholder: 'امسح أو أدخل الباركود' },
       { name: 'uom', kind: 'select', required: true, options: UNIT_OPTIONS },
       { name: 'base_price', kind: 'number', required: true, min: 0 },
       { name: 'default_discount_pct', kind: 'number', min: 0, max: 100 },
@@ -272,6 +274,7 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
       code: '',
       name: '',
       name_ar: '',
+      barcode: '',
       uom: DEFAULT_UNIT,
       base_price: 0,
       default_discount_pct: 0,

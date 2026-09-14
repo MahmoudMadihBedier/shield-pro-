@@ -223,11 +223,25 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        // Wider than `AdminRoute` on purpose: this page hosts the CRM
+        // activity log / follow-ups / portal account panels that
+        // BranchAccountant, ChiefAccountant and SalesRep are meant to work
+        // with (`docs/CRM_PLAN.md` §"Surfaced while building #1/#3") — RLS
+        // (branch + rep scope) is still the real access boundary underneath.
         path: 'admin/customers/:id',
         element: (
-          <AdminRoute>
-            <CustomerDetailPage />
-          </AdminRoute>
+          <RequireRole
+            anyOf={[Role.SystemAdmin, Role.BranchAccountant, Role.ChiefAccountant, Role.SalesRep]}
+            fallback={
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                لا تملك صلاحية عرض بيانات هذا العميل.
+              </div>
+            }
+          >
+            <Lazy>
+              <CustomerDetailPage />
+            </Lazy>
+          </RequireRole>
         ),
       },
       {

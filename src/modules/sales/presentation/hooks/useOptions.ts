@@ -39,6 +39,8 @@ export interface ProductOption extends SelectOption {
   unit: string
   /** Sale-unit picker options — base unit first, then configured alternates. */
   saleUnits: ResolvedSaleUnit[]
+  /** Scanned barcode, if the product has one. */
+  barcode?: string
 }
 
 /** Approved customers only — a pending customer cannot be invoiced. */
@@ -81,6 +83,7 @@ export function useProductOptions() {
           defaultDiscountPct: row.default_discount_pct,
           unit: row.uom,
           saleUnits: resolveSaleUnits(row.uom, row.sale_units),
+          barcode: row.barcode ?? undefined,
         }))
     },
   })

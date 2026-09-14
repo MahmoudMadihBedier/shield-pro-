@@ -192,6 +192,16 @@ function readScope(def: TableDef): string {
   if (def.id === 'rep_stock_ledger' || def.id === 'rep_cash_ledger') {
     return 'public._can_read_rep(rep_user_id)'
   }
+  if (def.id === 'customers') {
+    // Branch-scoped as usual, further narrowed for a pure sales rep: an
+    // unassigned customer stays branch-wide visible, but once
+    // `assigned_rep_user_id` is set only that rep (or a role above rep level)
+    // may read the row. Fixes a rep seeing every customer in the branch.
+    return (
+      'public._can_read_branch(branch_id) and ("assigned_rep_user_id" is null ' +
+      'or "assigned_rep_user_id" = auth.uid()::text or not public._is_rep_restricted())'
+    )
+  }
   const KEEP_OPEN = new Set([
     'branches',
     'products',
@@ -350,6 +360,16 @@ create or replace function public._can_read_rep(p_rep text) returns boolean
       or p_rep = auth.uid()::text
       or exists (select 1 from public.users u
                  where u.auth_user_id = p_rep and u.branch_id = public.user_branch_id())
+$$;
+
+-- A caller restricted to their own assigned rows (Plan §3 fix): holds only
+-- sales_rep, no role that already sees the whole branch (mirrors
+-- src/core/rbac.ts BRANCH_SCOPED_ROLES minus the accountant carve-out).
+create or replace function public._is_rep_restricted() returns boolean
+  language sql stable security definer set search_path = public as $$
+  select public.has_role('sales_rep')
+      and not public._has_global_scope()
+      and not public.has_role('branch_accountant')
 $$;
 
 `

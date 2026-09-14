@@ -212,12 +212,14 @@ export const productRowSchema = z.object({
   default_discount_pct: rowNum0,
   allowed_waste_pct: rowNum0,
   is_active: rowBool,
+  barcode: rowOptStr,
 })
 export const productInputSchema = z.object({
   code: codeInput,
   name: reqText(128, 'اسم المنتج'),
   name_ar: optText(128),
   uom: unitInput,
+  barcode: optText(64),
   /**
    * The admin-set selling price and the ONLY price field. There is no
    * per-invoice / per-sale price override anywhere in the system — the sole
@@ -316,6 +318,9 @@ export const customerRowSchema = z.object({
   /** Links to the customer's own Appwrite Auth account for the CRM portal
    *  (`src/core/portal.ts`) — set only by the `/portal-account/*` Functions. */
   portal_user_id: rowOptStr,
+  /** The sales rep this customer belongs to, or `null` when unassigned (branch-
+   *  wide visible). Set only via the `assign_customer_rep` RPC — not a form field. */
+  assigned_rep_user_id: rowOptStr,
 })
 /**
  * `approval_state` and `created_by` are NOT form fields:

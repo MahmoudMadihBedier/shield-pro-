@@ -11,6 +11,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/application/auth/context'
 import { DocStatus } from '@/core/doc-status'
 import type { AppError } from '@/core/errors'
+import { googleMapsUrl } from '@/core/geo'
 import { formatCurrency, formatDateTime, formatNumber } from '@/shared/formatters'
 import { Button, Card, PageHeader } from '@/shared/ui'
 import { DocumentLetterhead } from '@/shared/documents'
@@ -133,7 +134,19 @@ export function SalesInvoiceDetailPage() {
           </Row>
         ) : null}
         <Row label="الموقع">
-          <span dir="ltr">{invoice.geo}</span>
+          {googleMapsUrl(invoice.geo) ? (
+            <a
+              href={googleMapsUrl(invoice.geo) ?? undefined}
+              target="_blank"
+              rel="noreferrer"
+              dir="ltr"
+              className="text-blue-600 underline dark:text-blue-400"
+            >
+              {invoice.geo} — عرض على الخريطة
+            </a>
+          ) : (
+            <span dir="ltr">{invoice.geo || '—'}</span>
+          )}
         </Row>
         <Row label="التاريخ">{formatDateTime(invoice.posting_datetime)}</Row>
       </Card>
