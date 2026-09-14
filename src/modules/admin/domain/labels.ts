@@ -86,6 +86,7 @@ export const FIELD_LABELS: Record<AdminEntity, Record<string, Label>> = {
     code: { ar: 'الكود', en: 'Code' },
     name: { ar: 'الاسم', en: 'Name' },
     name_ar: { ar: 'الاسم بالعربية', en: 'Name (Arabic)' },
+    barcode: { ar: 'الباركود', en: 'Barcode' },
     uom: { ar: 'وحدة القياس', en: 'Unit' },
     base_price: { ar: 'السعر الأساسي', en: 'Base price' },
     default_discount_pct: { ar: 'نسبة الخصم الافتراضية %', en: 'Default discount %' },

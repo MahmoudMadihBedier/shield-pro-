@@ -222,8 +222,14 @@ export const TABLES: TableDef[] = [
       { key: 'default_discount_pct', type: 'float', default: 0, min: 0, max: 100 },
       { key: 'allowed_waste_pct', type: 'float', default: 0, min: 0, max: 100 },
       { key: 'is_active', type: 'boolean', default: true },
+      // Scanned barcode (EAN/UPC/etc). Optional — a unique index (Postgres
+      // allows multiple NULLs) so unbarcoded products never collide.
+      str('barcode', 64),
     ],
-    [{ key: 'products_code_uq', type: 'unique', columns: ['code'] }],
+    [
+      { key: 'products_code_uq', type: 'unique', columns: ['code'] },
+      { key: 'products_barcode_uq', type: 'unique', columns: ['barcode'] },
+    ],
   ),
 
   master(
@@ -283,11 +289,18 @@ export const TABLES: TableDef[] = [
       // set by the client; only the portal-account Function (System Admin /
       // Branch Accountant triggered) creates or resets it.
       str('portal_user_id', 36),
+      // The sales rep this customer belongs to (fixes a rep seeing every
+      // customer in the branch, not just their own). `null` = unassigned,
+      // visible to any rep in the branch; once set, only that rep + branch/
+      // chief accountant + system admin can see the row. Set exclusively via
+      // the `assign_customer_rep` RPC (0039) — never a direct client write.
+      str('assigned_rep_user_id', 36),
     ],
     [
       { key: 'customers_code_uq', type: 'unique', columns: ['code'] },
       { key: 'customers_branch_idx', type: 'key', columns: ['branch_id'] },
       { key: 'customers_approval_idx', type: 'key', columns: ['approval_state'] },
+      { key: 'customers_rep_idx', type: 'key', columns: ['assigned_rep_user_id'] },
     ],
   ),
 

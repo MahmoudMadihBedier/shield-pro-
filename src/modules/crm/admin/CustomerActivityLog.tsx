@@ -9,11 +9,20 @@ import type { DefaultValues } from 'react-hook-form'
 
 import { useAuth } from '@/application/auth/context'
 import { appError, type AppError } from '@/core/errors'
+import { googleMapsUrl } from '@/core/geo'
 import { isOwnerOrAdmin } from '@/core/rbac'
 import { err, ok, type Result } from '@/core/result'
 import { formatDate } from '@/shared/formatters'
 import { ExportButton } from '@/shared/excel'
-import { DateField, Form, FormError, SelectField, TextAreaField, TextField } from '@/shared/forms'
+import {
+  DateField,
+  Form,
+  FormError,
+  GeoField,
+  SelectField,
+  TextAreaField,
+  TextField,
+} from '@/shared/forms'
 import { Badge, Button, Card } from '@/shared/ui'
 
 import {
@@ -60,6 +69,7 @@ export function CustomerActivityLog({ customer }: CustomerActivityLogProps) {
     note: '',
     occurred_on: todayLocalDate(),
     outcome: '',
+    geo: '',
   }
 
   async function handleAdd(values: ActivityForm): Promise<Result<unknown>> {
@@ -73,6 +83,7 @@ export function CustomerActivityLog({ customer }: CustomerActivityLogProps) {
         // store as an ISO datetime at local midnight of the chosen day
         occurredAt: new Date(`${values.occurred_on}T00:00:00`).toISOString(),
         outcome: values.outcome || null,
+        geo: values.geo || null,
       })
       setAdding(false)
       return ok(undefined)
@@ -98,6 +109,7 @@ export function CustomerActivityLog({ customer }: CustomerActivityLogProps) {
               { key: 'subject', header: 'Subject' },
               { key: 'note', header: 'Note' },
               { key: 'outcome', header: 'Outcome' },
+              { key: 'geo', header: 'Location' },
             ]}
             disabled={rows.length === 0}
           />
@@ -147,6 +159,7 @@ export function CustomerActivityLog({ customer }: CustomerActivityLogProps) {
                     label: activityOutcomeLabel(o) ?? o,
                   }))}
                 />
+                <GeoField name="geo" label="الموقع عند الزيارة (اختياري)" labelEn="Visit location" />
                 <FormError message={formError} />
                 <div className="flex items-center justify-end gap-2">
                   <Button
@@ -202,6 +215,19 @@ export function CustomerActivityLog({ customer }: CustomerActivityLogProps) {
                   <p className="mt-0.5 text-xs text-zinc-400" dir="ltr">
                     {formatDate(row.occurred_at)}
                     {outcome ? ` · ${outcome}` : ''}
+                    {googleMapsUrl(row.geo) ? (
+                      <>
+                        {' · '}
+                        <a
+                          href={googleMapsUrl(row.geo) ?? undefined}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline"
+                        >
+                          الموقع على الخريطة
+                        </a>
+                      </>
+                    ) : null}
                   </p>
                 </div>
                 {canDelete(row.created_by) ? (

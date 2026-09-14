@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useAuth } from '@/application/auth/context'
-import { isSystemAdmin } from '@/core/rbac'
+import { hasRole, isSystemAdmin, Role } from '@/core/rbac'
 import { Button } from '@/shared/ui'
 
 import type { LeadRow } from '../../domain/lead'
@@ -25,10 +25,16 @@ export function LeadConvertCell({ lead }: { lead: LeadRow }) {
   if (lead.stage !== 'won') return null
 
   if (lead.converted_customer_id) {
-    // `/admin/customers/:id` is System-Admin-only (AdminRoute) — the sales
-    // roles who actually work leads would hit an access-denied page, so only
-    // render the link for the role that can follow it.
-    return principal != null && isSystemAdmin(principal) ? (
+    // `/admin/customers/:id` admits SystemAdmin / BranchAccountant /
+    // ChiefAccountant / SalesRep (router.tsx) — the leads list itself has no
+    // role guard, so only render the link for a role that can follow it.
+    const canOpenCustomer =
+      principal != null &&
+      (isSystemAdmin(principal) ||
+        hasRole(principal, Role.BranchAccountant) ||
+        hasRole(principal, Role.ChiefAccountant) ||
+        hasRole(principal, Role.SalesRep))
+    return canOpenCustomer ? (
       <Link
         to={`/admin/customers/${lead.converted_customer_id}`}
         className="text-xs text-emerald-700 underline dark:text-emerald-400"

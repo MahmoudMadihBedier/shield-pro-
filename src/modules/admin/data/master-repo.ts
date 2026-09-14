@@ -54,7 +54,7 @@ export interface MasterRepo<TRow, TInput> {
   list(params: ListParams): Promise<Result<ListPage<TRow>>>
   get(id: string): Promise<Result<TRow>>
   create(input: TInput, overrides?: Record<string, unknown>): Promise<Result<TRow>>
-  update(id: string, patch: Partial<TInput>): Promise<Result<TRow>>
+  update(id: string, patch: Partial<TInput>, overrides?: Record<string, unknown>): Promise<Result<TRow>>
 }
 
 export interface MasterRepoConfig<TRow, TInput> {
@@ -163,7 +163,11 @@ export function makeMasterRepo<TRow, TInput>(
     }
   }
 
-  async function update(id: string, patch: Partial<TInput>): Promise<Result<TRow>> {
+  async function update(
+    id: string,
+    patch: Partial<TInput>,
+    overrides: Record<string, unknown> = {},
+  ): Promise<Result<TRow>> {
     const partialSchema = (
       inputSchema as unknown as { partial: () => ZodType<Partial<TInput>> }
     ).partial()
@@ -175,12 +179,13 @@ export function makeMasterRepo<TRow, TInput>(
         }),
       )
     }
+    const data = { ...(parsedPatch.data as Record<string, unknown>), ...overrides }
     try {
       const row = await tablesDB.updateRow({
         databaseId: DATABASE_ID,
         tableId,
         rowId: id,
-        data: parsedPatch.data as Record<string, unknown>,
+        data,
       })
       const parsed = rowSchema.safeParse(row)
       if (!parsed.success) {

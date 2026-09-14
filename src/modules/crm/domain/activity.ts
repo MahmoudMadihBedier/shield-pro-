@@ -8,6 +8,8 @@
  */
 import { z } from 'zod'
 
+import { GEO_REGEX } from '@/core/geo'
+
 /** `crm_activities.kind`. */
 export const ACTIVITY_KINDS = [
   'call',
@@ -41,6 +43,8 @@ export const activityRowSchema = z.object({
   outcome: activityOutcomeSchema.nullish(),
   created_by: z.string(),
   branch_id: rowOptStr,
+  /** "lat,lng" captured on the day of a field visit, if any (`core/geo.ts` shape). */
+  geo: rowOptStr,
 })
 export type ActivityRow = z.infer<typeof activityRowSchema>
 
@@ -54,6 +58,7 @@ export const activityFormSchema = z.object({
   note: z.string().trim().max(2000, 'الملاحظة طويلة جدًا').optional(),
   occurred_on: z.string().min(1, 'اختر التاريخ'),
   outcome: z.union([z.literal(''), activityOutcomeSchema]).optional(),
+  geo: z.union([z.literal(''), z.string().trim().regex(GEO_REGEX, 'صيغة غير صحيحة')]).optional(),
 })
 export type ActivityForm = z.infer<typeof activityFormSchema>
 
@@ -110,6 +115,7 @@ export function activitiesToRows(rows: readonly ActivityRow[]): Array<{
   subject: string
   note: string
   outcome: string
+  geo: string
 }> {
   return sortActivities(rows).map((r) => ({
     date: r.occurred_at,
@@ -117,5 +123,6 @@ export function activitiesToRows(rows: readonly ActivityRow[]): Array<{
     subject: r.subject,
     note: r.note ?? '',
     outcome: activityOutcomeLabel(r.outcome) ?? '',
+    geo: r.geo ?? '',
   }))
 }

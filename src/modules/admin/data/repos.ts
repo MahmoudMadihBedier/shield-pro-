@@ -95,9 +95,34 @@ async function setSaleUnits(
   }
 }
 
+/**
+ * `products_barcode_uq` is a unique index, and Postgres unique indexes treat
+ * `''` as a real, comparable value (only `NULL` is exempt) — so the plain
+ * `optText` schema (which leaves an untouched field as `''`, not `undefined`)
+ * would let the first barcode-less product through and then unique-violate
+ * every one after it. Force blank → `null` at the write boundary via the
+ * generic factory's `overrides`, never at the Zod-schema/form-type level.
+ */
+function normalizedBarcode(barcode: string | undefined): string | null {
+  return barcode?.trim() ? barcode.trim() : null
+}
+
 export const productsRepo: MasterRepo<Product, ProductInput> & {
   setSaleUnits: typeof setSaleUnits
-} = { ...productsBase, setSaleUnits }
+} = {
+  ...productsBase,
+  create: (input, overrides) =>
+    productsBase.create(input, { barcode: normalizedBarcode(input.barcode), ...overrides }),
+  update: (id, patch, overrides) =>
+    productsBase.update(
+      id,
+      patch,
+      patch.barcode !== undefined
+        ? { barcode: normalizedBarcode(patch.barcode), ...overrides }
+        : overrides,
+    ),
+  setSaleUnits,
+}
 
 export const customersRepo: MasterRepo<Customer, CustomerInput> = makeMasterRepo({
   tableId: Tables.customers,

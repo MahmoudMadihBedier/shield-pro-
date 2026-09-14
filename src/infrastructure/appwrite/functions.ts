@@ -37,6 +37,7 @@ export const ServerRoute = {
   recordCreditOverride: '/credit/override',
   importRawMaterialPrices: '/import/raw-material-prices',
   adminSetStatus: '/admin/set-status',
+  assignCustomerRep: '/customers/assign-rep',
   recordDataExport: '/admin/record-data-export',
   createStaffAccount: '/staff-account/create',
   updateStaffAccount: '/staff-account/update',
@@ -328,6 +329,11 @@ const DISPATCH: Record<string, Dispatch> = {
     kind: 'rpc',
     fn: 'admin_set_status',
     args: (p) => ({ p_table: p.table, p_row_id: p.rowId, p_patch: p.patch, p_reason: p.reason }),
+  },
+  [ServerRoute.assignCustomerRep]: {
+    kind: 'rpc',
+    fn: 'assign_customer_rep',
+    args: (p) => ({ p_customer_id: p.customerId, p_rep_user_id: p.repUserId ?? null }),
   },
   [ServerRoute.recordDataExport]: {
     kind: 'rpc',
@@ -665,6 +671,19 @@ export function adminSetStatus(
   reason: string,
 ): Promise<Result<AdminSetStatusResult>> {
   return invoke<AdminSetStatusResult>(ServerRoute.adminSetStatus, { table, rowId, patch, reason })
+}
+
+/**
+ * System Admin / Branch Accountant / Chief Accountant only: assign (or clear,
+ * with `repUserId: null`) the sales rep a customer belongs to. Fixes a rep
+ * being able to see every customer in the branch instead of just their own
+ * (`customers_read` RLS, migration 0039). Audited.
+ */
+export function assignCustomerRep(
+  customerId: string,
+  repUserId: string | null,
+): Promise<Result<unknown>> {
+  return invoke(ServerRoute.assignCustomerRep, { customerId, repUserId })
 }
 
 /**

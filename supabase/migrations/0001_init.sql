@@ -71,6 +71,16 @@ create or replace function public._can_read_rep(p_rep text) returns boolean
                  where u.auth_user_id = p_rep and u.branch_id = public.user_branch_id())
 $$;
 
+-- A caller restricted to their own assigned rows (Plan §3 fix): holds only
+-- sales_rep, no role that already sees the whole branch (mirrors
+-- src/core/rbac.ts BRANCH_SCOPED_ROLES minus the accountant carve-out).
+create or replace function public._is_rep_restricted() returns boolean
+  language sql stable security definer set search_path = public as $$
+  select public.has_role('sales_rep')
+      and not public._has_global_scope()
+      and not public.has_role('branch_accountant')
+$$;
+
 
 -- Branches (master)
 CREATE TABLE IF NOT EXISTS public."branches" (
@@ -140,7 +150,9 @@ CREATE TABLE IF NOT EXISTS public."products" (
   "default_discount_pct" double precision DEFAULT 0 CHECK ("default_discount_pct" >= 0 AND "default_discount_pct" <= 100),
   "allowed_waste_pct" double precision DEFAULT 0 CHECK ("allowed_waste_pct" >= 0 AND "allowed_waste_pct" <= 100),
   "is_active" boolean DEFAULT true,
-  CONSTRAINT "products_code_uq" UNIQUE ("code")
+  "barcode" text,
+  CONSTRAINT "products_code_uq" UNIQUE ("code"),
+  CONSTRAINT "products_barcode_uq" UNIQUE ("barcode")
 );
 CREATE TRIGGER "products_set_updated_at" BEFORE UPDATE ON public."products"
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
@@ -206,10 +218,12 @@ CREATE TABLE IF NOT EXISTS public."customers" (
   "approval_state" text DEFAULT 'pending_approval' NOT NULL CHECK ("approval_state" IN ('approved', 'pending_approval')),
   "created_by" text,
   "portal_user_id" text,
+  "assigned_rep_user_id" text,
   CONSTRAINT "customers_code_uq" UNIQUE ("code")
 );
 CREATE INDEX IF NOT EXISTS "customers_branch_idx" ON public."customers" ("branch_id");
 CREATE INDEX IF NOT EXISTS "customers_approval_idx" ON public."customers" ("approval_state");
+CREATE INDEX IF NOT EXISTS "customers_rep_idx" ON public."customers" ("assigned_rep_user_id");
 CREATE TRIGGER "customers_set_updated_at" BEFORE UPDATE ON public."customers"
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 ALTER TABLE public."customers" ENABLE ROW LEVEL SECURITY;
@@ -920,7 +934,7 @@ CREATE POLICY "suppliers_admin_write" ON public."suppliers" FOR ALL TO authentic
   USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: customers (master)
-CREATE POLICY "customers_read" ON public."customers" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id));
+CREATE POLICY "customers_read" ON public."customers" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id) and ("assigned_rep_user_id" is null or "assigned_rep_user_id" = auth.uid()::text or not public._is_rep_restricted()));
 CREATE POLICY "customers_admin_write" ON public."customers" FOR ALL TO authenticated
   USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 

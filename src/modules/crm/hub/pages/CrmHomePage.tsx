@@ -6,7 +6,7 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useAuth } from '@/application/auth/context'
-import { isSystemAdmin } from '@/core/rbac'
+import { hasRole, isSystemAdmin, Role } from '@/core/rbac'
 import { formatDate } from '@/shared/formatters'
 import { Badge, Card, PageHeader } from '@/shared/ui'
 
@@ -18,7 +18,16 @@ import { useMyOpenFollowups } from '../hooks'
 
 export function CrmHomePage() {
   const { principal } = useAuth()
-  const admin = principal != null && isSystemAdmin(principal)
+  // `/admin/customers/:id` admits SystemAdmin / BranchAccountant /
+  // ChiefAccountant / SalesRep (router.tsx) — anyone else (this hub itself has
+  // no role guard) would hit the access-denied fallback, so keep the link
+  // conditional rather than always-on.
+  const canOpenCustomer =
+    principal != null &&
+    (isSystemAdmin(principal) ||
+      hasRole(principal, Role.BranchAccountant) ||
+      hasRole(principal, Role.ChiefAccountant) ||
+      hasRole(principal, Role.SalesRep))
 
   const followups = useMyOpenFollowups(principal?.userId)
   const customerNames = useCustomerNameMap()
@@ -62,7 +71,7 @@ export function CrmHomePage() {
                     <div className="min-w-0">
                       <p className="truncate font-medium">{f.title}</p>
                       <p className="truncate text-xs text-zinc-400">
-                        {admin ? (
+                        {canOpenCustomer ? (
                           <Link to={`/admin/customers/${f.customer_id}`} className="underline">
                             {customerName}
                           </Link>

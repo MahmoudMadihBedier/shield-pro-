@@ -97,6 +97,7 @@ describe('activitiesToRows', () => {
       subject: 'تأكيد الطلب',
       note: '',
       outcome: 'إيجابية',
+      geo: '',
     })
   })
 })

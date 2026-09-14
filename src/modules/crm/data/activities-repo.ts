@@ -58,6 +58,8 @@ export interface LogActivityInput {
   /** ISO datetime the interaction happened. */
   occurredAt: string
   outcome?: string | null
+  /** "lat,lng" captured on the visit, if any. */
+  geo?: string | null
 }
 
 export async function logActivity(input: LogActivityInput): Promise<Result<ActivityRow>> {
@@ -76,6 +78,7 @@ export async function logActivity(input: LogActivityInput): Promise<Result<Activ
         note: input.note?.trim() ? input.note.trim() : null,
         occurred_at: input.occurredAt,
         outcome: input.outcome || null,
+        geo: input.geo?.trim() ? input.geo.trim() : null,
       },
     })
     return parseRow(created)
