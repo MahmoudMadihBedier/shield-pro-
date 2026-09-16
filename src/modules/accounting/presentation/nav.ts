@@ -13,6 +13,10 @@ export const ACCOUNTING_NAV_ROLES: readonly Role[] = [
   Role.SystemAdmin,
 ]
 
+/** Bank statement RLS (migration 0041) is company-wide treasury data — System
+ *  Admin + Chief Accountant only, narrower than the rest of accounting. */
+const BANK_STATEMENT_NAV_ROLES: readonly Role[] = [Role.SystemAdmin, Role.ChiefAccountant]
+
 export const accountingNavItems: NavItem[] = [
   {
     to: '/accounting',
@@ -62,5 +66,11 @@ export const accountingNavItems: NavItem[] = [
     label: 'دفتر الأستاذ',
     labelEn: 'General ledger',
     roles: ACCOUNTING_NAV_ROLES,
+  },
+  {
+    to: '/accounting/bank-statement',
+    label: 'كشف الحساب البنكي',
+    labelEn: 'Bank statement',
+    roles: BANK_STATEMENT_NAV_ROLES,
   },
 ]

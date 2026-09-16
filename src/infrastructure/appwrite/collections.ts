@@ -53,6 +53,9 @@ export const Tables = {
   repCashLedger: 'rep_cash_ledger',
   binBalances: 'bin_balances',
 
+  // ---- Treasury ----
+  bankStatementLines: 'bank_statement_lines',
+
   // ---- Control plane ----
   approvalRequests: 'approval_requests',
   approvalRules: 'approval_rules',

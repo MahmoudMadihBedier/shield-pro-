@@ -36,6 +36,9 @@ export const ServerRoute = {
   checkCustomerCredit: '/credit/check',
   recordCreditOverride: '/credit/override',
   importRawMaterialPrices: '/import/raw-material-prices',
+  importOpeningStock: '/import/opening-stock',
+  importBankStatement: '/import/bank-statement',
+  reconcileBankStatementLine: '/bank-statement/reconcile',
   adminSetStatus: '/admin/set-status',
   assignCustomerRep: '/customers/assign-rep',
   recordDataExport: '/admin/record-data-export',
@@ -324,6 +327,21 @@ const DISPATCH: Record<string, Dispatch> = {
     kind: 'rpc',
     fn: 'import_raw_material_prices',
     args: (p) => ({ p_rows: p.rows }),
+  },
+  [ServerRoute.importOpeningStock]: {
+    kind: 'rpc',
+    fn: 'import_opening_stock',
+    args: (p) => ({ p_rows: p.rows }),
+  },
+  [ServerRoute.importBankStatement]: {
+    kind: 'rpc',
+    fn: 'import_bank_statement',
+    args: (p) => ({ p_rows: p.rows }),
+  },
+  [ServerRoute.reconcileBankStatementLine]: {
+    kind: 'rpc',
+    fn: 'set_bank_statement_reconciled',
+    args: (p) => ({ p_id: p.id, p_reconciled: p.reconciled }),
   },
   [ServerRoute.adminSetStatus]: {
     kind: 'rpc',
@@ -647,6 +665,57 @@ export function importRawMaterialPrices(
   rows: ReadonlyArray<{ code: string; purchase_price: number }>,
 ): Promise<Result<PriceImportResult>> {
   return invoke<PriceImportResult>(ServerRoute.importRawMaterialPrices, { rows })
+}
+
+export interface OpeningStockImportResult {
+  applied: number
+  skipped: number
+  errors: string[]
+  voucherNo?: string
+}
+
+/**
+ * System-Admin-only: post one opening-stock ledger move (via `post_stock_ledger`
+ * under the hood — never a direct `bin_balances` write) per valid row, all
+ * batched under one `ADJ-<year>-nnnnn` voucher. A product/warehouse pair that
+ * already has an opening entry is skipped, so re-running the same file is safe.
+ */
+export function importOpeningStock(
+  rows: ReadonlyArray<{ product_code: string; warehouse_name: string; qty: number; unit_cost: number }>,
+): Promise<Result<OpeningStockImportResult>> {
+  return invoke<OpeningStockImportResult>(ServerRoute.importOpeningStock, { rows })
+}
+
+export interface BankStatementImportResult {
+  applied: number
+  skipped: number
+  batchRef?: string
+}
+
+/**
+ * System-Admin-only: bulk-insert bank statement lines. Only skips a row
+ * missing its date/description or with neither a debit nor a credit —
+ * deliberately no content-based duplicate detection (two genuinely distinct
+ * transactions can share the same date/description/amount; financial data
+ * must never be silently dropped). Re-uploading the same file creates
+ * visible duplicate rows to review/delete, not a silent no-op.
+ */
+export function importBankStatement(
+  rows: ReadonlyArray<{
+    statement_date: string
+    description: string
+    reference?: string
+    debit: number
+    credit: number
+    balance?: number
+  }>,
+): Promise<Result<BankStatementImportResult>> {
+  return invoke<BankStatementImportResult>(ServerRoute.importBankStatement, { rows })
+}
+
+/** System Admin / Chief Accountant only: toggle one bank statement line's reconciled flag. Audited. */
+export function reconcileBankStatementLine(id: string, reconciled: boolean): Promise<Result<unknown>> {
+  return invoke(ServerRoute.reconcileBankStatementLine, { id, reconciled })
 }
 
 // --- Admin operational override ----------------------------------------

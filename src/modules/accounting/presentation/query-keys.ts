@@ -28,4 +28,8 @@ export const accountingKeys = {
     customers: () => ['accounting', 'options', 'customers'] as const,
     submittedInvoices: () => ['accounting', 'options', 'submitted-invoices'] as const,
   },
+
+  bankStatement: {
+    list: (params: unknown) => ['accounting', 'bank-statement', 'list', params] as const,
+  },
 } as const
