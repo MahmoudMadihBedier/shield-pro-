@@ -51,6 +51,9 @@ const ProfitAndLossPage = lazy(() =>
 const GeneralLedgerPage = lazy(() =>
   import('./pages').then((m) => ({ default: m.GeneralLedgerPage })),
 )
+const BankStatementPage = lazy(() =>
+  import('./pages').then((m) => ({ default: m.BankStatementPage })),
+)
 
 function Lazy({ children }: { children: ReactNode }) {
   return (
@@ -178,6 +181,14 @@ export const accountingRoutes: RouteObject[] = [
     element: (
       <Lazy>
         <GeneralLedgerPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'accounting/bank-statement',
+    element: (
+      <Lazy>
+        <BankStatementPage />
       </Lazy>
     ),
   },

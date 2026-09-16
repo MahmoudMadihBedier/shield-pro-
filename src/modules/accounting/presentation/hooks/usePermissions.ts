@@ -33,6 +33,8 @@ export interface AccountingPermissions {
   canCancel: boolean
   /** Post a submitted document into the general ledger. */
   canPostGl: boolean
+  /** Chief Accountant or System Admin — bank statement import/reconcile, cancels. */
+  isSenior: boolean
 }
 
 export function useAccountingPermissions(): AccountingPermissions {
@@ -50,6 +52,7 @@ export function useAccountingPermissions(): AccountingPermissions {
       canSubmit: isAccountant,
       canCancel: isSenior,
       canPostGl: isAccountant,
+      isSenior,
     }
   }, [principal])
 }
