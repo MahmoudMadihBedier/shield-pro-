@@ -4,12 +4,15 @@ import { appError } from '@/core/errors'
 import { err, ok } from '@/core/result'
 
 const postGl = vi.fn()
+const reverseGl = vi.fn()
 
 vi.mock('@/infrastructure/appwrite/functions', () => ({
   postGl: (...args: unknown[]) => postGl(...args),
+  reverseGl: (...args: unknown[]) => reverseGl(...args),
 }))
 
-const { postReceiptToGl, postVoucherToGl, postWithdrawalToGl } = await import('../post-accounting')
+const { postReceiptToGl, postVoucherToGl, postWithdrawalToGl, reverseGlPosting } =
+  await import('../post-accounting')
 import type { CapitalWithdrawal, PaymentVoucher, Receipt } from '../../domain/schemas'
 
 function receipt(over: Partial<Receipt> = {}): Receipt {
@@ -167,5 +170,23 @@ describe('postWithdrawalToGl', () => {
     postGl.mockResolvedValue(err(appError('conflict', 'dup')))
     const res = await postWithdrawalToGl(withdrawal())
     expect(res).toEqual(ok({ voucherNo: 'CAPW-2026-00001', alreadyPosted: true, posted: null }))
+  })
+})
+
+describe('reverseGlPosting', () => {
+  it('calls /reverse-gl with the voucher number and reason', async () => {
+    reverseGl.mockResolvedValue(ok({ voucherNo: 'CAP-2026-00001', reversed: 2 }))
+
+    const res = await reverseGlPosting('CAP-2026-00001', 'مبلغ خاطئ')
+
+    expect(res).toEqual(ok({ voucherNo: 'CAP-2026-00001', reversed: 2 }))
+    expect(reverseGl).toHaveBeenCalledWith('CAP-2026-00001', 'مبلغ خاطئ')
+  })
+
+  it('propagates a server failure unchanged', async () => {
+    const failure = appError('forbidden', 'only chief accountant or admin')
+    reverseGl.mockResolvedValue(err(failure))
+    const res = await reverseGlPosting('CAP-2026-00001', 'مبلغ خاطئ')
+    expect(res).toEqual(err(failure))
   })
 })

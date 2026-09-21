@@ -14,15 +14,16 @@ import { AdminOverridePanel, DocumentLetterhead } from '@/shared/documents'
 import { formatCurrency, formatDateTime } from '@/shared/formatters'
 import { Badge, Button, Card, PageHeader } from '@/shared/ui'
 
-import { postWithdrawalToGl, type GlPosting } from '../../data/post-accounting'
+import { postWithdrawalToGl, reverseGlPosting, type GlPosting } from '../../data/post-accounting'
 import { CAPITAL_WITHDRAWAL_METHOD_LABELS } from '../../domain/labels'
 import type { CapitalWithdrawal } from '../../domain/schemas'
-import { DocStatusPill, SubmitCancelBar } from '../components'
+import { AmendPanel, Dialog, DocStatusPill, SubmitCancelBar } from '../components'
 import {
   useAccountingPermissions,
   useCapitalWithdrawal,
   useCapitalWithdrawalActions,
 } from '../hooks'
+import { CapitalWithdrawalFormPage } from './CapitalWithdrawalFormPage'
 
 export function CapitalWithdrawalDetailPage() {
   const { id = '' } = useParams()
@@ -30,10 +31,42 @@ export function CapitalWithdrawalDetailPage() {
   const perms = useAccountingPermissions()
 
   const query = useCapitalWithdrawal(id)
-  const { submit, cancel } = useCapitalWithdrawalActions()
+  const { createDraft, submit, cancel } = useCapitalWithdrawalActions()
 
   const [actionError, setActionError] = useState<string | null>(null)
   const [posting, setPosting] = useState<GlPosting | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [amendPending, setAmendPending] = useState(false)
+
+  async function handleAmend(row: CapitalWithdrawal, reason: string) {
+    setAmendPending(true)
+    setActionError(null)
+    try {
+      const reversed = await reverseGlPosting(row.reference_id, reason)
+      if (isErr(reversed)) throw reversed.error
+      if (row.doc_status === DocStatus.Submitted) {
+        await cancel.mutateAsync({ id: row.$id, reason })
+      }
+      const amended = await createDraft.mutateAsync({
+        fields: {
+          withdrawn_by: row.withdrawn_by,
+          method: row.method,
+          reason: row.reason ?? null,
+          amount: row.amount,
+          source_account: row.source_account,
+        },
+        extras: {
+          amendedFrom: row.reference_id,
+          remarks: `تعديل لـ ${row.reference_id}: ${reason}`,
+        },
+      })
+      navigate(`/accounting/capital-withdrawals/${amended.$id}`)
+    } catch (e) {
+      setActionError((e as AppError).message ?? 'تعذّر تنفيذ التعديل.')
+    } finally {
+      setAmendPending(false)
+    }
+  }
 
   const postGlMutation = useMutation<GlPosting, AppError, CapitalWithdrawal>({
     mutationFn: async (row) => {
@@ -55,9 +88,16 @@ export function CapitalWithdrawalDetailPage() {
         title={`سحب رأس مال ${row?.reference_id ?? ''}`}
         titleEn="Capital withdrawal"
         actions={
-          <Button variant="ghost" onClick={() => navigate('/accounting/capital-withdrawals')}>
-            رجوع
-          </Button>
+          <div className="flex items-center gap-2">
+            {row && row.doc_status === DocStatus.Draft && perms.canRecord ? (
+              <Button variant="secondary" onClick={() => setEditOpen(true)}>
+                تعديل
+              </Button>
+            ) : null}
+            <Button variant="ghost" onClick={() => navigate('/accounting/capital-withdrawals')}>
+              رجوع
+            </Button>
+          </div>
         }
       />
 
@@ -98,6 +138,11 @@ export function CapitalWithdrawalDetailPage() {
             {row.reason ? (
               <p className="text-zinc-600 dark:text-zinc-400">السبب: {row.reason}</p>
             ) : null}
+            {row.amended_from ? (
+              <p className="text-xs text-zinc-500">
+                تعديل لـ / Amendment of <span dir="ltr">{row.amended_from}</span>
+              </p>
+            ) : null}
           </Card>
 
           <Card>
@@ -125,6 +170,16 @@ export function CapitalWithdrawalDetailPage() {
                 ترحيل إلى دفتر الأستاذ / Post to GL
               </Button>
             ) : null}
+
+            {row.doc_status === DocStatus.Submitted || row.doc_status === DocStatus.Cancelled ? (
+              <div className="mt-3">
+                <AmendPanel
+                  canAmend={perms.isSenior}
+                  pending={amendPending || busy}
+                  onAmend={(reason) => void handleAmend(row, reason)}
+                />
+              </div>
+            ) : null}
           </Card>
 
           <AdminOverridePanel
@@ -132,6 +187,22 @@ export function CapitalWithdrawalDetailPage() {
             row={row}
             onDone={() => void query.refetch()}
           />
+
+          <Dialog
+            open={editOpen}
+            title="تعديل سحب رأس مال"
+            titleEn="Edit capital withdrawal"
+            onClose={() => setEditOpen(false)}
+          >
+            <CapitalWithdrawalFormPage
+              mode="edit"
+              withdrawal={row}
+              onDone={() => {
+                setEditOpen(false)
+                void query.refetch()
+              }}
+            />
+          </Dialog>
 
           {actionError ? (
             <Card className="text-sm text-red-600 dark:text-red-400">{actionError}</Card>

@@ -13,10 +13,25 @@
  * propagates unchanged.
  */
 import { err, ok, type Result } from '@/core/result'
-import { postGl, type PostGlResult } from '@/infrastructure/appwrite/functions'
+import {
+  postGl,
+  reverseGl,
+  type PostGlResult,
+  type ReverseGlResult,
+} from '@/infrastructure/appwrite/functions'
 
-import { capitalToGlLines, receiptToGlLines, voucherToGlLines, withdrawalToGlLines } from '../domain/gl'
-import type { CapitalContribution, CapitalWithdrawal, PaymentVoucher, Receipt } from '../domain/schemas'
+import {
+  capitalToGlLines,
+  receiptToGlLines,
+  voucherToGlLines,
+  withdrawalToGlLines,
+} from '../domain/gl'
+import type {
+  CapitalContribution,
+  CapitalWithdrawal,
+  PaymentVoucher,
+  Receipt,
+} from '../domain/schemas'
 
 export interface GlPosting {
   voucherNo: string
@@ -80,4 +95,16 @@ export async function postWithdrawalToGl(
     lines: withdrawalToGlLines(withdrawal),
   })
   return absorbAlreadyPosted(withdrawal.reference_id, result)
+}
+
+/**
+ * Neutralize any GL entries already posted under `voucherNo` — the first step
+ * of "Amend" (never edits history; flips it out of every balance instead).
+ * Idempotent: a voucher with nothing posted yet returns `{ reversed: 0 }`.
+ */
+export function reverseGlPosting(
+  voucherNo: string,
+  reason: string,
+): Promise<Result<ReverseGlResult>> {
+  return reverseGl(voucherNo, reason)
 }

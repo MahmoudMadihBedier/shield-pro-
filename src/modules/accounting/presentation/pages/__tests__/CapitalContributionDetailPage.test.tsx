@@ -60,7 +60,7 @@ import { DocStatus } from '@/core/doc-status'
 import { Role } from '@/core/rbac'
 import { ok } from '@/core/result'
 
-import { CapitalWithdrawalDetailPage } from '../CapitalWithdrawalDetailPage'
+import { CapitalContributionDetailPage } from '../CapitalContributionDetailPage'
 
 const PRINCIPAL: AuthContextValue['principal'] = {
   userId: 'acct-1',
@@ -68,23 +68,23 @@ const PRINCIPAL: AuthContextValue['principal'] = {
   branchId: null,
 }
 
-function draftRow() {
+function contributionRow() {
   return {
-    $id: 'w1',
+    $id: 'c1',
     $createdAt: 't',
     $updatedAt: 't',
-    reference_id: 'CAPW-2026-00001',
+    reference_id: 'CAP-2026-00001',
     doc_status: DocStatus.Draft,
     branch_id: null,
     created_by: 'acct-1',
     amended_from: null,
     posting_datetime: '2026-09-21T00:00:00.000Z',
     remarks: null,
-    withdrawn_by: 'المالك',
-    method: 'cash',
-    reason: 'سحب شخصي',
-    amount: 1000,
-    source_account: 'cash',
+    contributor: 'المالك',
+    asset_type: 'cash' as const,
+    description: 'رأس مال أولي',
+    amount: 5000,
+    asset_account: 'cash',
   }
 }
 
@@ -99,13 +99,10 @@ function renderPage() {
   }
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/accounting/capital-withdrawals/w1']}>
+      <MemoryRouter initialEntries={['/accounting/capital/c1']}>
         <AuthContext.Provider value={authValue}>
           <Routes>
-            <Route
-              path="/accounting/capital-withdrawals/:id"
-              element={<CapitalWithdrawalDetailPage />}
-            />
+            <Route path="/accounting/capital/:id" element={<CapitalContributionDetailPage />} />
           </Routes>
         </AuthContext.Provider>
       </MemoryRouter>
@@ -126,125 +123,94 @@ beforeEach(() => {
   mockNavigate.mockReset()
 })
 
-describe('CapitalWithdrawalDetailPage', () => {
-  it('shows the withdrawal envelope and a Submit button for a draft', async () => {
-    mockGetRow.mockResolvedValue(draftRow())
-    renderPage()
-
-    expect(await screen.findByText('المالك')).toBeInTheDocument()
-    expect(screen.getByText('cash')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /اعتماد المستند/ })).toBeInTheDocument()
-  })
-
-  it('submitting a draft calls evaluate_approval then submit_document with this table/id', async () => {
-    mockGetRow.mockResolvedValue(draftRow())
-    mockEvaluateApproval.mockResolvedValue(ok({ action: 'auto_approve', ruleId: null }))
-    mockSubmitDocument.mockResolvedValue(
-      ok({ referenceId: 'CAPW-2026-00001', docStatus: DocStatus.Submitted }),
-    )
-
-    renderPage()
-    await screen.findByRole('button', { name: /اعتماد المستند/ })
-
-    await userEvent.click(screen.getByRole('button', { name: /اعتماد المستند/ }))
-
-    await vi.waitFor(() =>
-      expect(mockEvaluateApproval).toHaveBeenCalledWith(
-        expect.objectContaining({
-          movementType: 'capital_withdrawals',
-          entityRef: 'CAPW-2026-00001',
-        }),
-      ),
-    )
-    await vi.waitFor(() =>
-      expect(mockSubmitDocument).toHaveBeenCalledWith('capital_withdrawals', 'w1'),
-    )
-  })
-
-  it('posts a submitted withdrawal to the GL with Dr owners_drawings / Cr the source account', async () => {
-    mockGetRow.mockResolvedValue({ ...draftRow(), doc_status: DocStatus.Submitted })
-    mockPostGl.mockResolvedValue(ok({ voucherNo: 'CAPW-2026-00001', entries: 2 }))
-
-    renderPage()
-
-    const postButton = await screen.findByRole('button', { name: /ترحيل إلى دفتر الأستاذ/ })
-    await userEvent.click(postButton)
-
-    await vi.waitFor(() =>
-      expect(mockPostGl).toHaveBeenCalledWith(
-        expect.objectContaining({
-          voucherType: 'CapitalWithdrawal',
-          voucherNo: 'CAPW-2026-00001',
-          lines: [
-            { account: 'owners_drawings', debit: 1000, credit: 0 },
-            { account: 'cash', debit: 0, credit: 1000 },
-          ],
-        }),
-      ),
-    )
-    expect(await screen.findByText(/تم ترحيل 2 قيد/)).toBeInTheDocument()
-  })
-
+describe('CapitalContributionDetailPage', () => {
   it('shows an Edit button for a Draft and updates it in place via updateDraft', async () => {
-    mockGetRow.mockResolvedValue(draftRow())
-    mockUpdateRow.mockResolvedValue({ ...draftRow(), amount: 1500 })
+    mockGetRow.mockResolvedValue(contributionRow())
+    mockUpdateRow.mockResolvedValue({ ...contributionRow(), amount: 9000 })
 
     renderPage()
     await userEvent.click(await screen.findByRole('button', { name: 'تعديل' }))
 
     const amountField = await screen.findByLabelText(/القيمة/)
-    expect(amountField).toHaveValue(1000)
+    expect(amountField).toHaveValue(5000)
 
     await userEvent.clear(amountField)
-    await userEvent.type(amountField, '1500')
+    await userEvent.type(amountField, '9000')
     await userEvent.click(screen.getByRole('button', { name: 'حفظ' }))
 
     await vi.waitFor(() => expect(mockUpdateRow).toHaveBeenCalledTimes(1))
     const call = mockUpdateRow.mock.calls[0]![0] as { rowId: string; data: Record<string, unknown> }
-    expect(call.rowId).toBe('w1')
-    expect(call.data).toMatchObject({ amount: 1500 })
+    expect(call.rowId).toBe('c1')
+    expect(call.data).toMatchObject({ amount: 9000 })
   })
 
-  it('amending a submitted withdrawal reverses posted GL, cancels it, and creates a linked corrected draft', async () => {
-    mockGetRow.mockResolvedValue({ ...draftRow(), doc_status: DocStatus.Submitted })
-    mockReverseGl.mockResolvedValue(ok({ voucherNo: 'CAPW-2026-00001', reversed: 2 }))
+  it('amending CAP-2026-00001 reverses its posted GL entries, cancels it, and creates a linked corrected draft', async () => {
+    mockGetRow.mockResolvedValue({ ...contributionRow(), doc_status: DocStatus.Submitted })
+    mockReverseGl.mockResolvedValue(ok({ voucherNo: 'CAP-2026-00001', reversed: 2 }))
     mockCancelDocument.mockResolvedValue(
-      ok({ referenceId: 'CAPW-2026-00001', docStatus: DocStatus.Cancelled }),
+      ok({ referenceId: 'CAP-2026-00001', docStatus: DocStatus.Cancelled }),
     )
     mockAllocateReferenceId.mockResolvedValue(
-      ok({ referenceId: 'CAPW-2026-00002', prefix: 'CAPW', year: 2026, sequence: 2 }),
+      ok({ referenceId: 'CAP-2026-00002', prefix: 'CAP', year: 2026, sequence: 2 }),
     )
     mockCreateRow.mockResolvedValue({
-      ...draftRow(),
-      $id: 'w2',
-      reference_id: 'CAPW-2026-00002',
+      ...contributionRow(),
+      $id: 'c2',
+      reference_id: 'CAP-2026-00002',
       doc_status: DocStatus.Draft,
-      amended_from: 'CAPW-2026-00001',
+      amended_from: 'CAP-2026-00001',
     })
 
     renderPage()
 
     await userEvent.click(await screen.findByRole('button', { name: /Amend/ }))
-    await userEvent.type(screen.getByLabelText(/سبب التعديل/), 'مبلغ خاطئ')
+    await userEvent.type(screen.getByLabelText(/سبب التعديل/), 'المبلغ كان خاطئًا')
     await userEvent.click(screen.getByRole('button', { name: 'تأكيد التعديل' }))
 
     await vi.waitFor(() =>
-      expect(mockReverseGl).toHaveBeenCalledWith('CAPW-2026-00001', 'مبلغ خاطئ'),
+      expect(mockReverseGl).toHaveBeenCalledWith('CAP-2026-00001', 'المبلغ كان خاطئًا'),
     )
     await vi.waitFor(() =>
-      expect(mockCancelDocument).toHaveBeenCalledWith('capital_withdrawals', 'w1', 'مبلغ خاطئ'),
+      expect(mockCancelDocument).toHaveBeenCalledWith(
+        'capital_contributions',
+        'c1',
+        'المبلغ كان خاطئًا',
+      ),
     )
     await vi.waitFor(() => expect(mockAllocateReferenceId).toHaveBeenCalled())
     await vi.waitFor(() => expect(mockCreateRow).toHaveBeenCalledTimes(1))
     const created = mockCreateRow.mock.calls[0]![0] as { data: Record<string, unknown> }
     expect(created.data).toMatchObject({
-      amended_from: 'CAPW-2026-00001',
-      amount: 1000,
-      method: 'cash',
-      source_account: 'cash',
+      amended_from: 'CAP-2026-00001',
+      amount: 5000,
+      asset_type: 'cash',
+      asset_account: 'cash',
     })
-    await vi.waitFor(() =>
-      expect(mockNavigate).toHaveBeenCalledWith('/accounting/capital-withdrawals/w2'),
+    await vi.waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/accounting/capital/c2'))
+  })
+
+  it('a Cancelled contribution can still be amended without re-reversing an already-neutral GL', async () => {
+    mockGetRow.mockResolvedValue({ ...contributionRow(), doc_status: DocStatus.Cancelled })
+    mockReverseGl.mockResolvedValue(ok({ voucherNo: 'CAP-2026-00001', reversed: 0 }))
+    mockAllocateReferenceId.mockResolvedValue(
+      ok({ referenceId: 'CAP-2026-00002', prefix: 'CAP', year: 2026, sequence: 2 }),
     )
+    mockCreateRow.mockResolvedValue({
+      ...contributionRow(),
+      $id: 'c2',
+      reference_id: 'CAP-2026-00002',
+      amended_from: 'CAP-2026-00001',
+    })
+
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: /Amend/ }))
+    await userEvent.type(screen.getByLabelText(/سبب التعديل/), 'تصحيح لاحق')
+    await userEvent.click(screen.getByRole('button', { name: 'تأكيد التعديل' }))
+
+    await vi.waitFor(() => expect(mockReverseGl).toHaveBeenCalledTimes(1))
+    // already Cancelled — cancel_document must NOT be called again
+    expect(mockCancelDocument).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(mockCreateRow).toHaveBeenCalledTimes(1))
   })
 })

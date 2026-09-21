@@ -1,7 +1,12 @@
 /**
- * Create form for a capital contribution Draft. `asset_type` picks a sensible
- * default GL asset account (`DEFAULT_ASSET_ACCOUNT`); the accountant can edit
- * it. On submit the document posts `Dr <asset_account> / Cr owners_capital`.
+ * Create / edit form for a capital contribution Draft. `asset_type` picks a
+ * sensible default GL asset account (`DEFAULT_ASSET_ACCOUNT`); the accountant
+ * can edit it. On submit the document posts `Dr <asset_account> / Cr owners_capital`.
+ *
+ * Two hosts: the standalone `/accounting/capital/new` route (no `onDone` — a
+ * plain full-page create form), and a `Dialog` opened from the detail page to
+ * edit a still-Draft row (`mode="edit"`, `contribution`, `onDone` all given —
+ * the page chrome is skipped since the dialog already has its own title bar).
  */
 import { useEffect } from 'react'
 import { useFormContext, type DefaultValues } from 'react-hook-form'
@@ -17,6 +22,7 @@ import {
   DEFAULT_ASSET_ACCOUNT,
   capitalContributionFormSchema,
   type CapitalAssetType,
+  type CapitalContribution,
   type CapitalContributionForm as FormValues,
 } from '../../domain/schemas'
 import { useAccountingPermissions, useCapitalContributionActions } from '../hooks'
@@ -45,23 +51,55 @@ function AssetAccountSync() {
   return null
 }
 
-export function CapitalContributionFormPage() {
+export interface CapitalContributionFormPageProps {
+  mode?: 'create' | 'edit'
+  /** The Draft being edited. Required when `mode === 'edit'`. */
+  contribution?: CapitalContribution
+  /** Given when hosted in a `Dialog` (edit flow); omitted for the standalone route. */
+  onDone?: () => void
+}
+
+export function CapitalContributionFormPage({
+  mode = 'create',
+  contribution,
+  onDone,
+}: CapitalContributionFormPageProps = {}) {
   const navigate = useNavigate()
   const perms = useAccountingPermissions()
-  const { createDraft } = useCapitalContributionActions()
+  const { createDraft, updateDraft } = useCapitalContributionActions()
+
+  const defaults: FormValues = contribution
+    ? {
+        contributor: contribution.contributor,
+        asset_type: contribution.asset_type,
+        description: contribution.description ?? '',
+        amount: contribution.amount,
+        asset_account: contribution.asset_account,
+      }
+    : DEFAULTS
+
+  function goBack() {
+    if (onDone) onDone()
+    else navigate('/accounting/capital')
+  }
 
   async function handleSubmit(values: FormValues): Promise<Result<unknown>> {
+    const fields = {
+      contributor: values.contributor.trim(),
+      asset_type: values.asset_type,
+      description: values.description?.trim() ? values.description.trim() : null,
+      amount: values.amount,
+      asset_account: values.asset_account.trim(),
+    }
     try {
-      const row = await createDraft.mutateAsync({
-        fields: {
-          contributor: values.contributor.trim(),
-          asset_type: values.asset_type,
-          description: values.description?.trim() ? values.description.trim() : null,
-          amount: values.amount,
-          asset_account: values.asset_account.trim(),
-        },
-      })
-      navigate(`/accounting/capital/${row.$id}`)
+      if (mode === 'edit' && contribution) {
+        await updateDraft.mutateAsync({ id: contribution.$id, patch: fields })
+        onDone?.()
+      } else {
+        const row = await createDraft.mutateAsync({ fields })
+        if (onDone) onDone()
+        else navigate(`/accounting/capital/${row.$id}`)
+      }
       return ok(undefined)
     } catch (e) {
       if (e && typeof e === 'object' && 'code' in e && 'message' in e) {
@@ -71,18 +109,8 @@ export function CapitalContributionFormPage() {
     }
   }
 
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title="إدخال رأس مال جديد"
-        titleEn="New capital contribution"
-        actions={
-          <Button variant="ghost" onClick={() => navigate('/accounting/capital')}>
-            رجوع
-          </Button>
-        }
-      />
-
+  const body = (
+    <>
       {!perms.canRecord ? (
         <Card className="text-sm text-amber-700 dark:text-amber-300">
           لا تملك صلاحية تسجيل رأس المال.
@@ -91,7 +119,7 @@ export function CapitalContributionFormPage() {
         <Card>
           <Form
             schema={capitalContributionFormSchema}
-            defaultValues={DEFAULTS as DefaultValues<FormValues>}
+            defaultValues={defaults as DefaultValues<FormValues>}
             onSubmit={handleSubmit}
             className="space-y-4"
           >
@@ -130,16 +158,14 @@ export function CapitalContributionFormPage() {
                 <FormError message={formError} />
 
                 <div className="flex items-center justify-end gap-2 pt-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => navigate('/accounting/capital')}
-                    disabled={isSubmitting}
-                  >
+                  <Button type="button" variant="ghost" onClick={goBack} disabled={isSubmitting}>
                     إلغاء
                   </Button>
-                  <Button type="submit" disabled={isSubmitting || createDraft.isPending}>
-                    {isSubmitting ? 'جارٍ الحفظ…' : 'إنشاء مسودة'}
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting || createDraft.isPending || updateDraft.isPending}
+                  >
+                    {isSubmitting ? 'جارٍ الحفظ…' : mode === 'edit' ? 'حفظ' : 'إنشاء مسودة'}
                   </Button>
                 </div>
               </>
@@ -147,6 +173,23 @@ export function CapitalContributionFormPage() {
           </Form>
         </Card>
       )}
+    </>
+  )
+
+  if (onDone) return <div className="space-y-4">{body}</div>
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="إدخال رأس مال جديد"
+        titleEn="New capital contribution"
+        actions={
+          <Button variant="ghost" onClick={goBack}>
+            رجوع
+          </Button>
+        }
+      />
+      {body}
     </div>
   )
 }
