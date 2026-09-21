@@ -36,6 +36,15 @@ const CapitalContributionFormPage = lazy(() =>
 const CapitalContributionDetailPage = lazy(() =>
   import('./pages').then((m) => ({ default: m.CapitalContributionDetailPage })),
 )
+const CapitalWithdrawalsPage = lazy(() =>
+  import('./pages').then((m) => ({ default: m.CapitalWithdrawalsPage })),
+)
+const CapitalWithdrawalFormPage = lazy(() =>
+  import('./pages').then((m) => ({ default: m.CapitalWithdrawalFormPage })),
+)
+const CapitalWithdrawalDetailPage = lazy(() =>
+  import('./pages').then((m) => ({ default: m.CapitalWithdrawalDetailPage })),
+)
 const CustomerAgingPage = lazy(() =>
   import('./pages').then((m) => ({ default: m.CustomerAgingPage })),
 )
@@ -141,6 +150,30 @@ export const accountingRoutes: RouteObject[] = [
     element: (
       <Lazy>
         <CapitalContributionDetailPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'accounting/capital-withdrawals',
+    element: (
+      <Lazy>
+        <CapitalWithdrawalsPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'accounting/capital-withdrawals/new',
+    element: (
+      <Lazy>
+        <CapitalWithdrawalFormPage />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'accounting/capital-withdrawals/:id',
+    element: (
+      <Lazy>
+        <CapitalWithdrawalDetailPage />
       </Lazy>
     ),
   },

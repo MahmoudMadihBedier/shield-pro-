@@ -7,6 +7,8 @@ import {
   productInputSchema,
   productBomLineInputSchema,
   rawMaterialInputSchema,
+  supplierContactInputSchema,
+  supplierInputSchema,
   warehouseInputSchema,
 } from '../schemas'
 
@@ -185,6 +187,78 @@ describe('BOM line input', () => {
         qty_per_unit: 0.5,
       }).qty_per_unit,
     ).toBe(0.5)
+  })
+})
+
+describe('supplierInputSchema — Egyptian phone / tax id', () => {
+  const base = { name: 'مورد الخامات' }
+
+  it('accepts a blank phone / tax id (both optional)', () => {
+    expect(supplierInputSchema.safeParse(base).success).toBe(true)
+  })
+
+  it('accepts a well-formed Egyptian mobile number', () => {
+    expect(supplierInputSchema.parse({ ...base, phone: '01012345678' }).phone).toBe('01012345678')
+    expect(supplierInputSchema.safeParse({ ...base, phone: '01512345678' }).success).toBe(true)
+  })
+
+  it('rejects a malformed phone number', () => {
+    expect(supplierInputSchema.safeParse({ ...base, phone: '123' }).success).toBe(false)
+    expect(supplierInputSchema.safeParse({ ...base, phone: '02012345678' }).success).toBe(false)
+  })
+
+  it('accepts a 9-digit tax id and rejects anything else', () => {
+    expect(supplierInputSchema.safeParse({ ...base, tax_id: '123456789' }).success).toBe(true)
+    expect(supplierInputSchema.safeParse({ ...base, tax_id: '12345' }).success).toBe(false)
+    expect(supplierInputSchema.safeParse({ ...base, tax_id: 'ABCDEFGHI' }).success).toBe(false)
+  })
+
+  it('accepts description and notes free text', () => {
+    const parsed = supplierInputSchema.parse({
+      ...base,
+      description: 'موزّع دقيق ومواد خام',
+      notes: 'يفضّل التواصل صباحًا',
+    })
+    expect(parsed.description).toBe('موزّع دقيق ومواد خام')
+    expect(parsed.notes).toBe('يفضّل التواصل صباحًا')
+  })
+})
+
+describe('supplierContactInputSchema', () => {
+  it('requires a contact name', () => {
+    expect(
+      supplierContactInputSchema.safeParse({
+        contact_name: '',
+        role_title: '',
+        phone: '',
+        email: '',
+        is_primary: false,
+      }).success,
+    ).toBe(false)
+  })
+
+  it('accepts a well-formed contact', () => {
+    expect(
+      supplierContactInputSchema.safeParse({
+        contact_name: 'محمد علي',
+        role_title: 'مدير المشتريات',
+        phone: '01012345678',
+        email: 'mohamed@example.com',
+        is_primary: true,
+      }).success,
+    ).toBe(true)
+  })
+
+  it('rejects a malformed email', () => {
+    expect(
+      supplierContactInputSchema.safeParse({
+        contact_name: 'محمد علي',
+        role_title: '',
+        phone: '',
+        email: 'not-an-email',
+        is_primary: false,
+      }).success,
+    ).toBe(false)
   })
 })
 

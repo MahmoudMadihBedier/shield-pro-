@@ -196,11 +196,31 @@ CREATE TABLE IF NOT EXISTS public."suppliers" (
   "updated_at" timestamptz NOT NULL DEFAULT now(),
   "name" text NOT NULL,
   "contact" text,
-  "phone" text
+  "phone" text,
+  "tax_id" text,
+  "description" text,
+  "notes" text
 );
 CREATE TRIGGER "suppliers_set_updated_at" BEFORE UPDATE ON public."suppliers"
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 ALTER TABLE public."suppliers" ENABLE ROW LEVEL SECURITY;
+
+-- Supplier contacts (master)
+CREATE TABLE IF NOT EXISTS public."supplier_contacts" (
+  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  "updated_at" timestamptz NOT NULL DEFAULT now(),
+  "supplier_id" text NOT NULL,
+  "contact_name" text NOT NULL,
+  "role_title" text,
+  "phone" text,
+  "email" text,
+  "is_primary" boolean DEFAULT false
+);
+CREATE INDEX IF NOT EXISTS "supplier_contacts_supplier_idx" ON public."supplier_contacts" ("supplier_id");
+CREATE TRIGGER "supplier_contacts_set_updated_at" BEFORE UPDATE ON public."supplier_contacts"
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+ALTER TABLE public."supplier_contacts" ENABLE ROW LEVEL SECURITY;
 
 -- Customers (master)
 CREATE TABLE IF NOT EXISTS public."customers" (
@@ -654,6 +674,32 @@ CREATE TRIGGER "capital_contributions_set_updated_at" BEFORE UPDATE ON public."c
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 ALTER TABLE public."capital_contributions" ENABLE ROW LEVEL SECURITY;
 
+-- Capital withdrawals (document)
+CREATE TABLE IF NOT EXISTS public."capital_withdrawals" (
+  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  "updated_at" timestamptz NOT NULL DEFAULT now(),
+  "reference_id" text NOT NULL,
+  "doc_status" bigint DEFAULT 0 NOT NULL CHECK ("doc_status" >= 0 AND "doc_status" <= 2),
+  "branch_id" text,
+  "created_by" text NOT NULL,
+  "amended_from" text,
+  "posting_datetime" timestamptz NOT NULL,
+  "remarks" text,
+  "withdrawn_by" text NOT NULL,
+  "method" text NOT NULL CHECK ("method" IN ('cash', 'bank_transfer')),
+  "reason" text,
+  "amount" double precision NOT NULL CHECK ("amount" >= 0),
+  "source_account" text NOT NULL,
+  CONSTRAINT "capital_withdrawals_reference_id_uq" UNIQUE ("reference_id")
+);
+CREATE INDEX IF NOT EXISTS "capital_withdrawals_branch_idx" ON public."capital_withdrawals" ("branch_id");
+CREATE INDEX IF NOT EXISTS "capital_withdrawals_status_idx" ON public."capital_withdrawals" ("doc_status");
+CREATE INDEX IF NOT EXISTS "capital_withdrawals_posting_idx" ON public."capital_withdrawals" ("posting_datetime");
+CREATE TRIGGER "capital_withdrawals_set_updated_at" BEFORE UPDATE ON public."capital_withdrawals"
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+ALTER TABLE public."capital_withdrawals" ENABLE ROW LEVEL SECURITY;
+
 -- Attendance records (attendance)
 CREATE TABLE IF NOT EXISTS public."attendance_records" (
   "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -933,6 +979,11 @@ CREATE POLICY "suppliers_read" ON public."suppliers" FOR SELECT TO authenticated
 CREATE POLICY "suppliers_admin_write" ON public."suppliers" FOR ALL TO authenticated
   USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
+-- RLS: supplier_contacts (master)
+CREATE POLICY "supplier_contacts_read" ON public."supplier_contacts" FOR SELECT TO authenticated USING (true);
+CREATE POLICY "supplier_contacts_admin_write" ON public."supplier_contacts" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
+
 -- RLS: customers (master)
 CREATE POLICY "customers_read" ON public."customers" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id) and ("assigned_rep_user_id" is null or "assigned_rep_user_id" = auth.uid()::text or not public._is_rep_restricted()));
 CREATE POLICY "customers_admin_write" ON public."customers" FOR ALL TO authenticated
@@ -1086,6 +1137,16 @@ CREATE POLICY "capital_contributions_update_draft" ON public."capital_contributi
   USING (doc_status = 0 AND created_by = auth.uid()::text)
   WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
 CREATE POLICY "capital_contributions_admin_override" ON public."capital_contributions" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
+
+-- RLS: capital_withdrawals (document)
+CREATE POLICY "capital_withdrawals_read" ON public."capital_withdrawals" FOR SELECT TO authenticated USING (public._can_read_branch(branch_id));
+CREATE POLICY "capital_withdrawals_create_draft" ON public."capital_withdrawals" FOR INSERT TO authenticated
+  WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "capital_withdrawals_update_draft" ON public."capital_withdrawals" FOR UPDATE TO authenticated
+  USING (doc_status = 0 AND created_by = auth.uid()::text)
+  WITH CHECK (doc_status = 0 AND created_by = auth.uid()::text);
+CREATE POLICY "capital_withdrawals_admin_override" ON public."capital_withdrawals" FOR ALL TO authenticated
   USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: attendance_records (attendance)

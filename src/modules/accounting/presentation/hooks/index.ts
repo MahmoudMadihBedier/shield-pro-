@@ -8,8 +8,17 @@ export {
   useCapitalContributionList,
   useCapitalContribution,
   useCapitalContributionActions,
+  useCapitalWithdrawalList,
+  useCapitalWithdrawal,
+  useCapitalWithdrawalActions,
 } from './useAccountingDocuments'
-export { useGlEntries, useAccountBalance, useTrialBalance, useProfitAndLoss } from './useGlEntries'
+export {
+  useGlEntries,
+  useAccountBalance,
+  useTrialBalance,
+  useProfitAndLoss,
+  netOwnersEquity,
+} from './useGlEntries'
 export {
   useCustomerAging,
   useCustomerLedger,

@@ -5,29 +5,29 @@ import { formatCurrency, formatDate } from '@/shared/formatters'
 import { DataTable, type ColumnDef, type PaginationState } from '@/shared/data-table'
 import { Button, PageHeader } from '@/shared/ui'
 
-import { CAPITAL_ASSET_TYPE_LABELS } from '../../domain/labels'
-import type { CapitalContribution } from '../../domain/schemas'
+import { CAPITAL_WITHDRAWAL_METHOD_LABELS } from '../../domain/labels'
+import type { CapitalWithdrawal } from '../../domain/schemas'
 import { CapitalSummaryBar, DocStatusPill } from '../components'
-import { useAccountingPermissions, useCapitalContributionList } from '../hooks'
+import { useAccountingPermissions, useCapitalWithdrawalList } from '../hooks'
 
 const PAGE_SIZE = 25
 
-export function CapitalContributionsPage() {
+export function CapitalWithdrawalsPage() {
   const navigate = useNavigate()
   const perms = useAccountingPermissions()
   const [pageIndex, setPageIndex] = useState(0)
 
-  const query = useCapitalContributionList({ page: pageIndex, pageSize: PAGE_SIZE })
+  const query = useCapitalWithdrawalList({ page: pageIndex, pageSize: PAGE_SIZE })
 
-  const columns = useMemo<ColumnDef<CapitalContribution>[]>(
+  const columns = useMemo<ColumnDef<CapitalWithdrawal>[]>(
     () => [
       { id: 'reference_id', header: 'المرجع / Ref', accessor: (r) => r.reference_id },
-      { id: 'contributor', header: 'المساهم / Contributor', accessor: (r) => r.contributor },
+      { id: 'withdrawn_by', header: 'المستفيد / Withdrawn by', accessor: (r) => r.withdrawn_by },
       {
-        id: 'asset_type',
-        header: 'نوع الأصل / Asset',
-        accessor: (r) => r.asset_type,
-        cell: (r) => CAPITAL_ASSET_TYPE_LABELS[r.asset_type].ar,
+        id: 'method',
+        header: 'طريقة السحب / Method',
+        accessor: (r) => r.method,
+        cell: (r) => CAPITAL_WITHDRAWAL_METHOD_LABELS[r.method].ar,
       },
       {
         id: 'amount',
@@ -63,7 +63,7 @@ export function CapitalContributionsPage() {
           <Button
             size="sm"
             variant="secondary"
-            onClick={() => navigate(`/accounting/capital/${r.$id}`)}
+            onClick={() => navigate(`/accounting/capital-withdrawals/${r.$id}`)}
           >
             فتح
           </Button>
@@ -76,20 +76,22 @@ export function CapitalContributionsPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="رأس المال"
-        titleEn="Capital contributions"
-        description="إدخال رأس مال المالك — نقدًا أو أصولًا قائمة (سيارة، عقار، معدات). عند الاعتماد يُرحَّل قيد: مدين حساب الأصل، دائن رأس المال."
+        title="سحب رأس المال"
+        titleEn="Capital withdrawals"
+        description="سحب المالك لأموال من الشركة — يُرحَّل قيد: مدين مسحوبات الملاك (حساب مقابل لرأس المال)، دائن حساب النقد/البنك. لا يُعدَّل رصيد رأس المال مباشرة أبدًا."
         actions={
           perms.canRecord ? (
-            <Button onClick={() => navigate('/accounting/capital/new')}>+ إدخال رأس مال</Button>
+            <Button onClick={() => navigate('/accounting/capital-withdrawals/new')}>
+              + سحب من رأس المال
+            </Button>
           ) : undefined
         }
       />
 
       <CapitalSummaryBar
-        linkTo="/accounting/capital-withdrawals"
-        linkLabel="سحوبات رأس المال"
-        linkLabelEn="Capital withdrawals"
+        linkTo="/accounting/capital"
+        linkLabel="إدخالات رأس المال"
+        linkLabelEn="Capital contributions"
       />
 
       <DataTable
@@ -101,7 +103,7 @@ export function CapitalContributionsPage() {
         isLoading={query.isLoading}
         error={query.isError ? query.error : null}
         onRetry={() => void query.refetch()}
-        emptyMessage="لا توجد إدخالات رأس مال بعد"
+        emptyMessage="لا توجد سحوبات رأس مال بعد"
       />
     </div>
   )

@@ -109,8 +109,8 @@ describe('resolveNode', () => {
 
     await resolveNode('PO-2026-00001')
 
-    // 15 submittable doc tables carry a reverse-lookup column → 1 + 15 = 16.
-    expect(mockListRows).toHaveBeenCalledTimes(16)
+    // 16 submittable doc tables carry a reverse-lookup column → 1 + 16 = 17.
+    expect(mockListRows).toHaveBeenCalledTimes(17)
   })
 
   it('maps an Appwrite failure to a typed AppError', async () => {

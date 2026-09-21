@@ -261,7 +261,27 @@ export const TABLES: TableDef[] = [
     str('name', 128, true),
     str('contact', 128),
     str('phone', 32),
+    str('tax_id', 32),
+    str('description', 1000),
+    str('notes', 2000),
   ]),
+
+  // One supplier can have several contact people (purchasing lead, accounts
+  // payable, delivery coordinator, …) — a real child table, not a JSON blob,
+  // so each contact is independently addable/removable/editable.
+  master(
+    Tables.supplierContacts,
+    'Supplier contacts',
+    [
+      str('supplier_id', 36, true),
+      str('contact_name', 128, true),
+      str('role_title', 64),
+      str('phone', 32),
+      str('email', 128),
+      { key: 'is_primary', type: 'boolean', default: false },
+    ],
+    [{ key: 'supplier_contacts_supplier_idx', type: 'key', columns: ['supplier_id'] }],
+  ),
 
   master(
     Tables.customers,
@@ -557,6 +577,19 @@ export const TABLES: TableDef[] = [
     str('description', 500),
     { key: 'amount', type: 'float', required: true, min: 0 },
     str('asset_account', 64, true), // GL account to debit
+  ]),
+
+  // The reverse of a capital contribution — the owner/investor takes cash out
+  // of the business. Posts through a Drawings (contra-equity) account rather
+  // than debiting Owner's Capital directly, so the capital account keeps a
+  // clean record of what was put in while the net equity (capital − drawings)
+  // still reflects the withdrawal — standard practice, not a balance edit.
+  doc(Tables.capitalWithdrawals, 'Capital withdrawals', [
+    str('withdrawn_by', 128, true),
+    { key: 'method', type: 'enum', elements: ['cash', 'bank_transfer'], required: true },
+    str('reason', 500),
+    { key: 'amount', type: 'float', required: true, min: 0 },
+    str('source_account', 64, true), // GL account to credit (cash/bank)
   ]),
 
   // ---- HR (System Admin / branch accountant owned) ----
