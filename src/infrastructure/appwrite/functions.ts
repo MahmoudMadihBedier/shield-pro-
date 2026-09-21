@@ -26,6 +26,7 @@ export const ServerRoute = {
   cancelDocument: '/cancel-document',
   postStockLedger: '/post-stock-ledger',
   postGl: '/post-gl',
+  reverseGl: '/reverse-gl',
   segregationGuard: '/segregation-guard',
   fraudScan: '/fraud-scan',
   reviewFraudFlag: '/review-fraud-flag',
@@ -104,6 +105,12 @@ export interface PostGlPayload {
 export interface PostGlResult {
   voucherNo: string
   entries: number
+}
+
+export interface ReverseGlResult {
+  voucherNo: string
+  /** Rows flipped to `is_cancelled = true`; `0` when nothing was posted yet. */
+  reversed: number
 }
 
 export interface SegregationCheckResult {
@@ -274,6 +281,11 @@ const DISPATCH: Record<string, Dispatch> = {
     args: (p) => ({ p_payload: p }),
   },
   [ServerRoute.postGl]: { kind: 'rpc', fn: 'post_gl', args: (p) => ({ p_payload: p }) },
+  [ServerRoute.reverseGl]: {
+    kind: 'rpc',
+    fn: 'reverse_gl',
+    args: (p) => ({ p_voucher_no: p.voucherNo, p_reason: p.reason }),
+  },
   [ServerRoute.segregationGuard]: {
     kind: 'rpc',
     fn: 'segregation_guard',
@@ -519,6 +531,16 @@ export function postGl(payload: PostGlPayload): Promise<Result<PostGlResult>> {
 }
 
 /**
+ * Neutralize every still-active GL entry for a voucher (`is_cancelled = true`)
+ * — the correction step behind "Amend": history is never edited or deleted,
+ * a wrong posting is flipped out of every balance/report instead. Idempotent:
+ * a voucher with nothing currently posted returns `reversed: 0`, not an error.
+ */
+export function reverseGl(voucherNo: string, reason: string): Promise<Result<ReverseGlResult>> {
+  return invoke<ReverseGlResult>(ServerRoute.reverseGl, { voucherNo, reason })
+}
+
+/**
  * Read-only pre-check for the Submit button: does `<table>/<rowId>` currently
  * break a segregation-of-duties rule? The authoritative check still runs inside
  * `submitDocument` / `cancelDocument`.
@@ -681,7 +703,12 @@ export interface OpeningStockImportResult {
  * already has an opening entry is skipped, so re-running the same file is safe.
  */
 export function importOpeningStock(
-  rows: ReadonlyArray<{ product_code: string; warehouse_name: string; qty: number; unit_cost: number }>,
+  rows: ReadonlyArray<{
+    product_code: string
+    warehouse_name: string
+    qty: number
+    unit_cost: number
+  }>,
 ): Promise<Result<OpeningStockImportResult>> {
   return invoke<OpeningStockImportResult>(ServerRoute.importOpeningStock, { rows })
 }
@@ -714,7 +741,10 @@ export function importBankStatement(
 }
 
 /** System Admin / Chief Accountant only: toggle one bank statement line's reconciled flag. Audited. */
-export function reconcileBankStatementLine(id: string, reconciled: boolean): Promise<Result<unknown>> {
+export function reconcileBankStatementLine(
+  id: string,
+  reconciled: boolean,
+): Promise<Result<unknown>> {
   return invoke(ServerRoute.reconcileBankStatementLine, { id, reconciled })
 }
 

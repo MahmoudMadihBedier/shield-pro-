@@ -1,8 +1,13 @@
 /**
- * Create form for a capital withdrawal Draft. `method` picks a sensible
- * default GL source account (`DEFAULT_SOURCE_ACCOUNT`); the accountant can
- * edit it. On submit the document posts `Dr owners_drawings / Cr <source_account>`
- * — the capital account itself is never touched directly.
+ * Create / edit form for a capital withdrawal Draft. `method` picks a
+ * sensible default GL source account (`DEFAULT_SOURCE_ACCOUNT`); the
+ * accountant can edit it. On submit the document posts
+ * `Dr owners_drawings / Cr <source_account>` — the capital account itself is
+ * never touched directly.
+ *
+ * Two hosts: the standalone `/accounting/capital-withdrawals/new` route (no
+ * `onDone`), and a `Dialog` opened from the detail page to edit a still-Draft
+ * row (`mode="edit"`, `withdrawal`, `onDone` all given).
  */
 import { useEffect } from 'react'
 import { useFormContext, type DefaultValues } from 'react-hook-form'
@@ -17,6 +22,7 @@ import { CAPITAL_WITHDRAWAL_METHOD_OPTIONS } from '../../domain/labels'
 import {
   DEFAULT_SOURCE_ACCOUNT,
   capitalWithdrawalFormSchema,
+  type CapitalWithdrawal,
   type CapitalWithdrawalMethod,
   type CapitalWithdrawalForm as FormValues,
 } from '../../domain/schemas'
@@ -46,23 +52,55 @@ function SourceAccountSync() {
   return null
 }
 
-export function CapitalWithdrawalFormPage() {
+export interface CapitalWithdrawalFormPageProps {
+  mode?: 'create' | 'edit'
+  /** The Draft being edited. Required when `mode === 'edit'`. */
+  withdrawal?: CapitalWithdrawal
+  /** Given when hosted in a `Dialog` (edit flow); omitted for the standalone route. */
+  onDone?: () => void
+}
+
+export function CapitalWithdrawalFormPage({
+  mode = 'create',
+  withdrawal,
+  onDone,
+}: CapitalWithdrawalFormPageProps = {}) {
   const navigate = useNavigate()
   const perms = useAccountingPermissions()
-  const { createDraft } = useCapitalWithdrawalActions()
+  const { createDraft, updateDraft } = useCapitalWithdrawalActions()
+
+  const defaults: FormValues = withdrawal
+    ? {
+        withdrawn_by: withdrawal.withdrawn_by,
+        method: withdrawal.method,
+        reason: withdrawal.reason ?? '',
+        amount: withdrawal.amount,
+        source_account: withdrawal.source_account,
+      }
+    : DEFAULTS
+
+  function goBack() {
+    if (onDone) onDone()
+    else navigate('/accounting/capital-withdrawals')
+  }
 
   async function handleSubmit(values: FormValues): Promise<Result<unknown>> {
+    const fields = {
+      withdrawn_by: values.withdrawn_by.trim(),
+      method: values.method,
+      reason: values.reason?.trim() ? values.reason.trim() : null,
+      amount: values.amount,
+      source_account: values.source_account.trim(),
+    }
     try {
-      const row = await createDraft.mutateAsync({
-        fields: {
-          withdrawn_by: values.withdrawn_by.trim(),
-          method: values.method,
-          reason: values.reason?.trim() ? values.reason.trim() : null,
-          amount: values.amount,
-          source_account: values.source_account.trim(),
-        },
-      })
-      navigate(`/accounting/capital-withdrawals/${row.$id}`)
+      if (mode === 'edit' && withdrawal) {
+        await updateDraft.mutateAsync({ id: withdrawal.$id, patch: fields })
+        onDone?.()
+      } else {
+        const row = await createDraft.mutateAsync({ fields })
+        if (onDone) onDone()
+        else navigate(`/accounting/capital-withdrawals/${row.$id}`)
+      }
       return ok(undefined)
     } catch (e) {
       if (e && typeof e === 'object' && 'code' in e && 'message' in e) {
@@ -72,18 +110,8 @@ export function CapitalWithdrawalFormPage() {
     }
   }
 
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title="سحب رأس مال جديد"
-        titleEn="New capital withdrawal"
-        actions={
-          <Button variant="ghost" onClick={() => navigate('/accounting/capital-withdrawals')}>
-            رجوع
-          </Button>
-        }
-      />
-
+  const body = (
+    <>
       {!perms.canRecord ? (
         <Card className="text-sm text-amber-700 dark:text-amber-300">
           لا تملك صلاحية تسجيل سحب رأس المال.
@@ -92,7 +120,7 @@ export function CapitalWithdrawalFormPage() {
         <Card>
           <Form
             schema={capitalWithdrawalFormSchema}
-            defaultValues={DEFAULTS as DefaultValues<FormValues>}
+            defaultValues={defaults as DefaultValues<FormValues>}
             onSubmit={handleSubmit}
             className="space-y-4"
           >
@@ -131,16 +159,14 @@ export function CapitalWithdrawalFormPage() {
                 <FormError message={formError} />
 
                 <div className="flex items-center justify-end gap-2 pt-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => navigate('/accounting/capital-withdrawals')}
-                    disabled={isSubmitting}
-                  >
+                  <Button type="button" variant="ghost" onClick={goBack} disabled={isSubmitting}>
                     إلغاء
                   </Button>
-                  <Button type="submit" disabled={isSubmitting || createDraft.isPending}>
-                    {isSubmitting ? 'جارٍ الحفظ…' : 'إنشاء مسودة'}
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting || createDraft.isPending || updateDraft.isPending}
+                  >
+                    {isSubmitting ? 'جارٍ الحفظ…' : mode === 'edit' ? 'حفظ' : 'إنشاء مسودة'}
                   </Button>
                 </div>
               </>
@@ -148,6 +174,23 @@ export function CapitalWithdrawalFormPage() {
           </Form>
         </Card>
       )}
+    </>
+  )
+
+  if (onDone) return <div className="space-y-4">{body}</div>
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="سحب رأس مال جديد"
+        titleEn="New capital withdrawal"
+        actions={
+          <Button variant="ghost" onClick={goBack}>
+            رجوع
+          </Button>
+        }
+      />
+      {body}
     </div>
   )
 }
