@@ -88,6 +88,17 @@ export const DEFAULT_ASSET_ACCOUNT: Record<CapitalAssetType, string> = {
   other: 'fixed_assets_other',
 }
 
+/** `capital_withdrawals.method` — how the owner took the cash out. */
+export const CAPITAL_WITHDRAWAL_METHODS = ['cash', 'bank_transfer'] as const
+export const capitalWithdrawalMethodSchema = z.enum(CAPITAL_WITHDRAWAL_METHODS)
+export type CapitalWithdrawalMethod = z.infer<typeof capitalWithdrawalMethodSchema>
+
+/** Default GL account to credit per withdrawal method (an editable suggestion). */
+export const DEFAULT_SOURCE_ACCOUNT: Record<CapitalWithdrawalMethod, string> = {
+  cash: 'cash',
+  bank_transfer: 'bank',
+}
+
 /** `sales_invoices.payment_method` — the full enum from `schema.ts`. */
 export const INVOICE_PAYMENT_METHODS = [
   'cash',
@@ -210,6 +221,43 @@ export const capitalContributionFormSchema = z.object({
 export type CapitalContribution = z.infer<typeof capitalContributionRowSchema>
 export type CapitalContributionDraft = z.infer<typeof capitalContributionDraftSchema>
 export type CapitalContributionForm = z.infer<typeof capitalContributionFormSchema>
+
+// ---------------------------------------------------------------------------
+// capital_withdrawals (owner / investor takes cash out — the reverse of a
+// capital contribution; posts through a Drawings contra-equity account)
+// ---------------------------------------------------------------------------
+
+export const capitalWithdrawalRowSchema = z.object({
+  ...systemFields,
+  ...documentEnvelope,
+  withdrawn_by: z.string(),
+  method: capitalWithdrawalMethodSchema,
+  reason: rowOptStr,
+  amount: rowNum0,
+  source_account: z.string(),
+})
+
+/** Fields written by `capitalWithdrawalsRepo.createDraft` / `updateDraft`. */
+export const capitalWithdrawalDraftSchema = z.object({
+  withdrawn_by: z.string().min(1),
+  method: capitalWithdrawalMethodSchema,
+  reason: z.string().nullish(),
+  amount: z.number().positive(),
+  source_account: z.string().min(1),
+})
+
+/** What the capital-withdrawal create form submits. */
+export const capitalWithdrawalFormSchema = z.object({
+  withdrawn_by: z.string().trim().min(1, 'اسم المستفيد مطلوب').max(128, 'الاسم طويل جدًا'),
+  method: capitalWithdrawalMethodSchema,
+  reason: z.string().trim().max(500, 'السبب طويل جدًا').optional(),
+  amount: z.number({ error: 'أدخل القيمة' }).positive('أدخل قيمة موجبة'),
+  source_account: z.string().trim().min(1, 'حساب المصدر مطلوب').max(64, 'اسم الحساب طويل جدًا'),
+})
+
+export type CapitalWithdrawal = z.infer<typeof capitalWithdrawalRowSchema>
+export type CapitalWithdrawalDraft = z.infer<typeof capitalWithdrawalDraftSchema>
+export type CapitalWithdrawalForm = z.infer<typeof capitalWithdrawalFormSchema>
 
 // ---------------------------------------------------------------------------
 // general_ledger_entries (read-only — the only writer is an Appwrite Function)

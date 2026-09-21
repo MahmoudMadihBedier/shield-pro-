@@ -110,6 +110,9 @@ export const FIELD_LABELS: Record<AdminEntity, Record<string, Label>> = {
     name: { ar: 'الاسم', en: 'Name' },
     contact: { ar: 'جهة الاتصال', en: 'Contact' },
     phone: { ar: 'الهاتف', en: 'Phone' },
+    tax_id: { ar: 'الرقم الضريبي', en: 'Tax ID' },
+    description: { ar: 'الوصف', en: 'Description' },
+    notes: { ar: 'ملاحظات', en: 'Notes' },
   },
   customer: {
     code: { ar: 'الكود', en: 'Code' },
@@ -123,6 +126,16 @@ export const FIELD_LABELS: Record<AdminEntity, Record<string, Label>> = {
     approval_state: { ar: 'حالة الاعتماد', en: 'Approval state' },
     created_by: { ar: 'أنشئ بواسطة', en: 'Created by' },
   },
+}
+
+/** `supplier_contacts` isn't an `AdminEntity` (it's a bespoke child list, not
+ *  a top-level registry entity), so its field labels live outside `FIELD_LABELS`. */
+export const SUPPLIER_CONTACT_FIELD_LABELS: Record<string, Label> = {
+  contact_name: { ar: 'اسم جهة الاتصال', en: 'Contact name' },
+  role_title: { ar: 'المسمى الوظيفي', en: 'Role / title' },
+  phone: { ar: 'الهاتف', en: 'Phone' },
+  email: { ar: 'البريد الإلكتروني', en: 'Email' },
+  is_primary: { ar: 'جهة الاتصال الأساسية', en: 'Primary contact' },
 }
 
 export const WAREHOUSE_KIND_LABELS: Record<WarehouseKind, Label> = {

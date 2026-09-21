@@ -1,5 +1,6 @@
 export { DocStatusPill } from './DocStatusPill'
 export { SubmitCancelBar, type SubmitCancelBarProps } from './SubmitCancelBar'
+export { CapitalSummaryBar, type CapitalSummaryBarProps } from './CapitalSummaryBar'
 export { ReceiptForm, type ReceiptFormProps } from './ReceiptForm'
 export { PaymentVoucherForm, type PaymentVoucherFormProps } from './PaymentVoucherForm'
 export { AgingTable, type AgingTableProps } from './AgingTable'

@@ -28,6 +28,8 @@ export function useGlEntries(params: GlEntryListParams = {}) {
   })
 }
 
+export { netOwnersEquity } from '../../domain/gl'
+
 export function useAccountBalance(account: string, enabled = true) {
   return useQuery<number, AppError>({
     queryKey: accountingKeys.gl.balance(account),

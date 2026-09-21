@@ -36,6 +36,7 @@ export const SUBMITTABLE_DOC_TABLES = [
   'rep_closeouts',
   'payroll_runs',
   'capital_contributions',
+  'capital_withdrawals',
 ] as const
 
 export type SubmittableDocTable = (typeof SUBMITTABLE_DOC_TABLES)[number]
@@ -68,6 +69,7 @@ export const SUBMITTABLE_ENTITY_TABLE = {
   RepCloseout: 'rep_closeouts',
   PayrollRun: 'payroll_runs',
   CapitalContribution: 'capital_contributions',
+  CapitalWithdrawal: 'capital_withdrawals',
 } as const satisfies Record<string, SubmittableDocTable>
 
 export type SubmittableEntity = keyof typeof SUBMITTABLE_ENTITY_TABLE

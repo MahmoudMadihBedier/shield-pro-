@@ -15,8 +15,8 @@
 import { err, ok, type Result } from '@/core/result'
 import { postGl, type PostGlResult } from '@/infrastructure/appwrite/functions'
 
-import { capitalToGlLines, receiptToGlLines, voucherToGlLines } from '../domain/gl'
-import type { CapitalContribution, PaymentVoucher, Receipt } from '../domain/schemas'
+import { capitalToGlLines, receiptToGlLines, voucherToGlLines, withdrawalToGlLines } from '../domain/gl'
+import type { CapitalContribution, CapitalWithdrawal, PaymentVoucher, Receipt } from '../domain/schemas'
 
 export interface GlPosting {
   voucherNo: string
@@ -66,4 +66,18 @@ export async function postCapitalToGl(
     lines: capitalToGlLines(contribution),
   })
   return absorbAlreadyPosted(contribution.reference_id, result)
+}
+
+/** Debit owner's drawings, credit the source (cash/bank) account. */
+export async function postWithdrawalToGl(
+  withdrawal: CapitalWithdrawal,
+): Promise<Result<GlPosting>> {
+  const result = await postGl({
+    voucherType: 'CapitalWithdrawal',
+    voucherNo: withdrawal.reference_id,
+    postingDatetime: withdrawal.posting_datetime,
+    branchId: withdrawal.branch_id,
+    lines: withdrawalToGlLines(withdrawal),
+  })
+  return absorbAlreadyPosted(withdrawal.reference_id, result)
 }

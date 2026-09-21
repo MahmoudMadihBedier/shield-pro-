@@ -18,6 +18,7 @@ export const Tables = {
   rawMaterials: 'raw_materials',
   customers: 'customers',
   suppliers: 'suppliers',
+  supplierContacts: 'supplier_contacts',
 
   // ---- Movement / transaction documents (submittable) ----
   purchaseOrders: 'purchase_orders',
@@ -35,6 +36,7 @@ export const Tables = {
   repCloseouts: 'rep_closeouts',
   payrollRuns: 'payroll_runs',
   capitalContributions: 'capital_contributions',
+  capitalWithdrawals: 'capital_withdrawals',
 
   // ---- HR (master data + logs, System Admin / branch accountant owned) ----
   attendanceRecords: 'attendance_records',

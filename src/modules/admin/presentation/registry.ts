@@ -340,13 +340,28 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
     defaultSort: { field: 'name', dir: 'asc' },
     canRemove: true,
     searchPlaceholder: 'ابحث بالاسم…',
-    columns: [{ field: 'name', sortable: true }, { field: 'contact' }, { field: 'phone' }],
+    columns: [
+      { field: 'name', sortable: true },
+      { field: 'contact' },
+      { field: 'phone' },
+      { field: 'tax_id' },
+    ],
     fields: [
       { name: 'name', kind: 'text', required: true },
       { name: 'contact', kind: 'text' },
-      { name: 'phone', kind: 'text' },
+      { name: 'phone', kind: 'text', placeholder: '01012345678' },
+      { name: 'tax_id', kind: 'text', placeholder: '9 أرقام' },
+      { name: 'description', kind: 'textarea' },
+      { name: 'notes', kind: 'textarea' },
     ],
-    emptyInput: { name: '', contact: '', phone: '' },
+    emptyInput: {
+      name: '',
+      contact: '',
+      phone: '',
+      tax_id: '',
+      description: '',
+      notes: '',
+    },
   }),
 
   customer: define({

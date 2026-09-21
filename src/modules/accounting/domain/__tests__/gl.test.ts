@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import { assertBalanced } from '@/core/ledger'
 
-import { GlAccount, receiptToGlLines, trialBalance, voucherToGlLines } from '../gl'
+import {
+  GlAccount,
+  netOwnersEquity,
+  receiptToGlLines,
+  trialBalance,
+  voucherToGlLines,
+  withdrawalToGlLines,
+} from '../gl'
 
 describe('receiptToGlLines', () => {
   it('debits cash for a cash receipt and credits AR — balanced', () => {
@@ -50,6 +57,39 @@ describe('voucherToGlLines', () => {
       treasury_account: 'petty_cash',
     })
     expect(lines[1]?.account).toBe('petty_cash')
+  })
+})
+
+describe('withdrawalToGlLines', () => {
+  it('debits owners drawings and credits the source account — balanced', () => {
+    const lines = withdrawalToGlLines({ amount: 1000, source_account: 'cash' })
+    expect(lines).toEqual([
+      { account: GlAccount.OwnersDrawings, debit: 1000, credit: 0 },
+      { account: 'cash', debit: 0, credit: 1000 },
+    ])
+    expect(() => assertBalanced(lines)).not.toThrow()
+  })
+
+  it('falls back to Cash when source_account is blank', () => {
+    const lines = withdrawalToGlLines({ amount: 50, source_account: '   ' })
+    expect(lines[1]?.account).toBe(GlAccount.Cash)
+  })
+
+  it('never touches OwnersCapital directly', () => {
+    const lines = withdrawalToGlLines({ amount: 300, source_account: 'bank' })
+    expect(lines.some((l) => l.account === GlAccount.OwnersCapital)).toBe(false)
+  })
+})
+
+describe('netOwnersEquity', () => {
+  it('nets capital contributed against drawings taken out', () => {
+    // Dr cash 5000 / Cr owners_capital 5000 -> capital account balance = -5000
+    // Dr owners_drawings 1000 / Cr cash 1000 -> drawings account balance = +1000
+    expect(netOwnersEquity(-5000, 1000)).toBe(4000)
+  })
+
+  it('is zero when neither account has postings', () => {
+    expect(netOwnersEquity(0, 0)).toBe(0)
   })
 })
 

@@ -68,7 +68,7 @@ export function PurchaseOrderListPage() {
       {
         id: 'supplier_id',
         header: bilingual(PO_FIELD_LABELS.supplier_id!),
-        accessor: (row) => supplierNameById.get(row.supplier_id) ?? row.supplier_id,
+        accessor: (row) => supplierNameById.get(row.supplier_id) ?? 'مورد غير معروف',
       },
       {
         id: 'total_value',

@@ -54,11 +54,22 @@ export function useRelationOptions(relationTo: RelationTo | undefined) {
           : undefined,
       })
       if (!result.ok) throw result.error
-      return result.value.rows.map((row) => {
+      const options = result.value.rows.map((row) => {
         const record = row as { $id: string; name?: string; full_name?: string; code?: string }
         const label = record.name ?? record.full_name ?? record.code ?? record.$id
-        return { value: record.$id, label: `${label} · ${record.$id.slice(0, 6)}` }
+        return { value: record.$id, label }
       })
+      // Names aren't guaranteed unique (no unique index on e.g. `suppliers.name`)
+      // — disambiguate only the rows that actually collide, so the common case
+      // stays a clean human-readable name instead of every option carrying a
+      // raw id fragment.
+      const counts = new Map<string, number>()
+      for (const option of options) counts.set(option.label, (counts.get(option.label) ?? 0) + 1)
+      return options.map((option) =>
+        (counts.get(option.label) ?? 0) > 1
+          ? { ...option, label: `${option.label} · ${option.value.slice(0, 6)}` }
+          : option,
+      )
     },
   })
 }

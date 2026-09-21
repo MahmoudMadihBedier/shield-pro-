@@ -15,6 +15,7 @@ import {
   GeoField,
   NumberField,
   SelectField,
+  TextAreaField,
   TextField,
   type SelectOption,
 } from '@/shared/forms'
@@ -29,6 +30,7 @@ import {
   type AdminRowMap,
   type FieldDescriptor,
 } from '../registry'
+import { SupplierContactsSection } from './SupplierContactsSection'
 
 interface MasterFormPanelProps<K extends AdminEntity> {
   entity: K
@@ -105,6 +107,10 @@ function renderField(entity: AdminEntity, descriptor: FieldDescriptor) {
     required: descriptor.required,
   }
   switch (descriptor.kind) {
+    case 'textarea':
+      return (
+        <TextAreaField key={descriptor.name} {...common} placeholder={descriptor.placeholder} />
+      )
     case 'number':
       return (
         <NumberField
@@ -192,6 +198,16 @@ export function MasterFormPanel<K extends AdminEntity>({
           <div className="space-y-3">
             {config.fields.map((descriptor) => renderField(entity, descriptor))}
           </div>
+          {entity === 'supplier' ? (
+            row ? (
+              <SupplierContactsSection supplierId={(row as unknown as { $id: string }).$id} />
+            ) : (
+              <p className="text-xs text-[var(--text-subtle)]">
+                يمكنك إضافة جهات اتصال متعددة بعد حفظ المورد. / You can add multiple contacts after
+                saving the supplier.
+              </p>
+            )
+          ) : null}
           <FormError message={formError} />
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={onDone} disabled={isSubmitting}>

@@ -9,10 +9,13 @@ import { makeDocumentRepo } from '@/shared/documents'
 
 import {
   capitalContributionRowSchema,
+  capitalWithdrawalRowSchema,
   paymentVoucherRowSchema,
   receiptRowSchema,
   type CapitalContribution,
   type CapitalContributionDraft,
+  type CapitalWithdrawal,
+  type CapitalWithdrawalDraft,
   type PaymentVoucher,
   type PaymentVoucherDraft,
   type Receipt,
@@ -35,4 +38,9 @@ export const capitalContributionsRepo = makeDocumentRepo<
 >({
   entity: 'CapitalContribution',
   rowSchema: capitalContributionRowSchema,
+})
+
+export const capitalWithdrawalsRepo = makeDocumentRepo<CapitalWithdrawal, CapitalWithdrawalDraft>({
+  entity: 'CapitalWithdrawal',
+  rowSchema: capitalWithdrawalRowSchema,
 })

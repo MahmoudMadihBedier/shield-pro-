@@ -9,8 +9,8 @@ vi.mock('@/infrastructure/appwrite/functions', () => ({
   postGl: (...args: unknown[]) => postGl(...args),
 }))
 
-const { postReceiptToGl, postVoucherToGl } = await import('../post-accounting')
-import type { PaymentVoucher, Receipt } from '../../domain/schemas'
+const { postReceiptToGl, postVoucherToGl, postWithdrawalToGl } = await import('../post-accounting')
+import type { CapitalWithdrawal, PaymentVoucher, Receipt } from '../../domain/schemas'
 
 function receipt(over: Partial<Receipt> = {}): Receipt {
   return {
@@ -52,6 +52,27 @@ function voucher(over: Partial<PaymentVoucher> = {}): PaymentVoucher {
     counterparty: 'شركة النقل',
     treasury_account: null,
     evidence_file_id: null,
+    ...over,
+  }
+}
+
+function withdrawal(over: Partial<CapitalWithdrawal> = {}): CapitalWithdrawal {
+  return {
+    $id: 'w1',
+    $createdAt: 't',
+    $updatedAt: 't',
+    reference_id: 'CAPW-2026-00001',
+    doc_status: 1,
+    branch_id: null,
+    created_by: 'u1',
+    amended_from: null,
+    posting_datetime: '2026-08-31T09:00:00.000Z',
+    remarks: null,
+    withdrawn_by: 'Owner',
+    method: 'cash',
+    reason: 'سحب شخصي',
+    amount: 1000,
+    source_account: 'cash',
     ...over,
   }
 }
@@ -121,5 +142,30 @@ describe('postVoucherToGl', () => {
     postGl.mockResolvedValue(err(appError('conflict', 'dup')))
     const res = await postVoucherToGl(voucher())
     expect(res).toEqual(ok({ voucherNo: 'PV-2026-00009', alreadyPosted: true, posted: null }))
+  })
+})
+
+describe('postWithdrawalToGl', () => {
+  it('calls /post-gl with voucherType CapitalWithdrawal and Dr drawings / Cr source lines', async () => {
+    postGl.mockResolvedValue(ok({ voucherNo: 'CAPW-2026-00001', entries: 2 }))
+
+    await postWithdrawalToGl(withdrawal())
+
+    expect(postGl).toHaveBeenCalledWith({
+      voucherType: 'CapitalWithdrawal',
+      voucherNo: 'CAPW-2026-00001',
+      postingDatetime: '2026-08-31T09:00:00.000Z',
+      branchId: null,
+      lines: [
+        { account: 'owners_drawings', debit: 1000, credit: 0 },
+        { account: 'cash', debit: 0, credit: 1000 },
+      ],
+    })
+  })
+
+  it('absorbs a conflict for the withdrawal path too', async () => {
+    postGl.mockResolvedValue(err(appError('conflict', 'dup')))
+    const res = await postWithdrawalToGl(withdrawal())
+    expect(res).toEqual(ok({ voucherNo: 'CAPW-2026-00001', alreadyPosted: true, posted: null }))
   })
 })

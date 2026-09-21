@@ -53,6 +53,7 @@ export const SUBMIT_ROLE_BY_TABLE: Partial<Record<SubmittableDocTable, readonly 
   rep_closeouts: [Role.BranchAccountant, Role.SystemAdmin],
   payroll_runs: [Role.ChiefAccountant, Role.SystemAdmin],
   capital_contributions: [Role.ChiefAccountant, Role.SystemAdmin],
+  capital_withdrawals: [Role.ChiefAccountant, Role.SystemAdmin],
 }
 
 const ALL_TABLES: ReadonlySet<string> = new Set(SUBMITTABLE_DOC_TABLES)

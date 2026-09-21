@@ -78,6 +78,39 @@ const codeInput = z
 /** Optional free-text column, trimmed. Empty string is accepted (form default). */
 const optText = (max: number) => z.string().trim().max(max).optional()
 
+/**
+ * Optional, format-checked column: an untouched (empty) value is accepted
+ * (form default); once the user types something it must match `regex` — the
+ * "real-world input" rule (`claude.md` — validate like the real business
+ * document, not just non-empty).
+ */
+const optPattern = (max: number, regex: RegExp, message: string) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .optional()
+    .refine((v) => !v || regex.test(v), message)
+
+/** Egyptian mobile number: `01` + carrier digit (0/1/2/5) + 8 digits = 11 total. */
+export const EGYPT_PHONE_REGEX = /^01[0125]\d{8}$/
+const egyptPhone = (max = 32) =>
+  optPattern(max, EGYPT_PHONE_REGEX, 'رقم الهاتف غير صحيح — مثال: 01012345678')
+
+/** Egyptian e-invoice tax registration number: 9 digits. */
+export const EGYPT_TAX_ID_REGEX = /^\d{9}$/
+const egyptTaxId = (max = 32) =>
+  optPattern(max, EGYPT_TAX_ID_REGEX, 'الرقم الضريبي غير صحيح — يجب أن يتكوّن من 9 أرقام')
+
+/** Optional email, trimmed. Empty string is accepted (form default). */
+const optEmail = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .optional()
+    .refine((v) => !v || z.string().email().safeParse(v).success, 'بريد إلكتروني غير صحيح')
+
 /** Required free-text column, trimmed. */
 const reqText = (max: number, label: string) =>
   z
@@ -287,14 +320,46 @@ export const supplierRowSchema = z.object({
   name: z.string(),
   contact: rowOptStr,
   phone: rowOptStr,
+  tax_id: rowOptStr,
+  description: rowOptStr,
+  notes: rowOptStr,
 })
 export const supplierInputSchema = z.object({
   name: reqText(128, 'اسم المورد'),
   contact: optText(128),
-  phone: optText(32),
+  phone: egyptPhone(32),
+  tax_id: egyptTaxId(32),
+  description: optText(1000),
+  notes: optText(2000),
 })
 export type Supplier = z.infer<typeof supplierRowSchema>
 export type SupplierInput = z.infer<typeof supplierInputSchema>
+
+// ---------------------------------------------------------------------------
+// supplier_contacts — one supplier can have several contact people
+// ---------------------------------------------------------------------------
+
+export const supplierContactRowSchema = z.object({
+  ...systemFields,
+  supplier_id: z.string(),
+  contact_name: z.string(),
+  role_title: rowOptStr,
+  phone: rowOptStr,
+  email: rowOptStr,
+  is_primary: z
+    .boolean()
+    .nullish()
+    .transform((v) => v ?? false),
+})
+export const supplierContactInputSchema = z.object({
+  contact_name: reqText(128, 'اسم جهة الاتصال'),
+  role_title: optText(64),
+  phone: egyptPhone(32),
+  email: optEmail(128),
+  is_primary: z.boolean(),
+})
+export type SupplierContact = z.infer<typeof supplierContactRowSchema>
+export type SupplierContactInput = z.infer<typeof supplierContactInputSchema>
 
 // ---------------------------------------------------------------------------
 // customers

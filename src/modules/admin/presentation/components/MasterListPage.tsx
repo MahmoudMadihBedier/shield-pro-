@@ -131,9 +131,10 @@ export function MasterListPage<K extends AdminListEntity>({
   const handleRemove = useCallback(
     (row: AdminRowMap[K]) => {
       if (!mutations.remove) return
-      const id = (row as { $id: string }).$id
-      if (!window.confirm(`تأكيد حذف هذا السجل؟ (${id})`)) return
-      void mutations.remove(id)
+      const record = row as { $id: string; name?: string }
+      const label = record.name ? `"${record.name}"` : 'هذا السجل'
+      if (!window.confirm(`تأكيد حذف ${label}؟`)) return
+      void mutations.remove(record.$id)
     },
     [mutations],
   )

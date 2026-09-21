@@ -76,7 +76,7 @@ export function PurchaseOrderDetailPage() {
   const lines = parsePoLines(order.lines)
   const reps = parseReps(order.reps)
   const supplierName =
-    suppliers.data?.find((option) => option.value === order.supplier_id)?.label ?? order.supplier_id
+    suppliers.data?.find((option) => option.value === order.supplier_id)?.label ?? 'مورد غير معروف'
 
   return (
     <div className="space-y-5">

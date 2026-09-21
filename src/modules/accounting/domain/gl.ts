@@ -15,7 +15,7 @@
  */
 import { assertBalanced, LEDGER_TOLERANCE, type GlLine } from '@/core/ledger'
 
-import type { PaymentVoucher, Receipt } from './schemas'
+import type { CapitalWithdrawal, PaymentVoucher, Receipt } from './schemas'
 
 /** Well-known account identifiers (placeholder chart of accounts). */
 export const GlAccount = {
@@ -28,6 +28,10 @@ export const GlAccount = {
   Expense: 'expense',
   SalesReturns: 'sales_returns',
   OwnersCapital: 'owners_capital',
+  /** Contra-equity: owner/investor withdrawals, netted against OwnersCapital
+   *  when computing equity — never posted as a direct debit to the capital
+   *  account itself (see {@link withdrawalToGlLines}). */
+  OwnersDrawings: 'owners_drawings',
   Other: 'other',
 } as const
 
@@ -90,6 +94,29 @@ export function capitalToGlLines(contribution: {
   return lines
 }
 
+/**
+ * An owner / investor capital withdrawal — cash taken out of the business:
+ *   Dr Owner's drawings (contra-equity)
+ *   Cr <source_account>   (cash or bank — where the money left from)
+ *
+ * Deliberately does NOT debit `OwnersCapital` directly: a Drawings account
+ * keeps every withdrawal individually visible and auditable, and keeps the
+ * income statement unaffected by owner transactions — the standard treatment
+ * (drawings only close into capital at period-end, a separate, explicit step,
+ * not implicit in this posting).
+ */
+export function withdrawalToGlLines(
+  withdrawal: Pick<CapitalWithdrawal, 'amount' | 'source_account'>,
+): GlLine[] {
+  const source = withdrawal.source_account.trim() || GlAccount.Cash
+  const lines = [
+    DEBIT(GlAccount.OwnersDrawings, withdrawal.amount),
+    CREDIT(source, withdrawal.amount),
+  ]
+  assertBalanced(lines)
+  return lines
+}
+
 // ---------------------------------------------------------------------------
 // Trial balance
 // ---------------------------------------------------------------------------
@@ -145,4 +172,20 @@ export function trialBalance(rows: readonly TrialBalanceInputRow[]): TrialBalanc
     totalCredit,
     balanced: Math.abs(totalDebit - totalCredit) <= LEDGER_TOLERANCE,
   }
+}
+
+/**
+ * Net owner's equity = capital contributed − drawings taken out. Both
+ * `capitalBalance` and `drawingsBalance` come from {@link TrialBalanceAccount.balance}
+ * (`debit − credit`) for `GlAccount.OwnersCapital` / `GlAccount.OwnersDrawings`
+ * respectively — both are credit-normal accounts on the contribution side and
+ * debit-normal on the drawings side, so the account `balance` (debit − credit)
+ * is negative for capital and positive for drawings; negating the sum reads it
+ * back as a normal positive equity figure. `0` for either side when the
+ * account has no postings yet.
+ */
+export function netOwnersEquity(capitalBalance: number, drawingsBalance: number): number {
+  // `|| 0` normalizes a `-0` result (e.g. both balances are 0) to `+0` so
+  // downstream formatting never shows a nonsensical "-0.00".
+  return -(capitalBalance + drawingsBalance) || 0
 }
