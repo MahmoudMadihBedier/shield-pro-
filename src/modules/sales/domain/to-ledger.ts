@@ -5,12 +5,13 @@
  * Appwrite.
  *
  * ## Chart of accounts
- * A real chart-of-accounts is a later story. Until then the GL builders use
- * plain string account codes: `'accounts_receivable'`, `'cash'`, `'bank'`,
- * `'sales_revenue'`. When the CoA lands these become lookups.
+ * Account identifiers come from the canonical `GlAccount` in `@/core/accounts`
+ * (backed by the `chart_of_accounts` master table) — never a locally-typed
+ * copy, so this module's postings can't drift from accounting's or returns'.
  *
  * `domain` is pure TypeScript — no framework imports.
  */
+import { GlAccount } from '@/core/accounts'
 import { CREDIT, DEBIT, type GlLine } from '@/core/ledger'
 
 import { parseInvoiceLines, parseRepIssueLines } from './schemas'
@@ -24,13 +25,6 @@ export interface StockMove {
   qtyChange: number
   valuationRate?: number
 }
-
-export const SALES_ACCOUNTS = {
-  accountsReceivable: 'accounts_receivable',
-  cash: 'cash',
-  bank: 'bank',
-  salesRevenue: 'sales_revenue',
-} as const
 
 type InvoiceLike = Pick<SalesInvoiceRow, 'lines'>
 type InvoiceGlLike = Pick<
@@ -66,13 +60,13 @@ export function invoiceToStockMoves(
  */
 export function invoiceToGlLines(invoice: InvoiceGlLike): GlLine[] {
   const settledAccount =
-    invoice.payment_method === 'bank_transfer' ? SALES_ACCOUNTS.bank : SALES_ACCOUNTS.cash
+    invoice.payment_method === 'bank_transfer' ? GlAccount.Bank : GlAccount.Cash
   const lines: GlLine[] = []
   if (invoice.cash_amount > 0) lines.push(DEBIT(settledAccount, invoice.cash_amount))
   if (invoice.credit_amount > 0) {
-    lines.push(DEBIT(SALES_ACCOUNTS.accountsReceivable, invoice.credit_amount))
+    lines.push(DEBIT(GlAccount.AccountsReceivable, invoice.credit_amount))
   }
-  lines.push(CREDIT(SALES_ACCOUNTS.salesRevenue, invoice.net_total))
+  lines.push(CREDIT(GlAccount.SalesRevenue, invoice.net_total))
   return lines
 }
 

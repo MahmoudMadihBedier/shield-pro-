@@ -5,6 +5,8 @@
  *
  * `domain` is pure TypeScript — no framework imports.
  */
+import type { AccountType } from '@/core/accounts'
+
 import type { CustomerApprovalState, WarehouseKind } from './schemas'
 
 export interface Label {
@@ -21,6 +23,7 @@ export type AdminEntity =
   | 'rawMaterial'
   | 'supplier'
   | 'customer'
+  | 'chartOfAccount'
 
 /** Entity titles — singular + plural, for headers and nav. */
 export const ENTITY_LABELS: Record<AdminEntity, { one: Label; many: Label }> = {
@@ -52,6 +55,10 @@ export const ENTITY_LABELS: Record<AdminEntity, { one: Label; many: Label }> = {
   customer: {
     one: { ar: 'عميل', en: 'Customer' },
     many: { ar: 'العملاء', en: 'Customers' },
+  },
+  chartOfAccount: {
+    one: { ar: 'حساب', en: 'Account' },
+    many: { ar: 'دليل الحسابات', en: 'Chart of accounts' },
   },
 }
 
@@ -126,6 +133,14 @@ export const FIELD_LABELS: Record<AdminEntity, Record<string, Label>> = {
     approval_state: { ar: 'حالة الاعتماد', en: 'Approval state' },
     created_by: { ar: 'أنشئ بواسطة', en: 'Created by' },
   },
+  chartOfAccount: {
+    code: { ar: 'رمز الحساب', en: 'Code' },
+    account_number: { ar: 'الرقم المحاسبي', en: 'Account number' },
+    name: { ar: 'الاسم', en: 'Name' },
+    name_ar: { ar: 'الاسم بالعربية', en: 'Name (Arabic)' },
+    account_type: { ar: 'نوع الحساب', en: 'Account type' },
+    is_active: { ar: 'نشط', en: 'Active' },
+  },
 }
 
 /** `supplier_contacts` isn't an `AdminEntity` (it's a bespoke child list, not
@@ -149,6 +164,14 @@ export const WAREHOUSE_KIND_LABELS: Record<WarehouseKind, Label> = {
 export const CUSTOMER_APPROVAL_STATE_LABELS: Record<CustomerApprovalState, Label> = {
   approved: { ar: 'معتمد', en: 'Approved' },
   pending_approval: { ar: 'بانتظار الاعتماد', en: 'Pending approval' },
+}
+
+export const ACCOUNT_TYPE_LABELS: Record<AccountType, Label> = {
+  asset: { ar: 'أصول', en: 'Asset' },
+  liability: { ar: 'التزامات', en: 'Liability' },
+  equity: { ar: 'حقوق ملكية', en: 'Equity' },
+  income: { ar: 'إيرادات', en: 'Income' },
+  expense: { ar: 'مصروفات', en: 'Expense' },
 }
 
 /** Convenience: `"عربي / English"`. */

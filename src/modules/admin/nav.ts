@@ -18,6 +18,7 @@ export const ADMIN_LIST_ENTITIES = [
   'rawMaterial',
   'supplier',
   'customer',
+  'chartOfAccount',
 ] as const satisfies ReadonlyArray<AdminEntity>
 
 export type AdminListEntity = (typeof ADMIN_LIST_ENTITIES)[number]
@@ -31,6 +32,7 @@ export const ADMIN_ENTITY_SLUG: Record<AdminListEntity, string> = {
   rawMaterial: 'raw-materials',
   supplier: 'suppliers',
   customer: 'customers',
+  chartOfAccount: 'chart-of-accounts',
 }
 
 const ADMIN_ROLES = [Role.SystemAdmin] as const
@@ -42,14 +44,12 @@ const ADMIN_ROLES = [Role.SystemAdmin] as const
  */
 export const adminNavItems: readonly NavItem[] = [
   { to: '/admin', label: 'الإدارة', labelEn: 'Admin', roles: ADMIN_ROLES, end: true },
-  ...ADMIN_LIST_ENTITIES.map(
-    (entity): NavItem => ({
-      to: `/admin/${ADMIN_ENTITY_SLUG[entity]}`,
-      label: ENTITY_LABELS[entity].many.ar,
-      labelEn: ENTITY_LABELS[entity].many.en,
-      roles: ADMIN_ROLES,
-    }),
-  ),
+  ...ADMIN_LIST_ENTITIES.map((entity): NavItem => ({
+    to: `/admin/${ADMIN_ENTITY_SLUG[entity]}`,
+    label: ENTITY_LABELS[entity].many.ar,
+    labelEn: ENTITY_LABELS[entity].many.en,
+    roles: ADMIN_ROLES,
+  })),
   { to: '/admin/import', label: 'استيراد البيانات', labelEn: 'Data import', roles: ADMIN_ROLES },
   { to: '/admin/export', label: 'تصدير كل البيانات', labelEn: 'Export all', roles: ADMIN_ROLES },
 ]

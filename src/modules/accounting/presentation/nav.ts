@@ -68,6 +68,18 @@ export const accountingNavItems: NavItem[] = [
     roles: ACCOUNTING_NAV_ROLES,
   },
   {
+    to: '/accounting/balance-sheet',
+    label: 'الميزانية العمومية',
+    labelEn: 'Balance sheet',
+    roles: ACCOUNTING_NAV_ROLES,
+  },
+  {
+    to: '/accounting/cash-flow',
+    label: 'التدفقات النقدية',
+    labelEn: 'Cash flow',
+    roles: ACCOUNTING_NAV_ROLES,
+  },
+  {
     to: '/accounting/ledger',
     label: 'دفتر الأستاذ',
     labelEn: 'General ledger',

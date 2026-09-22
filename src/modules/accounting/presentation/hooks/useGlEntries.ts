@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query'
 
 import type { AppError } from '@/core/errors'
 
+import { balanceSheet } from '../../data/balance-sheet-repo'
+import { cashFlowStatement, type CashFlowRange } from '../../data/cash-flow-repo'
 import {
   accountBalance,
   listGlEntries,
@@ -13,6 +15,8 @@ import {
   type GlEntryListParams,
 } from '../../data/gl-repo'
 import { profitAndLoss, type PnlRange } from '../../data/pnl-repo'
+import type { BalanceSheet } from '../../domain/balance-sheet'
+import type { CashFlowStatement } from '../../domain/cash-flow'
 import type { TrialBalance } from '../../domain/gl'
 import type { ProfitAndLoss } from '../../domain/pnl'
 import { accountingKeys } from '../query-keys'
@@ -59,6 +63,28 @@ export function useProfitAndLoss(range: PnlRange = {}) {
     queryKey: accountingKeys.gl.pnl(range),
     queryFn: async () => {
       const res = await profitAndLoss(range)
+      if (!res.ok) throw res.error
+      return res.value
+    },
+  })
+}
+
+export function useBalanceSheet(asOf: string) {
+  return useQuery<BalanceSheet, AppError>({
+    queryKey: accountingKeys.reports.balanceSheet(asOf),
+    queryFn: async () => {
+      const res = await balanceSheet(asOf)
+      if (!res.ok) throw res.error
+      return res.value
+    },
+  })
+}
+
+export function useCashFlowStatement(range: CashFlowRange) {
+  return useQuery<CashFlowStatement, AppError>({
+    queryKey: accountingKeys.reports.cashFlow(range),
+    queryFn: async () => {
+      const res = await cashFlowStatement(range)
       if (!res.ok) throw res.error
       return res.value
     },

@@ -21,7 +21,10 @@ import {
 } from '@/shared/data-table'
 import { Badge, Button, PageHeader, StatusPill } from '@/shared/ui'
 
+import type { AccountType } from '@/core/accounts'
+
 import {
+  ACCOUNT_TYPE_LABELS,
   CUSTOMER_APPROVAL_STATE_LABELS,
   ENTITY_LABELS,
   FIELD_LABELS,
@@ -70,6 +73,10 @@ function renderCell(format: CellFormat | undefined, value: unknown): ReactNode {
     case 'roles': {
       const roles = parseRoles(String(value))
       return roles.length > 0 ? roles.map((r) => ROLE_LABELS[r].ar).join('، ') : String(value)
+    }
+    case 'accountType': {
+      const label = ACCOUNT_TYPE_LABELS[value as AccountType]
+      return label ? label.ar : String(value)
     }
     default:
       return String(value)

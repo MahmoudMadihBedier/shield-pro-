@@ -7,7 +7,8 @@ import { Card, PageHeader } from '@/shared/ui'
 
 import { GlAccount } from '../../domain/gl'
 import { overdueTotal } from '../../domain/aging'
-import { useAccountBalance, useCustomerAging } from '../hooks'
+import { PeriodLockPanel } from '../components'
+import { useAccountBalance, useAccountingPermissions, useCustomerAging } from '../hooks'
 
 const SECTIONS = [
   {
@@ -47,6 +48,18 @@ const SECTIONS = [
     desc: 'الإيرادات والمصروفات وصافي الربح من الدفاتر الحيّة، قابلة للتصدير.',
   },
   {
+    to: '/accounting/balance-sheet',
+    ar: 'الميزانية العمومية',
+    en: 'Balance sheet',
+    desc: 'الأصول = الالتزامات + حقوق الملكية، حتى تاريخ محدد.',
+  },
+  {
+    to: '/accounting/cash-flow',
+    ar: 'التدفقات النقدية',
+    en: 'Cash flow statement',
+    desc: 'الطريقة غير المباشرة: تشغيلية واستثمارية وتمويلية، لفترة محددة.',
+  },
+  {
     to: '/accounting/ledger',
     ar: 'دفتر الأستاذ',
     en: 'General ledger',
@@ -80,13 +93,19 @@ function Kpi({
 }
 
 export function AccountingHubPage() {
+  const perms = useAccountingPermissions()
   const aging = useCustomerAging(useMemo(() => new Date(), []))
   const cash = useAccountBalance(GlAccount.Cash)
   const bank = useAccountBalance(GlAccount.Bank)
+  const treasury = useAccountBalance(GlAccount.Treasury)
 
   const totalAr = (aging.data ?? []).reduce((s, r) => s + Math.max(r.outstanding, 0), 0)
   const overdueAr = (aging.data ?? []).reduce((s, r) => s + overdueTotal(r), 0)
-  const cashPosition = (cash.data ?? 0) + (bank.data ?? 0)
+  // Every cash-like account (`@/core/accounts` CASH_LIKE_ACCOUNTS), not just
+  // cash+bank — a payment voucher can move money through Treasury too.
+  const cashPosition = (cash.data ?? 0) + (bank.data ?? 0) + (treasury.data ?? 0)
+  const cashLoading = cash.isLoading || bank.isLoading || treasury.isLoading
+  const cashError = cash.isError || bank.isError || treasury.isError
 
   return (
     <div className="space-y-4">
@@ -112,13 +131,15 @@ export function AccountingHubPage() {
           error={aging.isError}
         />
         <Kpi
-          label="السيولة (نقد + بنك)"
+          label="السيولة (نقد + بنك + خزينة)"
           labelEn="Cash position"
           value={formatCurrency(cashPosition)}
-          loading={cash.isLoading || bank.isLoading}
-          error={cash.isError || bank.isError}
+          loading={cashLoading}
+          error={cashError}
         />
       </div>
+
+      {perms.isAdmin ? <PeriodLockPanel /> : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {SECTIONS.map((section) => (

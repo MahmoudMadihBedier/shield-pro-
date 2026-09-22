@@ -19,6 +19,7 @@ export const Tables = {
   customers: 'customers',
   suppliers: 'suppliers',
   supplierContacts: 'supplier_contacts',
+  chartOfAccounts: 'chart_of_accounts',
 
   // ---- Movement / transaction documents (submittable) ----
   purchaseOrders: 'purchase_orders',
@@ -66,6 +67,7 @@ export const Tables = {
   notifications: 'notifications',
   auditLog: 'audit_log',
   namingSeries: 'naming_series_counters',
+  systemSettings: 'system_settings',
 } as const
 
 export type TableId = (typeof Tables)[keyof typeof Tables]

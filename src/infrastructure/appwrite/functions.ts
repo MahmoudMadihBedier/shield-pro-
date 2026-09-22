@@ -27,6 +27,8 @@ export const ServerRoute = {
   postStockLedger: '/post-stock-ledger',
   postGl: '/post-gl',
   reverseGl: '/reverse-gl',
+  setPostingLockDate: '/accounting/set-posting-lock-date',
+  cashFlowFinancing: '/reports/cash-flow-financing',
   segregationGuard: '/segregation-guard',
   fraudScan: '/fraud-scan',
   reviewFraudFlag: '/review-fraud-flag',
@@ -286,6 +288,11 @@ const DISPATCH: Record<string, Dispatch> = {
     fn: 'reverse_gl',
     args: (p) => ({ p_voucher_no: p.voucherNo, p_reason: p.reason }),
   },
+  [ServerRoute.setPostingLockDate]: {
+    kind: 'rpc',
+    fn: 'set_posting_lock_date',
+    args: (p) => ({ p_date: p.date }),
+  },
   [ServerRoute.segregationGuard]: {
     kind: 'rpc',
     fn: 'segregation_guard',
@@ -389,6 +396,11 @@ const DISPATCH: Record<string, Dispatch> = {
     kind: 'rpc',
     fn: 'trial_balance',
     args: (p) => ({ p_from: p.from ?? null, p_to: p.to ?? null }),
+  },
+  [ServerRoute.cashFlowFinancing]: {
+    kind: 'rpc',
+    fn: 'cash_flow_financing',
+    args: (p) => ({ p_from: p.from, p_to: p.to }),
   },
   [ServerRoute.customerAging]: {
     kind: 'rpc',
@@ -538,6 +550,15 @@ export function postGl(payload: PostGlPayload): Promise<Result<PostGlResult>> {
  */
 export function reverseGl(voucherNo: string, reason: string): Promise<Result<ReverseGlResult>> {
   return invoke<ReverseGlResult>(ServerRoute.reverseGl, { voucherNo, reason })
+}
+
+/**
+ * System Admin only — sets (or clears, with `date: null`) the accounting
+ * period lock. `post_gl` / `post_stock_ledger` reject a posting dated at or
+ * before it for every other role.
+ */
+export function setPostingLockDate(date: string | null): Promise<Result<{ date: string | null }>> {
+  return invoke<{ date: string | null }>(ServerRoute.setPostingLockDate, { date })
 }
 
 /**
@@ -837,6 +858,9 @@ export interface TrialBalanceRpcRow {
   debit: number
   credit: number
   balance: number
+  /** From `chart_of_accounts.account_type`; `null` for an account not (yet)
+   *  in the chart. */
+  accountType: string | null
 }
 export interface TrialBalanceRpc {
   rows: TrialBalanceRpcRow[]
@@ -859,6 +883,23 @@ export function fetchTrialBalance(
   to?: string | null,
 ): Promise<Result<TrialBalanceRpc>> {
   return invoke<TrialBalanceRpc>(ServerRoute.trialBalance, { from, to })
+}
+
+export interface CashFlowFinancingRpc {
+  /** Cash-settled capital contributions in the period (non-cash contributions
+   *  — a vehicle, a building — are excluded; they never move cash). */
+  capitalContributed: number
+  capitalWithdrawn: number
+}
+
+/** The cash-effect-only slice of capital contributions/withdrawals for a
+ *  period — the one cash-flow-statement input that can't come from a plain
+ *  trial-balance snapshot (see `cash_flow_financing`, migration 20260922). */
+export function fetchCashFlowFinancing(
+  from: string,
+  to: string,
+): Promise<Result<CashFlowFinancingRpc>> {
+  return invoke<CashFlowFinancingRpc>(ServerRoute.cashFlowFinancing, { from, to })
 }
 
 /** Whole-book customer aging aggregated in Postgres (FIFO receipt application). */

@@ -11,6 +11,7 @@ export {
   WarehousesListPage,
   SuppliersListPage,
   RawMaterialsListPage,
+  ChartOfAccountsListPage,
 } from './presentation/pages/list-pages'
 export { UsersListPage } from './presentation/pages/UsersListPage'
 export { ProductsListPage } from './presentation/pages/ProductsListPage'
@@ -42,6 +43,7 @@ export {
   suppliersRepo,
   rawMaterialsRepo,
   productBomRepo,
+  chartOfAccountsRepo,
 } from './data/repos'
 export { usersRepo } from './data/users-repo'
 
