@@ -16,6 +16,8 @@ import {
   DEFAULT_CUSTOMER_APPROVAL_STATE,
   branchInputSchema,
   branchRowSchema,
+  chartOfAccountInputSchema,
+  chartOfAccountRowSchema,
   customerInputSchema,
   customerRowSchema,
   productBomLineInputSchema,
@@ -30,6 +32,8 @@ import {
   warehouseRowSchema,
   type Branch,
   type BranchInput,
+  type ChartOfAccount,
+  type ChartOfAccountInput,
   type Customer,
   type CustomerInput,
   type Product,
@@ -123,6 +127,13 @@ export const productsRepo: MasterRepo<Product, ProductInput> & {
     ),
   setSaleUnits,
 }
+
+export const chartOfAccountsRepo: MasterRepo<ChartOfAccount, ChartOfAccountInput> = makeMasterRepo({
+  tableId: Tables.chartOfAccounts,
+  rowSchema: chartOfAccountRowSchema,
+  inputSchema: chartOfAccountInputSchema,
+  searchField: 'name',
+})
 
 export const customersRepo: MasterRepo<Customer, CustomerInput> = makeMasterRepo({
   tableId: Tables.customers,

@@ -59,6 +59,9 @@ const RawMaterialsListPage = lazy(() =>
 const SuppliersListPage = lazy(() =>
   import('@/modules/admin').then((m) => ({ default: m.SuppliersListPage })),
 )
+const ChartOfAccountsListPage = lazy(() =>
+  import('@/modules/admin').then((m) => ({ default: m.ChartOfAccountsListPage })),
+)
 const CustomersListPage = lazy(() =>
   import('@/modules/admin').then((m) => ({ default: m.CustomersListPage })),
 )
@@ -211,6 +214,14 @@ export const router = createBrowserRouter([
         element: (
           <AdminRoute>
             <SuppliersListPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: 'admin/chart-of-accounts',
+        element: (
+          <AdminRoute>
+            <ChartOfAccountsListPage />
           </AdminRoute>
         ),
       },

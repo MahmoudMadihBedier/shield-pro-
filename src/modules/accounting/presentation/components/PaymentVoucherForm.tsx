@@ -5,6 +5,7 @@
  */
 import type { DefaultValues } from 'react-hook-form'
 
+import { CASH_LIKE_ACCOUNTS } from '@/core/accounts'
 import { appError } from '@/core/errors'
 import { err, ok, type Result } from '@/core/result'
 import { Form, FormError, NumberField, SelectField, TextAreaField, TextField } from '@/shared/forms'
@@ -15,7 +16,7 @@ import {
   paymentVoucherFormSchema,
   type PaymentVoucherForm as PaymentVoucherFormValues,
 } from '../../domain/schemas'
-import { usePaymentVoucherActions } from '../hooks'
+import { useAccountOptions, usePaymentVoucherActions } from '../hooks'
 
 export interface PaymentVoucherFormProps {
   onCreated: (id: string) => void
@@ -33,6 +34,13 @@ const DEFAULTS: PaymentVoucherFormValues = {
 
 export function PaymentVoucherForm({ onCreated, onCancel }: PaymentVoucherFormProps) {
   const { createDraft } = usePaymentVoucherActions()
+  const assetAccounts = useAccountOptions(['asset'])
+  const treasuryOptions = [
+    { value: '', label: 'الافتراضي (الخزينة) / Default (Treasury)' },
+    ...(assetAccounts.data ?? []).filter((o) =>
+      (CASH_LIKE_ACCOUNTS as readonly string[]).includes(o.value),
+    ),
+  ]
 
   async function handleSubmit(values: PaymentVoucherFormValues): Promise<Result<unknown>> {
     try {
@@ -80,7 +88,13 @@ export function PaymentVoucherForm({ onCreated, onCancel }: PaymentVoucherFormPr
 
           <div className="grid gap-3 sm:grid-cols-2">
             <TextField name="counterparty" label="الطرف الآخر" labelEn="Counterparty" />
-            <TextField name="treasury_account" label="الخزينة" labelEn="Treasury account" />
+            <SelectField
+              name="treasury_account"
+              label="الخزينة"
+              labelEn="Treasury account"
+              options={treasuryOptions}
+              disabled={assetAccounts.isLoading}
+            />
           </div>
 
           <TextField

@@ -27,6 +27,13 @@ export const accountingKeys = {
   options: {
     customers: () => ['accounting', 'options', 'customers'] as const,
     submittedInvoices: () => ['accounting', 'options', 'submitted-invoices'] as const,
+    accounts: (types: string) => ['accounting', 'options', 'accounts', types] as const,
+  },
+
+  reports: {
+    balanceSheet: (asOf: string) => ['accounting', 'reports', 'balance-sheet', asOf] as const,
+    cashFlow: (params: unknown) => ['accounting', 'reports', 'cash-flow', params] as const,
+    postingLockDate: () => ['accounting', 'reports', 'posting-lock-date'] as const,
   },
 
   bankStatement: {

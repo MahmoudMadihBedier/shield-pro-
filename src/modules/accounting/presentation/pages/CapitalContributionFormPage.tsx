@@ -25,7 +25,11 @@ import {
   type CapitalContribution,
   type CapitalContributionForm as FormValues,
 } from '../../domain/schemas'
-import { useAccountingPermissions, useCapitalContributionActions } from '../hooks'
+import {
+  useAccountOptions,
+  useAccountingPermissions,
+  useCapitalContributionActions,
+} from '../hooks'
 
 const DEFAULTS: FormValues = {
   contributor: '',
@@ -35,8 +39,15 @@ const DEFAULTS: FormValues = {
   asset_account: DEFAULT_ASSET_ACCOUNT.cash,
 }
 
-/** When `asset_type` changes and `asset_account` still holds a default, follow it. */
-function AssetAccountSync() {
+/**
+ * When `asset_type` changes and `asset_account` still holds a default, follow
+ * it. Also re-applies the field's current value once the (async-loaded)
+ * account options arrive: the `<select>` is a native uncontrolled element, so
+ * a value set before its matching `<option>` exists (mount-time default, or
+ * an edit-mode prefill) never visually takes — `accountsLoaded` re-asserts it
+ * once the option is actually there.
+ */
+function AssetAccountSync({ accountsLoaded }: { accountsLoaded: boolean }) {
   const { watch, setValue, getValues } = useFormContext<FormValues>()
   const assetType = watch('asset_type')
   useEffect(() => {
@@ -48,6 +59,10 @@ function AssetAccountSync() {
       })
     }
   }, [assetType, getValues, setValue])
+  useEffect(() => {
+    if (!accountsLoaded) return
+    setValue('asset_account', getValues('asset_account'))
+  }, [accountsLoaded, getValues, setValue])
   return null
 }
 
@@ -67,6 +82,7 @@ export function CapitalContributionFormPage({
   const navigate = useNavigate()
   const perms = useAccountingPermissions()
   const { createDraft, updateDraft } = useCapitalContributionActions()
+  const accounts = useAccountOptions(['asset'])
 
   const defaults: FormValues = contribution
     ? {
@@ -125,7 +141,7 @@ export function CapitalContributionFormPage({
           >
             {({ formError, isSubmitting }) => (
               <>
-                <AssetAccountSync />
+                <AssetAccountSync accountsLoaded={!accounts.isLoading} />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <TextField name="contributor" label="المساهم" labelEn="Contributor" required />
                   <SelectField
@@ -147,11 +163,20 @@ export function CapitalContributionFormPage({
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <NumberField name="amount" label="القيمة" labelEn="Amount" required min={0} />
-                  <TextField
+                  <SelectField
                     name="asset_account"
                     label="حساب الأصل (مدين)"
                     labelEn="Asset account (debit)"
                     required
+                    options={accounts.data ?? []}
+                    disabled={accounts.isLoading}
+                    placeholder={
+                      accounts.isError
+                        ? 'تعذّر تحميل الحسابات'
+                        : accounts.isLoading
+                          ? 'جارٍ التحميل…'
+                          : 'اختر الحساب…'
+                    }
                   />
                 </div>
 

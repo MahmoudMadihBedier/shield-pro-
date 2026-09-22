@@ -38,6 +38,7 @@ const CONTROL_TABLES = new Set([
   'approval_rule_log',
   'fraud_flags',
   'audit_log',
+  'system_settings',
 ])
 /** master data: any signed-in user reads; only system_admin writes. */
 const MASTER_TABLES = new Set([
@@ -50,6 +51,7 @@ const MASTER_TABLES = new Set([
   'customers',
   'suppliers',
   'supplier_contacts',
+  'chart_of_accounts',
   'approval_rules',
   'incentive_rules',
   'naming_series_counters',
@@ -210,6 +212,7 @@ function readScope(def: TableDef): string {
     'raw_materials',
     'suppliers',
     'supplier_contacts',
+    'chart_of_accounts',
     'approval_rules',
     'incentive_rules',
     'naming_series_counters',
@@ -218,6 +221,7 @@ function readScope(def: TableDef): string {
     'fraud_flags',
     'audit_log',
     'attendance_records',
+    'system_settings',
   ])
   if (KEEP_OPEN.has(def.id)) return 'true'
   if (cols.has('branch_id')) return 'public._can_read_branch(branch_id)'

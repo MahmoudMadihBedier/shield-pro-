@@ -8,6 +8,7 @@
  * Zod-parse every row; return `Result<T, AppError>` — never throw across the
  * boundary.
  */
+import { ACCOUNT_TYPES, type AccountType } from '@/core/accounts'
 import { appError } from '@/core/errors'
 import { err, ok, type Result } from '@/core/result'
 import { DATABASE_ID, Tables } from '@/infrastructure/appwrite/collections'
@@ -16,8 +17,17 @@ import { LEDGER_TOLERANCE } from '@/core/ledger'
 import { fetchTrialBalance } from '@/infrastructure/appwrite/functions'
 import { Query, tablesDB } from '@/infrastructure/appwrite/services'
 
-import { type TrialBalance } from '../domain/gl'
+import { type TrialBalance, type TrialBalanceAccount } from '../domain/gl'
 import { glEntryRowSchema, type GlEntryRow } from '../domain/schemas'
+
+const KNOWN_ACCOUNT_TYPES: ReadonlySet<string> = new Set(ACCOUNT_TYPES)
+
+/** Narrow the RPC's untyped `accountType: string | null` — an account not
+ *  (yet) in the chart, or any unexpected value, reads as `null` rather than
+ *  poisoning a report with an unrecognised type. */
+function narrowAccountType(value: string | null): AccountType | null {
+  return value !== null && KNOWN_ACCOUNT_TYPES.has(value) ? (value as AccountType) : null
+}
 
 const SHAPE_ERROR =
   'تعذّر قراءة أحد قيود دفتر الأستاذ — البنية غير متوقعة. أبلغ الدعم إذا استمر ذلك.'
@@ -104,8 +114,12 @@ export async function trialBalanceRows(
   const res = await fetchTrialBalance(range.from ?? null, range.to ?? null)
   if (!res.ok) return res
   const { rows, totalDebit, totalCredit } = res.value
+  const typedRows: TrialBalanceAccount[] = rows.map((row) => ({
+    ...row,
+    accountType: narrowAccountType(row.accountType),
+  }))
   return ok({
-    rows,
+    rows: typedRows,
     totalDebit,
     totalCredit,
     balanced: Math.abs(totalDebit - totalCredit) <= LEDGER_TOLERANCE,

@@ -266,6 +266,36 @@ export const TABLES: TableDef[] = [
     str('notes', 2000),
   ]),
 
+  // The chart of accounts — the single source of truth every GL-posting
+  // module (accounting/gl.ts, sales, returns) validates against instead of
+  // typing its own free-text account string (`src/core/accounts.ts` mirrors
+  // `code` as compile-time constants). `code` is the id actually stored in
+  // `general_ledger_entries.account` — never renamed once real rows exist
+  // under it. `account_number` (1000/2000/…) is a separate, purely cosmetic
+  // display/sort field, safe to renumber freely.
+  master(
+    Tables.chartOfAccounts,
+    'Chart of accounts',
+    [
+      str('code', 64, true),
+      str('account_number', 16, true),
+      str('name', 128, true),
+      str('name_ar', 128),
+      {
+        key: 'account_type',
+        type: 'enum',
+        elements: ['asset', 'liability', 'equity', 'income', 'expense'],
+        required: true,
+      },
+      { key: 'is_active', type: 'boolean', default: true },
+    ],
+    [
+      { key: 'chart_of_accounts_code_uq', type: 'unique', columns: ['code'] },
+      { key: 'chart_of_accounts_number_uq', type: 'unique', columns: ['account_number'] },
+      { key: 'chart_of_accounts_type_idx', type: 'key', columns: ['account_type'] },
+    ],
+  ),
+
   // One supplier can have several contact people (purchasing lead, accounts
   // payable, delivery coordinator, …) — a real child table, not a JSON blob,
   // so each contact is independently addable/removable/editable.
@@ -837,4 +867,13 @@ export const TABLES: TableDef[] = [
     ],
     [{ key: 'naming_prefix_year_uq', type: 'unique', columns: ['prefix', 'year'] }],
   ),
+
+  // Small key/value control table. `id` IS the setting key (e.g.
+  // 'posting_lock_date'), set explicitly on insert — never the random default.
+  // Read-only to clients like every control table; the only writer is
+  // `set_posting_lock_date` (SECURITY DEFINER, system_admin-gated, audited).
+  control(Tables.systemSettings, 'System settings', [
+    str('value', 500, true),
+    str('updated_by', 36),
+  ]),
 ]

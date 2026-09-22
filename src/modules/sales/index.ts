@@ -72,7 +72,6 @@ export {
   invoiceToStockMoves,
   invoiceToGlLines,
   repIssueToStockMoves,
-  SALES_ACCOUNTS,
   type StockMove,
 } from './domain/to-ledger'
 export {

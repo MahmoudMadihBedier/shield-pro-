@@ -14,6 +14,9 @@
  *
  * `domain` is pure TypeScript — no framework imports.
  */
+import { GlAccount } from '@/core/accounts'
+import { CREDIT, DEBIT, type GlLine } from '@/core/ledger'
+
 import type { ReturnLine } from './schemas'
 
 /** Mirrors `StockMoveInput` in `infrastructure/appwrite/functions.ts`. */
@@ -41,18 +44,6 @@ export function returnToStockMoves(
   }))
 }
 
-/** GL account ids for the return credit-note (strings — no cross-module import). */
-export const RETURN_GL_ACCOUNT = {
-  SalesReturns: 'sales_returns',
-  AccountsReceivable: 'accounts_receivable',
-} as const
-
-export interface GlLine {
-  account: string
-  debit: number
-  credit: number
-}
-
 /**
  * The credit-note entry for a customer return (reduces what the customer owes):
  *   Dr Sales returns      refundAmount
@@ -60,7 +51,7 @@ export interface GlLine {
  */
 export function returnToGlLines(refundAmount: number): GlLine[] {
   return [
-    { account: RETURN_GL_ACCOUNT.SalesReturns, debit: refundAmount, credit: 0 },
-    { account: RETURN_GL_ACCOUNT.AccountsReceivable, debit: 0, credit: refundAmount },
+    DEBIT(GlAccount.SalesReturns, refundAmount),
+    CREDIT(GlAccount.AccountsReceivable, refundAmount),
   ]
 }

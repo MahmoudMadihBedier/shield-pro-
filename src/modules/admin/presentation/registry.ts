@@ -12,8 +12,11 @@ import type { ZodType } from 'zod'
 import type { Result } from '@/core/result'
 import { DEFAULT_UNIT, UNIT_OPTIONS } from '@/core/uom'
 
+import { ACCOUNT_TYPES } from '@/core/accounts'
+
 import {
   branchesRepo,
+  chartOfAccountsRepo,
   customersRepo,
   productBomRepo,
   productsRepo,
@@ -24,12 +27,14 @@ import {
 import type { ListSort, MasterRepo } from '../data/master-repo'
 import { usersRepo } from '../data/users-repo'
 import {
+  ACCOUNT_TYPE_LABELS,
   CUSTOMER_APPROVAL_STATE_LABELS,
   WAREHOUSE_KIND_LABELS,
   type AdminEntity,
 } from '../domain/labels'
 import {
   branchInputSchema,
+  chartOfAccountInputSchema,
   customerInputSchema,
   productBomLineInputSchema,
   productInputSchema,
@@ -40,6 +45,8 @@ import {
   WAREHOUSE_KINDS,
   type Branch,
   type BranchInput,
+  type ChartOfAccount,
+  type ChartOfAccountInput,
   type Customer,
   type CustomerInput,
   type Product,
@@ -68,6 +75,7 @@ export interface AdminRowMap {
   rawMaterial: RawMaterial
   supplier: Supplier
   customer: Customer
+  chartOfAccount: ChartOfAccount
 }
 
 /** Form input type for a given entity key. */
@@ -80,6 +88,7 @@ export interface AdminInputMap {
   rawMaterial: RawMaterialInput
   supplier: SupplierInput
   customer: CustomerInput
+  chartOfAccount: ChartOfAccountInput
 }
 
 // ---------------------------------------------------------------------------
@@ -87,7 +96,15 @@ export interface AdminInputMap {
 // ---------------------------------------------------------------------------
 
 export type CellFormat =
-  'text' | 'number' | 'currency' | 'bool' | 'warehouseKind' | 'approvalState' | 'unit' | 'roles'
+  | 'text'
+  | 'number'
+  | 'currency'
+  | 'bool'
+  | 'warehouseKind'
+  | 'approvalState'
+  | 'unit'
+  | 'roles'
+  | 'accountType'
 
 export interface ColumnDescriptor {
   field: string
@@ -143,6 +160,11 @@ const approvalStateOptions = (
   label: `${CUSTOMER_APPROVAL_STATE_LABELS[s].ar} / ${CUSTOMER_APPROVAL_STATE_LABELS[s].en}`,
 }))
 void approvalStateOptions // approval_state is not an editable field; kept for reference
+
+const accountTypeOptions = ACCOUNT_TYPES.map((t) => ({
+  value: t,
+  label: `${ACCOUNT_TYPE_LABELS[t].ar} / ${ACCOUNT_TYPE_LABELS[t].en}`,
+}))
 
 // ---------------------------------------------------------------------------
 // Registry
@@ -399,6 +421,38 @@ export const ADMIN_REGISTRY: { [K in AdminEntity]: EntityConfig<K> } = {
       discount_pct: 0,
       credit_limit: 0,
       payment_terms_days: 0,
+    },
+  }),
+
+  chartOfAccount: define({
+    key: 'chartOfAccount',
+    repo: chartOfAccountsRepo,
+    inputSchema: chartOfAccountInputSchema,
+    defaultSort: { field: 'account_number', dir: 'asc' },
+    canRemove: false,
+    searchPlaceholder: 'ابحث بالاسم…',
+    columns: [
+      { field: 'account_number', sortable: true },
+      { field: 'name', sortable: true },
+      { field: 'name_ar' },
+      { field: 'account_type', format: 'accountType' },
+      { field: 'is_active', format: 'bool', align: 'center' },
+    ],
+    fields: [
+      { name: 'code', kind: 'text', required: true, placeholder: 'cash' },
+      { name: 'account_number', kind: 'text', required: true, placeholder: '1000' },
+      { name: 'name', kind: 'text', required: true },
+      { name: 'name_ar', kind: 'text' },
+      { name: 'account_type', kind: 'select', required: true, options: accountTypeOptions },
+      { name: 'is_active', kind: 'checkbox' },
+    ],
+    emptyInput: {
+      code: '',
+      account_number: '',
+      name: '',
+      name_ar: '',
+      account_type: 'asset',
+      is_active: true,
     },
   }),
 }

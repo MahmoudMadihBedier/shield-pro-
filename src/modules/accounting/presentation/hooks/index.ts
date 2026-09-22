@@ -17,6 +17,8 @@ export {
   useAccountBalance,
   useTrialBalance,
   useProfitAndLoss,
+  useBalanceSheet,
+  useCashFlowStatement,
   netOwnersEquity,
 } from './useGlEntries'
 export {
@@ -38,3 +40,5 @@ export {
   type AccountingPermissions,
 } from './usePermissions'
 export { useBankStatementList, useReconcileBankStatementLine } from './useBankStatement'
+export { useAccountOptions } from './useAccountOptions'
+export { usePostingLockDate, useSetPostingLockDate } from './useAccountingSettings'

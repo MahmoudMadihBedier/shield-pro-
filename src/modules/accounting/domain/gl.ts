@@ -6,36 +6,22 @@
  * `/post-gl` Function — nothing here knows about appwrite.
  *
  * ## Chart of accounts
- * A real chart of accounts is a later story. For now account identifiers are
- * plain strings ({@link GlAccount}). `payment_vouchers.treasury_account`, when
- * set, is used verbatim as the treasury-side account string so the posting
- * already reflects the operator's intent; everything else uses the constants.
+ * Account identifiers ({@link GlAccount}) are the canonical set in
+ * `@/core/accounts`, backed by the `chart_of_accounts` master table —
+ * re-exported here so existing call sites (`from '../../domain/gl'`) don't
+ * all need touching. `payment_vouchers.treasury_account`, when set, is used
+ * verbatim as the treasury-side account string so the posting already
+ * reflects the operator's intent; everything else uses the constants.
  *
- * Pure — the only import is `@/core/ledger` (framework-free ledger math).
+ * Pure — the only imports are `@/core/ledger` and `@/core/accounts`
+ * (framework-free).
  */
+import { GlAccount, type AccountType, type GlAccountId } from '@/core/accounts'
 import { assertBalanced, LEDGER_TOLERANCE, type GlLine } from '@/core/ledger'
 
 import type { CapitalWithdrawal, PaymentVoucher, Receipt } from './schemas'
 
-/** Well-known account identifiers (placeholder chart of accounts). */
-export const GlAccount = {
-  Cash: 'cash',
-  Bank: 'bank',
-  AccountsReceivable: 'accounts_receivable',
-  AccountsPayable: 'accounts_payable',
-  Treasury: 'treasury',
-  Income: 'income',
-  Expense: 'expense',
-  SalesReturns: 'sales_returns',
-  OwnersCapital: 'owners_capital',
-  /** Contra-equity: owner/investor withdrawals, netted against OwnersCapital
-   *  when computing equity — never posted as a direct debit to the capital
-   *  account itself (see {@link withdrawalToGlLines}). */
-  OwnersDrawings: 'owners_drawings',
-  Other: 'other',
-} as const
-
-export type GlAccountId = (typeof GlAccount)[keyof typeof GlAccount]
+export { GlAccount, type GlAccountId }
 
 const DEBIT = (account: string, amount: number): GlLine => ({ account, debit: amount, credit: 0 })
 const CREDIT = (account: string, amount: number): GlLine => ({ account, debit: 0, credit: amount })
@@ -127,6 +113,11 @@ export interface TrialBalanceAccount {
   debit: number
   credit: number
   balance: number
+  /** From `chart_of_accounts.account_type`, when the server RPC joins it
+   *  (`trialBalanceRows`, not the client `trialBalance()` reducer, which has
+   *  no chart-of-accounts data to join). `undefined`/`null` for an account
+   *  not (yet) in the chart. */
+  accountType?: AccountType | null
 }
 
 export interface TrialBalance {

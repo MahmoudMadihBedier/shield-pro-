@@ -1,13 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
+import { GlAccount } from '@/core/accounts'
 import { assertBalanced } from '@/core/ledger'
 
-import {
-  invoiceToGlLines,
-  invoiceToStockMoves,
-  repIssueToStockMoves,
-  SALES_ACCOUNTS,
-} from '../to-ledger'
+import { invoiceToGlLines, invoiceToStockMoves, repIssueToStockMoves } from '../to-ledger'
 import { serializeJsonArray } from '../schemas'
 
 const invoiceLines = serializeJsonArray([
@@ -33,8 +29,8 @@ describe('invoiceToGlLines', () => {
       payment_method: 'cash',
     })
     expect(lines).toEqual([
-      { account: SALES_ACCOUNTS.cash, debit: 230, credit: 0 },
-      { account: SALES_ACCOUNTS.salesRevenue, debit: 0, credit: 230 },
+      { account: GlAccount.Cash, debit: 230, credit: 0 },
+      { account: GlAccount.SalesRevenue, debit: 0, credit: 230 },
     ])
     expect(() => assertBalanced(lines)).not.toThrow()
   })
@@ -48,7 +44,7 @@ describe('invoiceToGlLines', () => {
     })
     expect(lines).toHaveLength(3)
     expect(lines).toContainEqual({
-      account: SALES_ACCOUNTS.accountsReceivable,
+      account: GlAccount.AccountsReceivable,
       debit: 200,
       credit: 0,
     })
@@ -62,7 +58,7 @@ describe('invoiceToGlLines', () => {
       credit_amount: 0,
       payment_method: 'bank_transfer',
     })
-    expect(lines[0]!.account).toBe(SALES_ACCOUNTS.bank)
+    expect(lines[0]!.account).toBe(GlAccount.Bank)
     expect(() => assertBalanced(lines)).not.toThrow()
   })
 })

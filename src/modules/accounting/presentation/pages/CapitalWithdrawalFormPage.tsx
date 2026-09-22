@@ -13,6 +13,7 @@ import { useEffect } from 'react'
 import { useFormContext, type DefaultValues } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 
+import { CASH_LIKE_ACCOUNTS } from '@/core/accounts'
 import { appError } from '@/core/errors'
 import { err, ok, type Result } from '@/core/result'
 import { Form, FormError, NumberField, SelectField, TextAreaField, TextField } from '@/shared/forms'
@@ -26,7 +27,7 @@ import {
   type CapitalWithdrawalMethod,
   type CapitalWithdrawalForm as FormValues,
 } from '../../domain/schemas'
-import { useAccountingPermissions, useCapitalWithdrawalActions } from '../hooks'
+import { useAccountOptions, useAccountingPermissions, useCapitalWithdrawalActions } from '../hooks'
 
 const DEFAULTS: FormValues = {
   withdrawn_by: '',
@@ -36,8 +37,13 @@ const DEFAULTS: FormValues = {
   source_account: DEFAULT_SOURCE_ACCOUNT.cash,
 }
 
-/** When `method` changes and `source_account` still holds a default, follow it. */
-function SourceAccountSync() {
+/**
+ * When `method` changes and `source_account` still holds a default, follow
+ * it. Also re-applies the field's current value once the (async-loaded)
+ * account options arrive — see `AssetAccountSync` in the sibling contribution
+ * form page for why this second effect is needed.
+ */
+function SourceAccountSync({ accountsLoaded }: { accountsLoaded: boolean }) {
   const { watch, setValue, getValues } = useFormContext<FormValues>()
   const method = watch('method')
   useEffect(() => {
@@ -49,6 +55,10 @@ function SourceAccountSync() {
       })
     }
   }, [method, getValues, setValue])
+  useEffect(() => {
+    if (!accountsLoaded) return
+    setValue('source_account', getValues('source_account'))
+  }, [accountsLoaded, getValues, setValue])
   return null
 }
 
@@ -68,6 +78,12 @@ export function CapitalWithdrawalFormPage({
   const navigate = useNavigate()
   const perms = useAccountingPermissions()
   const { createDraft, updateDraft } = useCapitalWithdrawalActions()
+  const assetAccounts = useAccountOptions(['asset'])
+  // A withdrawal only ever leaves from where cash physically sits — never a
+  // fixed-asset account, even though both share account_type 'asset'.
+  const cashAccounts = (assetAccounts.data ?? []).filter((o) =>
+    (CASH_LIKE_ACCOUNTS as readonly string[]).includes(o.value),
+  )
 
   const defaults: FormValues = withdrawal
     ? {
@@ -126,7 +142,7 @@ export function CapitalWithdrawalFormPage({
           >
             {({ formError, isSubmitting }) => (
               <>
-                <SourceAccountSync />
+                <SourceAccountSync accountsLoaded={!assetAccounts.isLoading} />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <TextField name="withdrawn_by" label="المستفيد" labelEn="Withdrawn by" required />
                   <SelectField
@@ -148,11 +164,20 @@ export function CapitalWithdrawalFormPage({
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <NumberField name="amount" label="القيمة" labelEn="Amount" required min={0} />
-                  <TextField
+                  <SelectField
                     name="source_account"
                     label="حساب المصدر (دائن)"
                     labelEn="Source account (credit)"
                     required
+                    options={cashAccounts}
+                    disabled={assetAccounts.isLoading}
+                    placeholder={
+                      assetAccounts.isError
+                        ? 'تعذّر تحميل الحسابات'
+                        : assetAccounts.isLoading
+                          ? 'جارٍ التحميل…'
+                          : 'اختر الحساب…'
+                    }
                   />
                 </div>
 

@@ -205,6 +205,25 @@ CREATE TRIGGER "suppliers_set_updated_at" BEFORE UPDATE ON public."suppliers"
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 ALTER TABLE public."suppliers" ENABLE ROW LEVEL SECURITY;
 
+-- Chart of accounts (master)
+CREATE TABLE IF NOT EXISTS public."chart_of_accounts" (
+  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  "updated_at" timestamptz NOT NULL DEFAULT now(),
+  "code" text NOT NULL,
+  "account_number" text NOT NULL,
+  "name" text NOT NULL,
+  "name_ar" text,
+  "account_type" text NOT NULL CHECK ("account_type" IN ('asset', 'liability', 'equity', 'income', 'expense')),
+  "is_active" boolean DEFAULT true,
+  CONSTRAINT "chart_of_accounts_code_uq" UNIQUE ("code"),
+  CONSTRAINT "chart_of_accounts_number_uq" UNIQUE ("account_number")
+);
+CREATE INDEX IF NOT EXISTS "chart_of_accounts_type_idx" ON public."chart_of_accounts" ("account_type");
+CREATE TRIGGER "chart_of_accounts_set_updated_at" BEFORE UPDATE ON public."chart_of_accounts"
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+ALTER TABLE public."chart_of_accounts" ENABLE ROW LEVEL SECURITY;
+
 -- Supplier contacts (master)
 CREATE TABLE IF NOT EXISTS public."supplier_contacts" (
   "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -944,6 +963,18 @@ CREATE TRIGGER "naming_series_counters_set_updated_at" BEFORE UPDATE ON public."
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 ALTER TABLE public."naming_series_counters" ENABLE ROW LEVEL SECURITY;
 
+-- System settings (control)
+CREATE TABLE IF NOT EXISTS public."system_settings" (
+  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  "updated_at" timestamptz NOT NULL DEFAULT now(),
+  "value" text NOT NULL,
+  "updated_by" text
+);
+CREATE TRIGGER "system_settings_set_updated_at" BEFORE UPDATE ON public."system_settings"
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+ALTER TABLE public."system_settings" ENABLE ROW LEVEL SECURITY;
+
 -- RLS: branches (master)
 CREATE POLICY "branches_read" ON public."branches" FOR SELECT TO authenticated USING (true);
 CREATE POLICY "branches_admin_write" ON public."branches" FOR ALL TO authenticated
@@ -977,6 +1008,11 @@ CREATE POLICY "raw_materials_admin_write" ON public."raw_materials" FOR ALL TO a
 -- RLS: suppliers (master)
 CREATE POLICY "suppliers_read" ON public."suppliers" FOR SELECT TO authenticated USING (true);
 CREATE POLICY "suppliers_admin_write" ON public."suppliers" FOR ALL TO authenticated
+  USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
+
+-- RLS: chart_of_accounts (master)
+CREATE POLICY "chart_of_accounts_read" ON public."chart_of_accounts" FOR SELECT TO authenticated USING (true);
+CREATE POLICY "chart_of_accounts_admin_write" ON public."chart_of_accounts" FOR ALL TO authenticated
   USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
 
 -- RLS: supplier_contacts (master)
@@ -1205,6 +1241,9 @@ CREATE POLICY "audit_log_read" ON public."audit_log" FOR SELECT TO authenticated
 CREATE POLICY "naming_series_counters_read" ON public."naming_series_counters" FOR SELECT TO authenticated USING (true);
 CREATE POLICY "naming_series_counters_admin_write" ON public."naming_series_counters" FOR ALL TO authenticated
   USING (public.has_role('system_admin')) WITH CHECK (public.has_role('system_admin'));
+
+-- RLS: system_settings (control)
+CREATE POLICY "system_settings_read" ON public."system_settings" FOR SELECT TO authenticated USING (true);
 
 -- ----- CRM portal: customer sees only its own documents ---------------------
 create policy "sales_invoices_portal_read" on public."sales_invoices"

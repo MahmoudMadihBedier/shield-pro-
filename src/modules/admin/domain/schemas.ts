@@ -15,6 +15,7 @@
  */
 import { z } from 'zod'
 
+import { ACCOUNT_TYPES } from '@/core/accounts'
 import { saleUnitSchema, UNITS } from '@/core/uom'
 
 /** Stock-unit picker input — one of the fixed {@link UNITS}. */
@@ -415,3 +416,47 @@ export type CustomerInput = z.infer<typeof customerInputSchema>
 
 /** Default `approval_state` for a freshly-created customer. */
 export const DEFAULT_CUSTOMER_APPROVAL_STATE: CustomerApprovalState = 'pending_approval'
+
+// ---------------------------------------------------------------------------
+// chart_of_accounts — the single source of truth every GL-posting module
+// validates account references against (`@/core/accounts` mirrors the seeded
+// rows as compile-time constants for domain code that can't query the DB).
+// ---------------------------------------------------------------------------
+
+export const accountTypeSchema = z.enum(ACCOUNT_TYPES)
+
+/**
+ * `code` is the id stored verbatim in `general_ledger_entries.account` —
+ * lowercase snake_case, matching every existing account (`cash`,
+ * `fixed_assets_vehicles`, …). Renaming a code that already has postings
+ * under it would silently split that account's historical balance across two
+ * strings, so this is deliberately NOT auto-derived from `name` — an
+ * administrator types it once, deliberately.
+ */
+const accountCodeInput = z
+  .string({ error: 'رمز الحساب مطلوب' })
+  .trim()
+  .toLowerCase()
+  .min(1, 'رمز الحساب مطلوب')
+  .max(64, 'رمز الحساب طويل جدًا')
+  .regex(/^[a-z][a-z0-9_]*$/, 'رمز الحساب: حروف إنجليزية صغيرة وأرقام و _ فقط، يبدأ بحرف')
+
+export const chartOfAccountRowSchema = z.object({
+  ...systemFields,
+  code: z.string(),
+  account_number: z.string(),
+  name: z.string(),
+  name_ar: rowOptStr,
+  account_type: accountTypeSchema,
+  is_active: rowBool,
+})
+export const chartOfAccountInputSchema = z.object({
+  code: accountCodeInput,
+  account_number: reqText(16, 'الرقم المحاسبي'),
+  name: reqText(128, 'اسم الحساب'),
+  name_ar: optText(128),
+  account_type: accountTypeSchema,
+  is_active: z.boolean(),
+})
+export type ChartOfAccount = z.infer<typeof chartOfAccountRowSchema>
+export type ChartOfAccountInput = z.infer<typeof chartOfAccountInputSchema>

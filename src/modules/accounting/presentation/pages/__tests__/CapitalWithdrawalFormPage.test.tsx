@@ -4,9 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockAllocateReferenceId, mockCreateRow, mockNavigate } = vi.hoisted(() => ({
+const { mockAllocateReferenceId, mockCreateRow, mockListRows, mockNavigate } = vi.hoisted(() => ({
   mockAllocateReferenceId: vi.fn(),
   mockCreateRow: vi.fn(),
+  mockListRows: vi.fn(),
   mockNavigate: vi.fn(),
 }))
 
@@ -17,7 +18,7 @@ vi.mock('@/infrastructure/appwrite/functions', async (importOriginal) => {
 
 vi.mock('@/infrastructure/appwrite/services', async () => {
   const { Query, ID } = await import('@/infrastructure/appwrite/testing')
-  return { tablesDB: { createRow: mockCreateRow }, Query, ID }
+  return { tablesDB: { createRow: mockCreateRow, listRows: mockListRows }, Query, ID }
 })
 
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -57,10 +58,33 @@ function renderPage(principal: AuthContextValue['principal'] = PRINCIPAL) {
   )
 }
 
+function accountRow(code: string, accountNumber: string, name: string) {
+  return {
+    $id: code,
+    $createdAt: 't',
+    $updatedAt: 't',
+    code,
+    account_number: accountNumber,
+    name,
+    name_ar: name,
+    account_type: 'asset',
+    is_active: true,
+  }
+}
+
 beforeEach(() => {
   mockAllocateReferenceId.mockReset()
   mockCreateRow.mockReset()
   mockNavigate.mockReset()
+  mockListRows.mockReset()
+  mockListRows.mockResolvedValue({
+    total: 3,
+    rows: [
+      accountRow('cash', '1000', 'Cash'),
+      accountRow('bank', '1010', 'Bank'),
+      accountRow('treasury', '1020', 'Treasury'),
+    ],
+  })
 })
 
 describe('CapitalWithdrawalFormPage', () => {
@@ -71,13 +95,13 @@ describe('CapitalWithdrawalFormPage', () => {
     expect(screen.queryByLabelText(/المستفيد/)).not.toBeInTheDocument()
   })
 
-  it('renders the method/amount/source-account fields with cash defaults', () => {
+  it('renders the method/amount/source-account fields with cash defaults', async () => {
     renderPage()
 
     expect(screen.getByLabelText(/المستفيد/)).toBeInTheDocument()
     expect(screen.getByLabelText(/طريقة السحب/)).toHaveValue('cash')
     expect(screen.getByLabelText(/القيمة/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/حساب المصدر/)).toHaveValue('cash')
+    await vi.waitFor(() => expect(screen.getByLabelText(/حساب المصدر/)).toHaveValue('cash'))
   })
 
   it('blocks submit on a non-positive amount and never allocates a reference id', async () => {
@@ -114,6 +138,7 @@ describe('CapitalWithdrawalFormPage', () => {
 
     renderPage()
 
+    await vi.waitFor(() => expect(screen.getByLabelText(/حساب المصدر/)).toHaveValue('cash'))
     await userEvent.type(screen.getByLabelText(/المستفيد/), 'المالك')
     await userEvent.type(screen.getByLabelText(/القيمة/), '1000')
     await userEvent.click(screen.getByRole('button', { name: 'إنشاء مسودة' }))
